@@ -1,13 +1,16 @@
 """Experiment grid runner stub with plotting hooks and data/KB loaders."""
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
 from RouterGym.evaluation import analyzer as eval_analyzer
 from RouterGym.data import dataset_loader
 from RouterGym.data import kb_loader
+from RouterGym.routing.llm_first import LLMFirstRouter
+from RouterGym.routing.slm_dominant import SLMDominantRouter
+from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
 
 
 def _default_grid() -> Dict[str, List[str]]:
@@ -22,46 +25,36 @@ def _default_grid() -> Dict[str, List[str]]:
     }
 
 
-def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
-    """Run an experiment grid (placeholder) and generate plots."""
-    grid = config.get("grid") if config else None
-    grid = grid or _default_grid()
-
-    data_dir = Path(__file__).resolve().parent.parent / "data"
-    tickets_path = data_dir / "tickets"
-    kb_path = data_dir / "policy_kb"
-
-    # Load dataset if present.
-    try:
-        df_raw = dataset_loader.load_kaggle_dataset(tickets_path)
-        ticket_records = dataset_loader.preprocess_tickets(df_raw)
-    except Exception:
-        df_raw = pd.DataFrame()
-        ticket_records: List[Dict[str, Any]] = []
-
-    # Load KB index if dependencies are available.
-    kb_loaded = False
-    try:
-        if kb_path.exists():
-            kb_loader.load_kb(kb_path)
-            kb_loaded = True
-    except Exception:
-        kb_loaded = False
-
+def run_full_grid(
+    grid: Dict[str, Any],
+    tickets: List[Dict[str, Any]],
+    kb_retriever: Optional[Any],
+) -> pd.DataFrame:
+    """Run the inner grid loop (placeholder)."""
     results: List[Dict[str, Any]] = []
     routers = grid.get("routers", [])
     memories = grid.get("memories", [])
     models = list(grid.get("slms", [])) + list(grid.get("llms", []))
     seeds = grid.get("seeds", [])
 
-    for router in routers:
+    router_map = {
+        "slm_dominant": SLMDominantRouter(),
+        "llm_first": LLMFirstRouter(),
+        "hybrid_specialist": HybridSpecialistRouter(),
+    }
+
+    sample_text = tickets[0]["text"] if tickets else "Sample ticket text."
+
+    for router_name in routers:
+        router = router_map.get(router_name)
         for memory in memories:
             for model in models:
                 for seed in seeds:
                     is_slm = model in grid.get("slms", [])
+                    routing_meta = router.route(sample_text, kb_retriever=kb_retriever) if router else {}
                     results.append(
                         {
-                            "router": router,
+                            "router": router_name,
                             "memory": memory,
                             "model": model,
                             "seed": seed,
@@ -71,12 +64,40 @@ def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
                             "cost_usd": 0.001 if is_slm else 0.01,
                             "fallback_rate": 0.0,
                             "accuracy": 0.0,
-                            "kb_attached": kb_loaded,
-                            "tickets_loaded": bool(ticket_records),
+                            "kb_attached": bool(kb_retriever),
+                            "tickets_loaded": bool(tickets),
+                            "routing_meta": routing_meta,
                         }
                     )
+    return pd.DataFrame(results)
 
-    df = pd.DataFrame(results)
+
+def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
+    """Run an experiment grid (placeholder) and generate plots."""
+    grid = config.get("grid") if config else None
+    grid = grid or _default_grid()
+
+    data_dir = Path(__file__).resolve().parent.parent / "data"
+    tickets_path = data_dir / "tickets" / "tickets.csv"
+    kb_path = data_dir / "policy_kb"
+
+    # Load dataset if present.
+    try:
+        ticket_records = dataset_loader.load_and_preprocess(tickets_path)
+    except Exception:
+        ticket_records = []
+
+    # Load KB index if dependencies are available.
+    kb_retriever: Optional[Any] = None
+    try:
+        if kb_path.exists():
+            kb_loader.load_kb(kb_path)
+            kb_retriever = kb_loader
+    except Exception:
+        kb_retriever = None
+
+    df = run_full_grid(grid=grid, tickets=ticket_records, kb_retriever=kb_retriever)
+
     results_dir = Path(__file__).resolve().parent.parent / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     csv_path = results_dir / "results.csv"
