@@ -115,4 +115,4 @@ python -m experiments.run_grid \
 ## Citation
 If you use RouterGym, please cite the dissertation:
 
-> Kyu Park (2024). From LLM-First to SLM-Dominant: A Router-Memory Co-Design and Conversion Benchmark for Agentic Systems.
+> Kparobor Akpomiemie (2025). From LLM-First to SLM-Dominant: A Router-Memory Co-Design and Conversion Benchmark for Agentic Systems.
