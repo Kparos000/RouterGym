@@ -1,0 +1,1 @@
+﻿# Local Admin Rights Policy
