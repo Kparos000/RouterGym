@@ -1,4 +1,4 @@
-"""Environment variable loader for RouterGym."""
+"""Environment and configuration loader for RouterGym."""
 
 from dataclasses import dataclass
 from functools import lru_cache

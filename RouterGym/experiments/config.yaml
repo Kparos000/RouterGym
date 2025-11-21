@@ -1,1 +1,9 @@
-"""RouterGym scaffold: experiments config."""
+# RouterGym experiment configuration placeholder
+
+grid:
+  routers: []
+  memories: []
+  slms: []
+  llms: []
+  contracts: []
+  seeds: []
