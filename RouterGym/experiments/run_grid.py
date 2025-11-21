@@ -1,5 +1,8 @@
-"""Experiment grid runner stub with plotting hooks and data/KB loaders."""
+"""Experimental grid runner with routers, memories, and KB."""
 
+from __future__ import annotations
+
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,96 +14,122 @@ from RouterGym.data import kb_loader
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
+from RouterGym.memory.none import NoneMemory
+from RouterGym.memory.transcript import TranscriptMemory
+from RouterGym.memory.rag import RAGMemory
+from RouterGym.memory.salience import SalienceGatedMemory
 
 
-def _default_grid() -> Dict[str, List[str]]:
-    """Provide a minimal default grid when none is supplied."""
-    return {
-        "routers": ["slm_dominant", "llm_first", "hybrid_specialist"],
-        "memories": ["none", "static", "dynamic", "salience"],
-        "slms": ["phi3mini", "qwen1.5b"],
-        "llms": ["llama70b", "mixtral46b"],
-        "contracts": ["on", "off"],
-        "seeds": ["1"],
-    }
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+RAW_DIR = RESULTS_DIR / "raw"
+DEFAULT_TICKETS_PATH = Path("RouterGym/data/tickets/tickets.csv")
+DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
+
+ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
+MEMORY_MODES = ["none", "transcript", "rag", "salience"]
+MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 
 
-def run_full_grid(
-    grid: Dict[str, Any],
-    tickets: List[Dict[str, Any]],
-    kb_retriever: Optional[Any],
-) -> pd.DataFrame:
-    """Run the inner grid loop (placeholder)."""
-    results: List[Dict[str, Any]] = []
-    routers = grid.get("routers", [])
-    memories = grid.get("memories", [])
-    models = list(grid.get("slms", [])) + list(grid.get("llms", []))
-    seeds = grid.get("seeds", [])
+def load_tickets(path: Path = DEFAULT_TICKETS_PATH) -> List[Dict[str, Any]]:
+    """Load and preprocess tickets."""
+    try:
+        return dataset_loader.load_and_preprocess(path)
+    except Exception:
+        return []
 
+
+def load_kb(path: Path = DEFAULT_KB_PATH) -> Optional[Any]:
+    """Load KB index and return retriever module."""
+    try:
+        if path.exists():
+            kb_loader.refresh_index(path)
+            return kb_loader
+    except Exception:
+        return None
+    return None
+
+
+def init_router(name: str):
     router_map = {
-        "slm_dominant": SLMDominantRouter(),
         "llm_first": LLMFirstRouter(),
+        "slm_dominant": SLMDominantRouter(),
         "hybrid_specialist": HybridSpecialistRouter(),
     }
+    return router_map.get(name)
 
-    sample_text = tickets[0]["text"] if tickets else "Sample ticket text."
 
-    for router_name in routers:
-        router = router_map.get(router_name)
-        for memory in memories:
-            for model in models:
-                for seed in seeds:
-                    is_slm = model in grid.get("slms", [])
-                    routing_meta = router.route(sample_text, kb_retriever=kb_retriever) if router else {}
-                    results.append(
+def init_memory(name: str):
+    if name == "none":
+        return NoneMemory()
+    if name == "transcript":
+        return TranscriptMemory()
+    if name == "rag":
+        return RAGMemory()
+    if name == "salience":
+        return SalienceGatedMemory()
+    return NoneMemory()
+
+
+def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriever: Optional[Any]) -> Dict[str, Any]:
+    """Run a single ticket through a router + memory."""
+    memory = init_memory(memory_mode)
+    memory.add(ticket.get("text", ""))
+    memory_context = memory.get_context()
+    routing_meta = router.route(ticket, kb_retriever=kb_retriever) if router else {}
+    return {
+        "ticket_id": ticket.get("id"),
+        "router": routing_meta.get("strategy"),
+        "memory": memory_mode,
+        "target_model": routing_meta.get("target_model", "slm"),
+        "kb_attached": routing_meta.get("kb_attached", False),
+        "routing_meta": routing_meta,
+        "memory_context": memory_context,
+        "result": "success",
+    }
+
+
+def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]], kb_retriever: Optional[Any]) -> List[Dict[str, Any]]:
+    """Run all tickets for a router/memory combo."""
+    router = init_router(router_name)
+    outputs: List[Dict[str, Any]] = []
+    for ticket in tickets:
+        outputs.append(run_single(ticket, router, memory_mode, kb_retriever))
+    return outputs
+
+
+def run_full_grid() -> pd.DataFrame:
+    """Run the full grid over routers, memories, and models (models are placeholders)."""
+    tickets = load_tickets()
+    kb_retriever = load_kb()
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+    aggregate: List[Dict[str, Any]] = []
+
+    for router_name in ROUTER_NAMES:
+        for memory_mode in MEMORY_MODES:
+            # models loop kept for parity but not used in stub outputs
+            for model_name in MODEL_NAMES:
+                records = run_config(router_name, memory_mode, tickets, kb_retriever)
+                raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
+                with raw_path.open("w", encoding="utf-8") as f:
+                    for rec in records:
+                        f.write(json.dumps(rec) + "\n")
+                for rec in records:
+                    aggregate.append(
                         {
                             "router": router_name,
-                            "memory": memory,
-                            "model": model,
-                            "seed": seed,
-                            "groundedness": 0.0,
-                            "schema_validity": 0.0,
-                            "latency_ms": 0.0,
-                            "cost_usd": 0.001 if is_slm else 0.01,
-                            "fallback_rate": 0.0,
-                            "accuracy": 0.0,
-                            "kb_attached": bool(kb_retriever),
-                            "tickets_loaded": bool(tickets),
-                            "routing_meta": routing_meta,
+                            "memory": memory_mode,
+                            "model": model_name,
+                            "ticket_id": rec.get("ticket_id"),
+                            "kb_attached": rec.get("kb_attached", False),
+                            "result": rec.get("result"),
                         }
                     )
-    return pd.DataFrame(results)
 
-
-def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
-    """Run an experiment grid (placeholder) and generate plots."""
-    grid = config.get("grid") if config else None
-    grid = grid or _default_grid()
-
-    data_dir = Path(__file__).resolve().parent.parent / "data"
-    tickets_path = data_dir / "tickets" / "tickets.csv"
-    kb_path = data_dir / "policy_kb"
-
-    # Load dataset if present.
-    try:
-        ticket_records = dataset_loader.load_and_preprocess(tickets_path)
-    except Exception:
-        ticket_records = []
-
-    # Load KB index if dependencies are available.
-    kb_retriever: Optional[Any] = None
-    try:
-        if kb_path.exists():
-            kb_loader.load_kb(kb_path)
-            kb_retriever = kb_loader
-    except Exception:
-        kb_retriever = None
-
-    df = run_full_grid(grid=grid, tickets=ticket_records, kb_retriever=kb_retriever)
-
-    results_dir = Path(__file__).resolve().parent.parent / "results"
-    results_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = results_dir / "results.csv"
+    df = pd.DataFrame(aggregate)
+    csv_path = RESULTS_DIR / "results.csv"
     df.to_csv(csv_path, index=False)
 
     if not df.empty:
@@ -114,4 +143,4 @@ def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    run_grid({})
+    run_full_grid()
