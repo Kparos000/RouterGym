@@ -1,0 +1,27 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = "\.pyi?$"
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = [
+    "E203", # whitespace before ':'
+    "W503", # line break before binary operator
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_unused_ignores = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+check_untyped_defs = false
+no_implicit_optional = false
+plugins = []

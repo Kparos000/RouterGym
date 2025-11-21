@@ -14,10 +14,12 @@ from RouterGym.data import kb_loader
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
+from RouterGym.memory.base import MemoryBase
 from RouterGym.memory.none import NoneMemory
 from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
+from RouterGym.routing.base import BaseRouter
 
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
@@ -49,7 +51,7 @@ def load_kb(path: Path = DEFAULT_KB_PATH) -> Optional[Any]:
     return None
 
 
-def init_router(name: str):
+def init_router(name: str) -> Optional[BaseRouter]:
     router_map = {
         "llm_first": LLMFirstRouter(),
         "slm_dominant": SLMDominantRouter(),
@@ -58,7 +60,7 @@ def init_router(name: str):
     return router_map.get(name)
 
 
-def init_memory(name: str):
+def init_memory(name: str) -> MemoryBase:
     if name == "none":
         return NoneMemory()
     if name == "transcript":
