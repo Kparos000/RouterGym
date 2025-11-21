@@ -12,21 +12,27 @@ DEFAULT_PATH = Path("RouterGym/data/tickets/tickets.csv")
 
 
 def load_tickets(path: str | Path = DEFAULT_PATH) -> pd.DataFrame:
-    """Load tickets CSV, standardize column names, and validate schema."""
+    """Load tickets CSV, standardize columns, drop empty rows, and validate schema."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Dataset path does not exist: {path}")
 
     df = pd.read_csv(path)
+    # Standardize column names to lower snake_case
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
-    # Schema validation
+    # Map common aliases to required names
+    if "description" in df.columns and "text" not in df.columns:
+        df = df.rename(columns={"description": "text"})
+    if "category" in df.columns and "label" not in df.columns:
+        df = df.rename(columns={"category": "label"})
+
     required = {"text", "label"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
-    # Drop empty or malformed rows
+    # Drop empty rows
     df = df.dropna(subset=["text", "label"])
     df = df[df["text"].astype(str).str.strip() != ""]
     df = df[df["label"].astype(str).str.strip() != ""]
@@ -37,19 +43,18 @@ def load_tickets(path: str | Path = DEFAULT_PATH) -> pd.DataFrame:
 def preprocess_ticket(row: pd.Series) -> Dict[str, object]:
     """Convert a ticket row into a structured dict."""
     text = str(row.get("text", "")).strip()
-    category = row.get("label") or row.get("category")
-    ticket_id = row.get("id") or row.name
-    metadata = {k: v for k, v in row.items() if k not in {"id", "text", "label", "category"}}
+    category = row.get("label")
+    ticket_id = row.name
     return {
         "id": ticket_id,
         "text": text,
         "category": category,
-        "metadata": metadata,
+        "metadata": {},
     }
 
 
 def load_and_preprocess(path: str | Path = DEFAULT_PATH) -> List[Dict[str, object]]:
-    """Load tickets and preprocess into a list of dicts."""
+    """Load tickets, validate, and preprocess into a list of dicts."""
     df = load_tickets(path)
     return [preprocess_ticket(row) for _, row in df.iterrows()]
 
