@@ -1,15 +1,60 @@
-"""Dataset loader utilities for Kaggle-derived ticket sets."""
+"""Dataset loader utilities for RouterGym tickets."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
 DEFAULT_SPLIT_SEED = 42
+DEFAULT_PATH = Path("RouterGym/data/tickets/tickets.csv")
 
 
+def load_tickets(path: str | Path = DEFAULT_PATH) -> pd.DataFrame:
+    """Load tickets CSV, standardize column names, and validate schema."""
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Dataset path does not exist: {path}")
+
+    df = pd.read_csv(path)
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+
+    # Schema validation
+    required = {"text", "label"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    # Drop empty or malformed rows
+    df = df.dropna(subset=["text", "label"])
+    df = df[df["text"].astype(str).str.strip() != ""]
+    df = df[df["label"].astype(str).str.strip() != ""]
+    df = df.reset_index(drop=True)
+    return df
+
+
+def preprocess_ticket(row: pd.Series) -> Dict[str, object]:
+    """Convert a ticket row into a structured dict."""
+    text = str(row.get("text", "")).strip()
+    category = row.get("label") or row.get("category")
+    ticket_id = row.get("id") or row.name
+    metadata = {k: v for k, v in row.items() if k not in {"id", "text", "label", "category"}}
+    return {
+        "id": ticket_id,
+        "text": text,
+        "category": category,
+        "metadata": metadata,
+    }
+
+
+def load_and_preprocess(path: str | Path = DEFAULT_PATH) -> List[Dict[str, object]]:
+    """Load tickets and preprocess into a list of dicts."""
+    df = load_tickets(path)
+    return [preprocess_ticket(row) for _, row in df.iterrows()]
+
+
+# Legacy helpers (retained for compatibility)
 def load_kaggle_dataset(path: str | Path) -> pd.DataFrame:
     """Load a Kaggle-exported dataset from CSV/Parquet into a DataFrame."""
     path = Path(path)
@@ -21,7 +66,6 @@ def load_kaggle_dataset(path: str | Path) -> pd.DataFrame:
     if path.suffix.lower() in {".csv"}:
         return pd.read_csv(path)
 
-    # If a directory is provided, try default file names.
     if path.is_dir():
         candidates = list(path.glob("*.csv")) + list(path.glob("*.parquet"))
         if not candidates:
