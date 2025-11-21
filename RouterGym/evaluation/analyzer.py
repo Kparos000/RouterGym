@@ -93,3 +93,16 @@ def plot_grid_heatmap(df: pd.DataFrame) -> None:
     sns.heatmap(pivot, annot=True, cmap="Blues", fmt=".2f")
     plt.title("Accuracy heatmap by router x memory")
     _save_fig("grid_heatmap")
+
+
+def export_all_figures(df: pd.DataFrame, output_dir: str | Path = PLOTS_DIR) -> None:
+    """Generate and save all standard figures."""
+    global PLOTS_DIR
+    PLOTS_DIR = Path(output_dir)
+    PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+    plot_model_comparison(df)
+    plot_memory_comparison(df)
+    plot_router_comparison(df)
+    plot_latency_vs_cost(df)
+    plot_accuracy_vs_cost(df)
+    plot_grid_heatmap(df)

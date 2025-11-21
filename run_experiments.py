@@ -18,12 +18,7 @@ def main() -> None:
     df.to_csv(csv_path, index=False)
 
     # Generate plots
-    analyzer.plot_model_comparison(df)
-    analyzer.plot_memory_comparison(df)
-    analyzer.plot_router_comparison(df)
-    analyzer.plot_latency_vs_cost(df)
-    analyzer.plot_accuracy_vs_cost(df)
-    analyzer.plot_grid_heatmap(df)
+    analyzer.export_all_figures(df, output_dir=results_dir / "plots")
 
     # Optional ANOVA on accuracy
     try:
