@@ -1,20 +1,26 @@
-"""Routing tests stubs."""
+"""Routing tests."""
 
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
 
 
-def test_llm_first_router_stub() -> None:
-    """Placeholder test for LLM-first router."""
-    assert LLMFirstRouter().route("prompt")["strategy"] == "llm_first"
+def test_llm_first_router() -> None:
+    router = LLMFirstRouter()
+    result = router.route({"text": "hello"})
+    assert result["strategy"] == "llm_first"
+    assert "target_model" in result
 
 
-def test_slm_dominant_router_stub() -> None:
-    """Placeholder test for SLM-dominant router."""
-    assert SLMDominantRouter().route("prompt")["strategy"] == "slm_dominant"
+def test_slm_dominant_router() -> None:
+    router = SLMDominantRouter()
+    result = router.route({"text": "hello"})
+    assert result["strategy"] == "slm_dominant"
+    assert result["target_model"] == "slm"
 
 
-def test_hybrid_router_stub() -> None:
-    """Placeholder test for hybrid specialist router."""
-    assert HybridSpecialistRouter().route("prompt")["strategy"] == "hybrid_specialist"
+def test_hybrid_router_category_routing() -> None:
+    router = HybridSpecialistRouter()
+    result = router.route({"text": "hello", "category": "access"})
+    assert result["strategy"] == "hybrid_specialist"
+    assert result["target_model"] in {"slm", "llm"}
