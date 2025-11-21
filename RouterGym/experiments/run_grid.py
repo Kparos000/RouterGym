@@ -1,4 +1,4 @@
-"""Experiment grid runner stub with plotting hooks and data/Kb loaders."""
+"""Experiment grid runner stub with plotting hooks and data/KB loaders."""
 
 from pathlib import Path
 from typing import Any, Dict, List
@@ -39,14 +39,14 @@ def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
         df_raw = pd.DataFrame()
         ticket_records: List[Dict[str, Any]] = []
 
-    # Load KB retriever if present.
-    kb_retriever = None
+    # Load KB index if dependencies are available.
+    kb_loaded = False
     try:
-        kb_retriever = kb_loader.MarkdownKB(kb_path)
-        kb_retriever.load_markdown_kb()
-        kb_retriever.build_index()
+        if kb_path.exists():
+            kb_loader.load_kb(kb_path)
+            kb_loaded = True
     except Exception:
-        kb_retriever = None
+        kb_loaded = False
 
     results: List[Dict[str, Any]] = []
     routers = grid.get("routers", [])
@@ -71,7 +71,7 @@ def run_grid(config: Dict[str, Any]) -> pd.DataFrame:
                             "cost_usd": 0.001 if is_slm else 0.01,
                             "fallback_rate": 0.0,
                             "accuracy": 0.0,
-                            "kb_attached": kb_retriever is not None,
+                            "kb_attached": kb_loaded,
                             "tickets_loaded": bool(ticket_records),
                         }
                     )
