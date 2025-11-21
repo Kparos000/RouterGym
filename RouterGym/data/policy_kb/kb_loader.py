@@ -19,10 +19,4 @@ def load_kb(base_path: Path | None = None) -> List[Dict[str, str]]:
     return articles
 
 
-def retrieve(query: str, top_k: int = 3) -> List[Dict[str, str]]:
-    """Simple retrieval by returning the first top_k articles."""
-    kb = load_kb()
-    return kb[:top_k]
-
-
-__all__ = ["load_kb", "retrieve"]
+__all__ = ["load_kb"]

@@ -8,7 +8,8 @@ from pathlib import Path
 from RouterGym.experiments.run_grid import run_full_grid
 from RouterGym.evaluation import analyzer
 from RouterGym.evaluation import stats as eval_stats
-from RouterGym.data import dataset_loader, kb_loader
+from RouterGym.data.tickets.dataset_loader import load_dataset
+from RouterGym.data.policy_kb.kb_loader import load_kb
 from RouterGym.engines import model_registry
 
 
@@ -43,6 +44,12 @@ def run_pipeline(
 def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
     """Run a shortened sanity sweep with minimal settings."""
     results_dir = base_dir or Path("RouterGym/results")
+    print("[Sanity] Loading dataset...")
+    df = load_dataset(limit)
+    print(f"[Sanity] Loaded {len(df)} tickets")
+    print("[Sanity] Loading KB...")
+    kb = load_kb()
+    print(f"[Sanity] Loaded {len(kb)} KB docs")
     print("[Sanity] Running with LLMFirstRouter + no memory")
     run_pipeline(
         base_dir=results_dir,
