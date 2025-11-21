@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 import pandas as pd
 
 DEFAULT_SPLIT_SEED = 42
-DEFAULT_PATH = Path("RouterGym/data/tickets/tickets.csv")
+DEFAULT_PATH = Path(__file__).resolve().parent / "tickets.csv"
 
 
 def load_tickets(path: str | Path = DEFAULT_PATH) -> pd.DataFrame:
@@ -18,25 +18,30 @@ def load_tickets(path: str | Path = DEFAULT_PATH) -> pd.DataFrame:
         raise FileNotFoundError(f"Dataset path does not exist: {path}")
 
     df = pd.read_csv(path)
-    # Standardize column names to lower snake_case
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
-
-    # Map common aliases to required names
-    if "description" in df.columns and "text" not in df.columns:
-        df = df.rename(columns={"description": "text"})
-    if "category" in df.columns and "label" not in df.columns:
-        df = df.rename(columns={"category": "label"})
+    # Map actual columns
+    if "document" in df.columns and "text" not in df.columns:
+        df = df.rename(columns={"document": "text"})
+    if "topic_group" in df.columns and "label" not in df.columns:
+        df = df.rename(columns={"topic_group": "label"})
 
     required = {"text", "label"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
-    # Drop empty rows
     df = df.dropna(subset=["text", "label"])
     df = df[df["text"].astype(str).str.strip() != ""]
     df = df[df["label"].astype(str).str.strip() != ""]
     df = df.reset_index(drop=True)
+    return df
+
+
+def load_dataset(limit: int | None = None) -> pd.DataFrame:
+    """Convenience loader for tickets with optional limit."""
+    df = load_tickets(DEFAULT_PATH)
+    if limit is not None:
+        df = df.head(limit)
     return df
 
 
@@ -53,9 +58,11 @@ def preprocess_ticket(row: pd.Series) -> Dict[str, object]:
     }
 
 
-def load_and_preprocess(path: str | Path = DEFAULT_PATH) -> List[Dict[str, object]]:
+def load_and_preprocess(path: str | Path = DEFAULT_PATH, limit: int | None = None) -> List[Dict[str, object]]:
     """Load tickets, validate, and preprocess into a list of dicts."""
     df = load_tickets(path)
+    if limit is not None:
+        df = df.head(limit)
     return [preprocess_ticket(row) for _, row in df.iterrows()]
 
 

@@ -43,6 +43,7 @@ def run_pipeline(
 def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
     """Run a shortened sanity sweep with minimal settings."""
     results_dir = base_dir or Path("RouterGym/results")
+    print("[Sanity] Running with LLMFirstRouter + no memory")
     run_pipeline(
         base_dir=results_dir,
         limit=limit,

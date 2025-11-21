@@ -1,9 +1,9 @@
-"""Unified model registry for local/remote vLLM engines."""
+"""Unified model registry for local/remote vLLM engines with sanity stubs."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Any
 import os
 
 from RouterGym.utils.config import load_settings
@@ -85,3 +85,10 @@ def get_engine(name: str):
         model_or_path = cfg.path or cfg.model
         return LocalVLLMEngine(model=model_or_path, enforce_cpu=False)
     raise RuntimeError(f"Unsupported provider for model {name}: {cfg.provider}")
+
+
+def load_models(sanity: bool = False) -> Dict[str, Any]:
+    """Return available models; in sanity mode return stubs."""
+    if sanity:
+        return {"slm1": "stub_slm", "slm2": "stub_slm", "llm1": "stub_llm", "llm2": "stub_llm"}
+    return {name: get_engine(name) for name in list_models()}
