@@ -2,14 +2,16 @@
 
 from typing import Any
 
+from RouterGym.memory.base import MemoryBase
 
-class NullMemory:
+
+class NoneMemory(MemoryBase):
     """Memory backend that stores nothing."""
 
-    def fetch(self, _: Any = None) -> str:
-        """Return empty context."""
-        return ""
-
-    def store(self, _: Any) -> None:
+    def add(self, _: Any) -> None:
         """Discard inputs."""
         return None
+
+    def get_context(self) -> str:
+        """Return empty context."""
+        return ""

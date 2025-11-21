@@ -2,8 +2,10 @@
 
 from typing import List
 
+from RouterGym.memory.base import MemoryBase
 
-class TranscriptMemory:
+
+class TranscriptMemory(MemoryBase):
     """Keeps a running transcript of turns."""
 
     def __init__(self) -> None:
