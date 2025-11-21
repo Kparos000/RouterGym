@@ -1,0 +1,7 @@
+[run]
+include = RouterGym/*
+omit =
+    RouterGym/results/*
+
+[report]
+show_missing = True

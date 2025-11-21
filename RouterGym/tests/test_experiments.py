@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, List, Dict
+
+import pandas as pd
 
 from RouterGym.experiments import run_grid
 from RouterGym.routing.llm_first import LLMFirstRouter
+import run_experiments
 
 
 def test_run_single_and_config(monkeypatch: Any) -> None:
@@ -22,3 +26,28 @@ def test_run_single_and_config(monkeypatch: Any) -> None:
     config_results = run_grid.run_config("llm_first", "none", tickets, kb_retriever)
     assert isinstance(config_results, list)
     assert config_results
+
+
+def test_run_pipeline_with_mocked_outputs(tmp_path: Path, monkeypatch: Any) -> None:
+    """Run the top-level pipeline with mocked grid and analyzer to avoid heavy ops."""
+    dummy_df = pd.DataFrame(
+        [
+            {
+                "router": "llm_first",
+                "memory": "none",
+                "model": "slm1",
+                "accuracy": 1.0,
+                "cost_usd": 0.001,
+                "latency_ms": 1.0,
+            }
+        ]
+    )
+
+    def fake_grid():
+        return dummy_df
+
+    monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
+    monkeypatch.setattr(run_experiments.eval_stats, "export_anova_results", lambda df, filename=None: tmp_path / "anova.csv")
+
+    run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid)
+    assert (tmp_path / "results.csv").exists()
