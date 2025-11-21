@@ -8,74 +8,88 @@ from pathlib import Path
 from RouterGym.experiments.run_grid import run_full_grid
 from RouterGym.evaluation import analyzer
 from RouterGym.evaluation import stats as eval_stats
-from RouterGym.data import dataset_loader
+from RouterGym.data import dataset_loader, kb_loader
+from RouterGym.engines import model_registry
 
 
-def run_pipeline(base_dir: Path | None = None, grid_runner=run_full_grid) -> None:
+def run_pipeline(
+    base_dir: Path | None = None,
+    limit: int | None = None,
+    routers: list[str] | None = None,
+    memories: list[str] | None = None,
+    models: list[str] | None = None,
+    run_anova: bool = True,
+    result_filename: str = "results.csv",
+    grid_runner=run_full_grid,
+) -> None:
     """Run the full grid, then generate plots and optional ANOVA."""
     results_dir = base_dir or Path("RouterGym/results")
-    df = grid_runner()
+    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models)
     results_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = results_dir / "results.csv"
+    csv_path = results_dir / result_filename
     df.to_csv(csv_path, index=False)
 
     # Generate plots
-    analyzer.export_all_figures(df, output_dir=results_dir / "plots")
+    analyzer.export_all_figures(df, output_dir=results_dir / "figures")
 
     # Optional ANOVA on accuracy
-    try:
-        eval_stats.export_anova_results(df, filename="anova_accuracy.csv")
-    except Exception:
-        pass
+    if run_anova:
+        try:
+            eval_stats.export_anova_results(df, filename="anova_accuracy.csv")
+        except Exception:
+            pass
 
 
-def run_sanity(base_dir: Path | None = None) -> None:
+def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
     """Run a shortened sanity sweep with minimal settings."""
     results_dir = base_dir or Path("RouterGym/results")
-    results_dir.mkdir(parents=True, exist_ok=True)
+    run_pipeline(
+        base_dir=results_dir,
+        limit=limit,
+        routers=["llm_first"],
+        memories=["none"],
+        models=["llm1"],
+        run_anova=False,
+        result_filename="sanity_results.csv",
+    )
 
-    # Sample tickets
-    tickets_path = Path("RouterGym/data/tickets/tickets.csv")
+
+def _load_config(config_path: Path | None) -> dict:
+    """Load optional config from YAML or JSON."""
+    if config_path is None or not config_path.exists():
+        return {}
     try:
-        tickets = dataset_loader.load_and_preprocess(tickets_path)
-        tickets = tickets[:5]
+        import yaml  # type: ignore
+        return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     except Exception:
-        tickets = []
-
-    # Build a minimal DataFrame manually
-    rows = []
-    for t in tickets:
-        rows.append(
-            {
-                "router": "llm_first",
-                "memory": "none",
-                "model": "llm1",
-                "ticket_id": t.get("id"),
-                "accuracy": 0.0,
-                "cost_usd": 0.0,
-                "latency_ms": 0.0,
-            }
-        )
-    import pandas as pd
-
-    df = pd.DataFrame(rows)
-    csv_path = results_dir / "sanity_results.csv"
-    df.to_csv(csv_path, index=False)
-
-    # Generate plots (sanity)
-    analyzer.export_all_figures(df, output_dir=results_dir / "plots")
+        try:
+            import json
+            return json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
 
 
 def main() -> None:
     """Run with default configuration."""
     parser = argparse.ArgumentParser(description="Run RouterGym experiments.")
     parser.add_argument("--sanity", action="store_true", help="Run quick sanity sweep.")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets.")
+    parser.add_argument("--config", type=str, default=None, help="Path to grid config (yaml/json).")
     args = parser.parse_args()
 
+    # Touch core components to ensure wiring
+    _ = kb_loader
+    _ = dataset_loader
+    _ = model_registry.list_models()
+
     if args.sanity:
-        run_sanity()
+        run_sanity(limit=args.limit or 5)
     else:
-        run_pipeline()
+        cfg = _load_config(Path(args.config)) if args.config else {}
+        routers = cfg.get("routers") if isinstance(cfg.get("routers"), list) else None
+        memories = cfg.get("memories") if isinstance(cfg.get("memories"), list) else None
+        models = cfg.get("models") if isinstance(cfg.get("models"), list) else None
+        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models)
 
 
 if __name__ == "__main__":

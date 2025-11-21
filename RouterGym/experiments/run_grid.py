@@ -32,10 +32,13 @@ MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 
 
-def load_tickets(path: Path = DEFAULT_TICKETS_PATH) -> List[Dict[str, Any]]:
+def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Load and preprocess tickets."""
     try:
-        return dataset_loader.load_and_preprocess(path)
+        tickets = dataset_loader.load_and_preprocess(path)
+        if limit is not None:
+            tickets = tickets[:limit]
+        return tickets
     except Exception:
         return []
 
@@ -87,6 +90,11 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
         "routing_meta": routing_meta,
         "memory_context": memory_context,
         "result": "success",
+        "accuracy": 0.0,
+        "groundedness": 0.0,
+        "schema_validity": 0.0,
+        "latency_ms": 0.0,
+        "cost_usd": 0.0,
     }
 
 
@@ -99,20 +107,30 @@ def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]]
     return outputs
 
 
-def run_full_grid() -> pd.DataFrame:
+def run_full_grid(
+    tickets: Optional[List[Dict[str, Any]]] = None,
+    limit: Optional[int] = None,
+    routers: Optional[List[str]] = None,
+    memories: Optional[List[str]] = None,
+    models: Optional[List[str]] = None,
+    kb_retriever: Optional[Any] = None,
+) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
-    tickets = load_tickets()
-    kb_retriever = load_kb()
+    tickets = tickets if tickets is not None else load_tickets(limit=limit)
+    kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 
     aggregate: List[Dict[str, Any]] = []
 
-    for router_name in ROUTER_NAMES:
-        for memory_mode in MEMORY_MODES:
-            # models loop kept for parity but not used in stub outputs
-            for model_name in MODEL_NAMES:
+    router_list = routers or ROUTER_NAMES
+    memory_list = memories or MEMORY_MODES
+    model_list = models or MODEL_NAMES
+
+    for router_name in router_list:
+        for memory_mode in memory_list:
+            for model_name in model_list:
                 records = run_config(router_name, memory_mode, tickets, kb_retriever)
                 raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                 with raw_path.open("w", encoding="utf-8") as f:
@@ -127,6 +145,11 @@ def run_full_grid() -> pd.DataFrame:
                             "ticket_id": rec.get("ticket_id"),
                             "kb_attached": rec.get("kb_attached", False),
                             "result": rec.get("result"),
+                            "accuracy": rec.get("accuracy", 0.0),
+                            "groundedness": rec.get("groundedness", 0.0),
+                            "schema_validity": rec.get("schema_validity", 0.0),
+                            "latency_ms": rec.get("latency_ms", 0.0),
+                            "cost_usd": rec.get("cost_usd", 0.0),
                         }
                     )
 
@@ -135,11 +158,7 @@ def run_full_grid() -> pd.DataFrame:
     df.to_csv(csv_path, index=False)
 
     if not df.empty:
-        eval_analyzer.plot_model_comparison(df)
-        eval_analyzer.plot_router_performance(df)
-        eval_analyzer.plot_memory_effects(df)
-        eval_analyzer.plot_grid_heatmap(df)
-        eval_analyzer.plot_cost_quality_frontier(df)
+        eval_analyzer.export_all_figures(df)
 
     return df
 
