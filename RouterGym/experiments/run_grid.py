@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -10,7 +11,8 @@ import pandas as pd
 
 from RouterGym.evaluation import analyzer as eval_analyzer
 from RouterGym.data.tickets import dataset_loader
-from RouterGym.data import kb_loader
+from RouterGym.data.policy_kb import kb_loader
+from RouterGym.engines.model_registry import load_models
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
@@ -114,6 +116,7 @@ def run_full_grid(
     memories: Optional[List[str]] = None,
     models: Optional[List[str]] = None,
     kb_retriever: Optional[Any] = None,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
     tickets = tickets if tickets is not None else load_tickets(limit=limit)
@@ -131,6 +134,8 @@ def run_full_grid(
     for router_name in router_list:
         for memory_mode in memory_list:
             for model_name in model_list:
+                if verbose:
+                    print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
                 records = run_config(router_name, memory_mode, tickets, kb_retriever)
                 raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                 with raw_path.open("w", encoding="utf-8") as f:
@@ -163,5 +168,41 @@ def run_full_grid(
     return df
 
 
+def main() -> None:
+    """CLI entrypoint for running the grid."""
+    parser = argparse.ArgumentParser(description="RouterGym grid runner")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets")
+    parser.add_argument("--verbose", action="store_true", help="Print progress")
+    parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
+    args = parser.parse_args()
+
+    try:
+        if args.verbose:
+            print("[Grid] Loading dataset...")
+        tickets = dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit) if hasattr(dataset_loader, "load_and_preprocess") else dataset_loader.load_dataset(args.limit)
+        if args.verbose:
+            print(f"[Grid] Loaded tickets: {len(tickets)}")
+
+        if args.verbose:
+            print("[Grid] Loading KB...")
+        kb_docs = kb_loader.load_kb()
+        if args.verbose:
+            print(f"[Grid] Loaded KB docs: {len(kb_docs)}")
+
+        if args.verbose:
+            print("[Grid] Loading models...")
+        _ = load_models(sanity=False)
+
+        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose)
+        out_dir = RESULTS_DIR / "experiments"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "results.csv"
+        df.to_csv(out_path, index=False)
+        if args.verbose:
+            print(f"[Grid] Results saved to {out_path}")
+    except Exception as exc:  # pragma: no cover - CLI error handling
+        print(f"[Grid] Error: {exc}")
+
+
 if __name__ == "__main__":
-    run_full_grid()
+    main()
