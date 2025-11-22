@@ -22,10 +22,11 @@ def run_pipeline(
     result_filename: str = "results.csv",
     grid_runner=run_full_grid,
     force_llm: bool = False,
+    verbose: bool = False,
 ) -> None:
     """Run the full grid, then generate plots and optional ANOVA."""
     results_dir = base_dir or Path("RouterGym/results")
-    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models, force_llm=force_llm)
+    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models, force_llm=force_llm, verbose=verbose)
     results_dir.mkdir(parents=True, exist_ok=True)
     csv_path = results_dir / result_filename
     df.to_csv(csv_path, index=False)
@@ -41,7 +42,7 @@ def run_pipeline(
             pass
 
 
-def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
+def run_sanity(base_dir: Path | None = None, limit: int = 5, verbose: bool = False) -> None:
     """Run a shortened sanity sweep with minimal settings."""
     results_dir = base_dir or Path("RouterGym/results")
     print("[Sanity] Loading dataset...")
@@ -60,6 +61,7 @@ def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
         run_anova=False,
         result_filename="sanity_results.csv",
         force_llm=True,
+        verbose=verbose,
     )
 
 
@@ -84,16 +86,17 @@ def main() -> None:
     parser.add_argument("--sanity", action="store_true", help="Run quick sanity sweep.")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets.")
     parser.add_argument("--config", type=str, default=None, help="Path to grid config (yaml/json).")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
     args = parser.parse_args()
 
     if args.sanity:
-        run_sanity(limit=args.limit or 5)
+        run_sanity(limit=args.limit or 5, verbose=args.verbose)
     else:
         cfg = _load_config(Path(args.config)) if args.config else {}
         routers = cfg.get("routers") if isinstance(cfg.get("routers"), list) else None
         memories = cfg.get("memories") if isinstance(cfg.get("memories"), list) else None
         models = cfg.get("models") if isinstance(cfg.get("models"), list) else None
-        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models)
+        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models, verbose=args.verbose)
 
 
 if __name__ == "__main__":
