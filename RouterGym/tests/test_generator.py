@@ -42,7 +42,7 @@ class DummyModel:
         self.calls += 1
         if self.calls == 1:
             return "invalid json"
-        return json.dumps({"classification": "c", "answer": "a", "reasoning": "r"})
+        return json.dumps({"classification": "c", "reasoning": "r", "action_steps": [], "final_answer": "a"})
 
 
 def test_self_repair_fallback() -> None:

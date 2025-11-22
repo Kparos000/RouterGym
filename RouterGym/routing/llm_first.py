@@ -3,7 +3,8 @@
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract
+from RouterGym.agents.generator import SchemaContract, SelfRepair
+from RouterGym.contracts.json_contract import JSONContract
 
 
 def _run_generation(model: Any, prompt: str) -> str:
@@ -65,11 +66,15 @@ class LLMFirstRouter(BaseRouter):
 
         raw_output = _run_generation(chosen_model, prompt) if chosen_model else ""
         contract = SchemaContract()
-        if not contract.validate(raw_output):
-            raw_output = (
-                '{"classification": "%s", "answer": "%s", "reasoning": "%s"}'
-                % (category or "general", raw_output, "LLM-first contract repair")
-            )
+        jc = JSONContract()
+        sr = SelfRepair()
+        ok_json, parsed = jc.validate(raw_output)
+        ok_schema = False
+        if ok_json:
+            ok_schema, _ = contract.validate(parsed)
+        if not (ok_json and ok_schema):
+            repaired = sr.repair(chosen_model, prompt, raw_output, contract) if chosen_model else raw_output
+            raw_output = repaired
 
         steps = [
             {"stage": "select_model", "model": "slm" if use_slm else "llm"},

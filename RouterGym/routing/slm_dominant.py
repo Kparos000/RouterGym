@@ -3,7 +3,8 @@
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract
+from RouterGym.agents.generator import SchemaContract, SelfRepair
+from RouterGym.contracts.json_contract import JSONContract
 
 
 def _run_generation(model: Any, prompt: str) -> str:
@@ -59,26 +60,23 @@ class SLMDominantRouter(BaseRouter):
         contract = SchemaContract()
 
         raw_output = _run_generation(slm, prompt) if slm else ""
-        if not slm:
-            raw_output = (
-                '{"classification": "%s", "answer": "%s", "reasoning": "%s"}'
-                % (ticket.get("category") or "general", raw_output or "no slm", "SLM placeholder")
-            )
+        jc = JSONContract()
+        sr = SelfRepair()
+        ok_json, parsed = jc.validate(raw_output)
         retries = 0
-        while retries < 2 and not contract.validate(raw_output):
-            raw_output = _run_generation(slm, prompt)
+        while retries < 2 and not (ok_json and contract.validate(parsed)[0]):
+            raw_output = _run_generation(slm, prompt) if slm else raw_output
+            ok_json, parsed = jc.validate(raw_output)
             retries += 1
 
         fallback = False
         missing_kb = kb is not None and not kb_snippets
-        if (confidence < 0.55 or missing_kb or not contract.validate(raw_output)) and llm is not None:
+        if (confidence < 0.55 or missing_kb or not (ok_json and contract.validate(parsed)[0])) and llm is not None:
             fallback = True
             raw_output = _run_generation(llm, prompt) if llm else raw_output
-            if not contract.validate(raw_output):
-                raw_output = (
-                    '{"classification": "%s", "answer": "%s", "reasoning": "%s"}'
-                % (ticket.get("category") or "general", raw_output, "LLM fallback repair")
-            )
+            ok_json, parsed = jc.validate(raw_output)
+            if not (ok_json and contract.validate(parsed)[0]) and llm is not None:
+                raw_output = sr.repair(llm, prompt, raw_output, contract)
 
         steps.append({"stage": "generate_slm", "output": raw_output, "confidence": confidence})
         if fallback:
