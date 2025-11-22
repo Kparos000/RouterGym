@@ -1,6 +1,6 @@
 """Salience-gated RAG memory backend."""
 
-from typing import List, Tuple
+from typing import List
 
 from RouterGym.memory.base import MemoryBase
 from RouterGym.memory.rag import RAGMemory

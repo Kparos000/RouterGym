@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from .metrics import MetricResult, compute_all_metrics, evaluate
+from .metrics import MetricResult, evaluate
 
 FIGURES_DIR = Path(__file__).resolve().parent.parent / "results" / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)

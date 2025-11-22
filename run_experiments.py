@@ -10,7 +10,6 @@ from RouterGym.evaluation import analyzer
 from RouterGym.evaluation import stats as eval_stats
 from RouterGym.data.tickets.dataset_loader import load_dataset
 from RouterGym.data.policy_kb.kb_loader import load_kb
-from RouterGym.engines import model_registry
 
 
 def run_pipeline(

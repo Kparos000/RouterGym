@@ -21,8 +21,9 @@ class HybridSpecialistRouter(BaseRouter):
         category = None
         if not isinstance(ticket, str):
             category = ticket.get("category")
+        cat_key = str(category) if category is not None else None
 
-        target_model = self.category_to_model.get(category, "llm")
+        target_model = self.category_to_model.get(cat_key, "llm")
         return {
             "strategy": "hybrid_specialist",
             "prompt": prompt,
