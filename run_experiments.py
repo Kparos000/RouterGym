@@ -85,11 +85,6 @@ def main() -> None:
     parser.add_argument("--config", type=str, default=None, help="Path to grid config (yaml/json).")
     args = parser.parse_args()
 
-    # Touch core components to ensure wiring
-    _ = kb_loader
-    _ = dataset_loader
-    _ = model_registry.list_models()
-
     if args.sanity:
         run_sanity(limit=args.limit or 5)
     else:
