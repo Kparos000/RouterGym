@@ -81,7 +81,7 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
     memory = init_memory(memory_mode)
     memory.add(ticket.get("text", ""))
     memory_context = memory.get_context()
-    routing_meta = router.route(ticket, kb_retriever=kb_retriever) if router else {}
+    routing_meta = router.route(ticket, kb=kb_retriever, models=None, memory=memory) if router else {}
     return {
         "ticket_id": ticket.get("id"),
         "router": routing_meta.get("strategy"),
