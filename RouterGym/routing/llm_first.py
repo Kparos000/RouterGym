@@ -38,8 +38,8 @@ class LLMFirstRouter(BaseRouter):
 
         # choose models
         models = models or {}
-        llm = models.get("llm_deepseek_r1") or models.get("llm_qwen_72b")
-        slm = models.get("slm_qwen_7b") or models.get("slm_llama_8b")
+        llm = models.get("llm_qwen_72b") or models.get("llm_llama_70b")
+        slm = models.get("slm_qwen_1_5b") or models.get("slm_tiny_llama")
 
         use_slm = tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})
         chosen_model = slm if use_slm and slm is not None else llm or slm

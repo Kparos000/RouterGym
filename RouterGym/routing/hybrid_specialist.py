@@ -41,8 +41,8 @@ class HybridSpecialistRouter(BaseRouter):
         if memory:
             memory.add(text)
         models = models or {}
-        slm = models.get("slm_qwen_7b") or models.get("slm_llama_8b")
-        llm = models.get("llm_deepseek_r1") or models.get("llm_qwen_72b")
+        slm = models.get("slm_qwen_1_5b") or models.get("slm_tiny_llama")
+        llm = models.get("llm_qwen_72b") or models.get("llm_llama_70b")
 
         # Stage 1: classification
         classify_prompt = f"[Classify] {text}\nReturn JSON with classification."

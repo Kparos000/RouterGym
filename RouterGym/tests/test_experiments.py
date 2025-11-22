@@ -23,12 +23,12 @@ def test_run_single_and_config(monkeypatch: Any) -> None:
     kb_retriever = None
     router = LLMFirstRouter()
 
-    single = run_grid.run_single(ticket, router, "none", kb_retriever)
+    single = run_grid.run_single(ticket, router, "none", kb_retriever, models=None)
     assert single["router"] == "llm_first"
     assert single["memory"] == "none"
 
     tickets: List[Dict[str, Any]] = [ticket]
-    config_results = run_grid.run_config("llm_first", "none", tickets, kb_retriever)
+    config_results = run_grid.run_config("llm_first", "none", tickets, kb_retriever, models=None)
     assert isinstance(config_results, list)
     assert config_results
 

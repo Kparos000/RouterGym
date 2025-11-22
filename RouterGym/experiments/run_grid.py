@@ -77,12 +77,12 @@ def init_memory(name: str) -> MemoryBase:
     return NoneMemory()
 
 
-def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriever: Optional[Any]) -> Dict[str, Any]:
+def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriever: Optional[Any], models: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Run a single ticket through a router + memory."""
     memory = init_memory(memory_mode)
     memory.add(ticket.get("text", ""))
     memory_context = memory.get_context()
-    routing_meta = router.route(ticket, kb=kb_retriever, models=None, memory=memory) if router else {}
+    routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory) if router else {}
     record = {
         "ticket_id": ticket.get("id"),
         "router": routing_meta.get("strategy"),
@@ -131,12 +131,12 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
     return record
 
 
-def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]], kb_retriever: Optional[Any]) -> List[Dict[str, Any]]:
+def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]], kb_retriever: Optional[Any], models: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Run all tickets for a router/memory combo."""
     router = init_router(router_name)
     outputs: List[Dict[str, Any]] = []
     for ticket in tickets:
-        outputs.append(run_single(ticket, router, memory_mode, kb_retriever))
+        outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models))
     return outputs
 
 
@@ -152,6 +152,11 @@ def run_full_grid(
     """Run the full grid over routers, memories, and models (models are placeholders)."""
     tickets = tickets if tickets is not None else load_tickets(limit=limit)
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
+    models_loaded: Optional[Dict[str, Any]] = None
+    try:
+        models_loaded = load_models(sanity=False)
+    except Exception:
+        models_loaded = None
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -167,7 +172,7 @@ def run_full_grid(
             for model_name in model_list:
                 if verbose:
                     print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
-                records = run_config(router_name, memory_mode, tickets, kb_retriever)
+                records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded)
                 raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                 with raw_path.open("w", encoding="utf-8") as f:
                     for rec in records:
