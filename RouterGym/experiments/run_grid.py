@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from RouterGym.evaluation import analyzer as eval_analyzer
-from RouterGym.data import dataset_loader
+from RouterGym.data.tickets import dataset_loader
 from RouterGym.data import kb_loader
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
