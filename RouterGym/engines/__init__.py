@@ -1,13 +1,5 @@
-"""Hybrid vLLM engines and registry."""
+"""Engine package exports."""
 
-from .vllm_local import LocalVLLMEngine
-from .vllm_remote import RemoteVLLMEngine
-from .model_registry import get_engine, get_model_config, list_models
+from .model_registry import load_models, MODEL_DEFS
 
-__all__ = [
-    "LocalVLLMEngine",
-    "RemoteVLLMEngine",
-    "get_engine",
-    "get_model_config",
-    "list_models",
-]
+__all__ = ["load_models", "MODEL_DEFS"]
