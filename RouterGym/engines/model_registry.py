@@ -1,104 +1,44 @@
-"""Unified model registry for local/remote vLLM engines with sanity stubs."""
+"""Model registry using local HuggingFace pipelines."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Any
-import os
+from typing import Dict, Any
 
-from RouterGym.utils.config import load_settings
-from .vllm_local import LocalVLLMEngine
-from .vllm_remote import RemoteVLLMEngine
-
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
+from torch import float32  # type: ignore
 
 @dataclass
-class ModelConfig:
-    """Model configuration entry."""
+class ModelEntry:
+    """Model entry describing HF identifiers."""
 
     name: str
-    provider: str  # local or remote
-    model: str
-    endpoint: str | None = None
-    path: str | None = None
+    hf_id: str
+    kind: str  # slm or llm
 
 
-class StubEngine:
-    """Fallback stub engine used when real endpoints are unavailable."""
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    def generate(self, prompt: str, **kwargs: Any) -> str:  # pragma: no cover - trivial
-        return f"[stub:{self.name}] {prompt}"
-
-
-def _build_registry() -> Dict[str, ModelConfig]:
-    """Create the registry with environment-aware endpoints/paths."""
-    settings = load_settings()
-    engine_url = settings.model.engine_url or os.getenv("VLLM_ENGINE_URL", "")
-    slm_path = settings.model.slm_model_path or os.getenv("VLLM_SLM_MODEL_PATH")
-    llm_path = settings.model.llm_model_path or os.getenv("VLLM_LLM_MODEL_PATH")
-
-    return {
-        "llama70b": ModelConfig(
-            name="llama70b",
-            provider="remote",
-            model="llama70b",
-            endpoint=engine_url,
-            path=llm_path,
-        ),
-        "mixtral46b": ModelConfig(
-            name="mixtral46b",
-            provider="remote",
-            model="mixtral-46b",
-            endpoint=engine_url,
-            path=llm_path,
-        ),
-        "phi3mini": ModelConfig(
-            name="phi3mini",
-            provider="local",
-            model="phi3-mini",
-            path=slm_path or "phi3-mini",
-        ),
-        "qwen1.5b": ModelConfig(
-            name="qwen1.5b",
-            provider="local",
-            model="qwen1.5b",
-            path=slm_path or "qwen1.5b",
-        ),
-    }
-
-
-_REGISTRY: Dict[str, ModelConfig] = _build_registry()
-
-
-def list_models() -> List[str]:
-    """List available model names."""
-    return sorted(_REGISTRY.keys())
-
-
-def get_model_config(name: str) -> ModelConfig:
-    """Return model config by name."""
-    if name not in _REGISTRY:
-        raise KeyError(f"Unknown model name: {name}")
-    return _REGISTRY[name]
-
-
-def get_engine(name: str):
-    """Get an initialized engine instance for a model."""
-    cfg = get_model_config(name)
-    if cfg.provider == "remote":
-        if not cfg.endpoint:
-            return StubEngine(name)
-        return RemoteVLLMEngine(model=cfg.model, endpoint=cfg.endpoint)
-    if cfg.provider == "local":
-        model_or_path = cfg.path or cfg.model
-        return LocalVLLMEngine(model=model_or_path, enforce_cpu=False)
-    raise RuntimeError(f"Unsupported provider for model {name}: {cfg.provider}")
+MODEL_DEFS: Dict[str, ModelEntry] = {
+    "slm_qwen_7b": ModelEntry(name="slm_qwen_7b", hf_id="Qwen/Qwen2-7B-Instruct", kind="slm"),
+    "slm_llama_8b": ModelEntry(name="slm_llama_8b", hf_id="meta-llama/Llama-3.1-8B-Instruct", kind="slm"),
+    "llm_qwen_14b": ModelEntry(name="llm_qwen_14b", hf_id="Qwen/Qwen2-14B-Instruct", kind="llm"),
+    "llm_deepseek_16b": ModelEntry(name="llm_deepseek_16b", hf_id="deepseek-ai/deepseek-llm-16b-chat", kind="llm"),
+}
 
 
 def load_models(sanity: bool = False) -> Dict[str, Any]:
-    """Return available models; in sanity mode return stubs."""
+    """Load models as HF pipelines. In sanity mode, load a tiny model."""
     if sanity:
-        return {"slm1": "stub_slm", "slm2": "stub_slm", "llm1": "stub_llm", "llm2": "stub_llm"}
-    return {name: get_engine(name) for name in list_models()}
+        tiny_id = "google/flan-t5-small"
+        tok = AutoTokenizer.from_pretrained(tiny_id)
+        mdl = AutoModelForCausalLM.from_pretrained(tiny_id)
+        return {"sanity_model": pipeline("text-generation", model=mdl, tokenizer=tok, device_map="cpu")}
+
+    models: Dict[str, Any] = {}
+    for name, entry in MODEL_DEFS.items():
+        tok = AutoTokenizer.from_pretrained(entry.hf_id)
+        mdl = AutoModelForCausalLM.from_pretrained(entry.hf_id, torch_dtype=float32, device_map="cpu")
+        models[name] = pipeline("text-generation", model=mdl, tokenizer=tok, device_map="cpu")
+    return models
+
+
+__all__ = ["load_models", "MODEL_DEFS"]
