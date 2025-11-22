@@ -104,9 +104,16 @@ class SelfRepair:
                 raise ValueError
         except Exception:
             data = {}
+
+        defaults = {
+            "classification": "unknown",
+            "reasoning": "Unable to repair output",
+            "action_steps": [],
+            "final_answer": "No valid answer produced",
+        }
         for field in schema.required_fields:
-            if field not in data:
-                data[field] = "Unknown" if field != "action_steps" else []
+            if field not in data or not data[field]:
+                data[field] = defaults[field]
         log.error("Repair failed after retries; returning best-effort output")
         return json.dumps(data)
 
