@@ -31,13 +31,13 @@ def load_models(sanity: bool = False) -> Dict[str, Any]:
         tiny_id = "google/flan-t5-small"
         tok = AutoTokenizer.from_pretrained(tiny_id)
         mdl = AutoModelForCausalLM.from_pretrained(tiny_id)
-        return {"sanity_model": pipeline("text-generation", model=mdl, tokenizer=tok, device_map="cpu")}
+        return {"sanity_model": pipeline("text-generation", model=mdl, tokenizer=tok, device=-1)}
 
     models: Dict[str, Any] = {}
     for name, entry in MODEL_DEFS.items():
         tok = AutoTokenizer.from_pretrained(entry.hf_id)
-        mdl = AutoModelForCausalLM.from_pretrained(entry.hf_id, torch_dtype=float32, device_map="cpu")
-        models[name] = pipeline("text-generation", model=mdl, tokenizer=tok, device_map="cpu")
+        mdl = AutoModelForCausalLM.from_pretrained(entry.hf_id, torch_dtype=float32)
+        models[name] = pipeline("text-generation", model=mdl, tokenizer=tok, device=-1)
     return models
 
 
