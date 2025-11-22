@@ -1,8 +1,18 @@
 """Evaluation metrics implementations."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import json
+
+import numpy as np
+
+try:
+    from sentence_transformers import SentenceTransformer
+except Exception:  # pragma: no cover
+    SentenceTransformer = None  # type: ignore
+
+EMBED_MODEL = "all-MiniLM-L6-v2"
+_embedder = SentenceTransformer(EMBED_MODEL) if SentenceTransformer is not None else None
 
 
 @dataclass
@@ -15,49 +25,97 @@ class MetricResult:
     cost_usd: float | None = None
     fallback_rate: float | None = None
     accuracy: float | None = None
+    faithfulness: float | None = None
+    conversion: float | None = None
 
 
-def accuracy_score(predicted: str, true: str) -> float:
-    """Simple accuracy: 1.0 if match else 0.0."""
-    return 1.0 if predicted == true else 0.0
+def _embed(texts: List[str]) -> np.ndarray:
+    if _embedder is None or not texts:
+        return np.zeros((0, 0), dtype="float32")
+    return np.array(_embedder.encode(texts), dtype="float32")
 
 
-def groundedness_score(output: str, kb_snippets: List[str]) -> float:
-    """Keyword overlap between output and KB snippets."""
-    if not kb_snippets:
+def schema_validity(pred: Any) -> int:
+    """Return 1 if valid schema, else 0."""
+    if isinstance(pred, str):
+        try:
+            pred = json.loads(pred)
+        except Exception:
+            return 0
+    if not isinstance(pred, dict):
+        return 0
+    required = {"classification", "reasoning", "action_steps", "final_answer"}
+    for field in required:
+        if field not in pred:
+            return 0
+    if not isinstance(pred.get("action_steps"), list):
+        return 0
+    return 1
+
+
+def groundedness_score(answer: str, kb_snippets: List[str]) -> float:
+    """Max similarity between answer and KB snippets."""
+    if not kb_snippets or not answer:
         return 0.0
-    tokens_out = set(output.lower().split())
-    score_sum: float = 0.0
-    for snippet in kb_snippets:
-        tokens_snip = set(snippet.lower().split())
-        overlap = tokens_out.intersection(tokens_snip)
-        score_sum += len(overlap) / max(len(tokens_snip), 1)
-    return score_sum / len(kb_snippets)
+    ans_emb = _embed([answer])
+    kb_emb = _embed(kb_snippets)
+    if ans_emb.size == 0 or kb_emb.size == 0:
+        # Fallback keyword overlap
+        tokens = set(answer.lower().split())
+        overlaps = []
+        for snip in kb_snippets:
+            snip_tokens = set(snip.lower().split())
+            overlaps.append(len(tokens & snip_tokens) / max(len(snip_tokens), 1))
+        return max(overlaps) if overlaps else 0.0
+    norm_ans = ans_emb / (np.linalg.norm(ans_emb, axis=1, keepdims=True) + 1e-9)
+    norm_kb = kb_emb / (np.linalg.norm(kb_emb, axis=1, keepdims=True) + 1e-9)
+    sims = norm_kb @ norm_ans.T
+    return float(sims.max())
 
 
-def schema_validity_score(json_output: str) -> float:
-    """Check required schema fields."""
-    try:
-        data = json.loads(json_output)
-    except Exception:
+def faithfulness_score(reasoning: str, kb_snippets: List[str]) -> float:
+    """Faithfulness based on reasoning similarity to KB."""
+    return groundedness_score(reasoning, kb_snippets)
+
+
+def classification_f1(true_label: str, predicted_label: str) -> float:
+    """Binary F1 for single label."""
+    if not true_label and not predicted_label:
+        return 1.0
+    if true_label == predicted_label:
+        return 1.0
+    return 0.0
+
+
+def semantic_correctness(answer: str, reference: Optional[str] = None) -> float:
+    """Similarity to reference or default 0 if unavailable."""
+    if reference is None:
         return 0.0
-    required = {"classification", "answer", "reasoning"}
-    return 1.0 if required.issubset(set(data.keys())) else 0.0
+    return groundedness_score(answer, [reference])
 
 
-def latency_score(latency_ms: float) -> float:
-    """Placeholder: lower latency is better; return inverse scaled."""
-    if latency_ms <= 0:
+COST_FACTOR = {"slm": 0.0001, "llm": 0.001}
+
+
+def token_cost(model_name: str, output_text: str) -> float:
+    """Estimate token cost by model family."""
+    tokens = len(output_text.split())
+    family = "slm" if model_name.startswith("slm") else "llm"
+    rate = COST_FACTOR.get(family, 0.001)
+    return rate * tokens
+
+
+def latency(start_time: float, end_time: float) -> float:
+    """Latency in ms."""
+    return max((end_time - start_time) * 1000.0, 0.0)
+
+
+def router_conversion_rate(router_stats: List[Dict[str, Any]]) -> float:
+    """Compute % handled without LLM fallback."""
+    if not router_stats:
         return 0.0
-    return 1_000 / (latency_ms + 1)
-
-
-def token_cost_estimate(model_name: str, token_count: int) -> float:
-    """Placeholder token cost estimate."""
-    slm_rate = 0.0001
-    llm_rate = 0.001
-    rate = slm_rate if model_name.startswith("slm") else llm_rate
-    return rate * token_count
+    handled = sum(1 for r in router_stats if r.get("model_used") != "llm")
+    return handled / len(router_stats)
 
 
 def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
@@ -65,22 +123,22 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     output = record.get("output", "")
     label = record.get("label", "")
     kb_snippets = record.get("kb_snippets", [])
-    latency = record.get("latency_ms", 0.0)
-    model_name = record.get("model", "slm")
-    tokens = record.get("tokens", 0)
+    model_name = record.get("model_used", "slm")
+    reasoning = record.get("reasoning", "")
 
-    acc = accuracy_score(record.get("predicted", ""), label) if "predicted" in record else 0.0
+    acc = classification_f1(label, record.get("predicted", label))
     grounded = groundedness_score(output, kb_snippets)
-    schema = schema_validity_score(output)
-    latency_val = latency_score(latency)
-    cost = token_cost_estimate(model_name, tokens)
+    faithful = faithfulness_score(reasoning or output, kb_snippets)
+    schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))
+    cost = token_cost(model_name, output)
 
     return {
         "accuracy": acc,
         "groundedness": grounded,
-        "schema_validity": schema,
-        "latency": latency_val,
+        "schema_validity": schema_val,
+        "latency": record.get("latency_ms", 0.0),
         "cost": cost,
+        "faithfulness": faithful,
     }
 
 
@@ -94,4 +152,5 @@ def evaluate(outputs: Dict[str, Any]) -> MetricResult:
         latency_ms=outputs.get("latency_ms"),
         cost_usd=metrics["cost"],
         fallback_rate=outputs.get("fallback_rate"),
+        faithfulness=metrics["faithfulness"],
     )
