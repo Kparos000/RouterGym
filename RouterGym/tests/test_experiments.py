@@ -48,7 +48,7 @@ def test_run_pipeline_with_mocked_outputs(tmp_path: Path, monkeypatch: Any) -> N
         ]
     )
 
-    def fake_grid():
+    def fake_grid(**kwargs):
         return dummy_df
 
     monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)

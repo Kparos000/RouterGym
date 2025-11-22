@@ -6,7 +6,7 @@ from RouterGym.memory.none import NoneMemory
 from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
-from RouterGym.data import kb_loader
+from RouterGym.memory import rag as rag_module
 
 
 def test_none_memory() -> None:
@@ -30,7 +30,7 @@ def test_rag_memory_retrieval(monkeypatch: Any) -> None:
     def fake_retrieve(query: str, top_k: int = 3):
         return [{"chunk": "snippet", "score": 1.0}]
 
-    monkeypatch.setattr(kb_loader, "retrieve", fake_retrieve)
+    monkeypatch.setattr(rag_module.kb_loader, "retrieve", fake_retrieve)
     mem.add("ticket text")
     ctx = mem.get_context()
     assert "KB Reference" in ctx

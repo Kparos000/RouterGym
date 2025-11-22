@@ -18,6 +18,10 @@ def load_dataset(n: Optional[int] = 5) -> pd.DataFrame:
         df = df.rename(columns={"document": "text"})
     if "topic_group" in df.columns and "label" not in df.columns:
         df = df.rename(columns={"topic_group": "label"})
+    required = {"text", "label"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
     df = df.dropna(subset=["text", "label"])
     df = df[df["text"].astype(str).str.strip() != ""]
     df = df[df["label"].astype(str).str.strip() != ""]
