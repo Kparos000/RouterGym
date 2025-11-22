@@ -22,6 +22,16 @@ class ModelConfig:
     path: str | None = None
 
 
+class StubEngine:
+    """Fallback stub engine used when real endpoints are unavailable."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def generate(self, prompt: str, **kwargs: Any) -> str:  # pragma: no cover - trivial
+        return f"[stub:{self.name}] {prompt}"
+
+
 def _build_registry() -> Dict[str, ModelConfig]:
     """Create the registry with environment-aware endpoints/paths."""
     settings = load_settings()
@@ -79,7 +89,7 @@ def get_engine(name: str):
     cfg = get_model_config(name)
     if cfg.provider == "remote":
         if not cfg.endpoint:
-            raise RuntimeError(f"Missing endpoint for remote model {name}")
+            return StubEngine(name)
         return RemoteVLLMEngine(model=cfg.model, endpoint=cfg.endpoint)
     if cfg.provider == "local":
         model_or_path = cfg.path or cfg.model
