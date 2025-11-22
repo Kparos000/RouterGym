@@ -17,7 +17,7 @@ class DummyEncoder:
 
 class DummyIndex:
     def __init__(self, dim: int) -> None:
-        self.vectors = []
+        self.vectors: list[np.ndarray] = []
 
     def add(self, vectors) -> None:  # type: ignore[override]
         self.vectors.extend(list(vectors))

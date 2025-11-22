@@ -21,7 +21,12 @@ class RAGMemory(MemoryBase):
         """Return top-k KB snippets."""
         try:
             results = kb_loader.retrieve(query, top_k=self.top_k)
-            return [(r.get("chunk") or r.get("text", ""), r.get("score", 0.0)) for r in results]
+            snippets: List[Tuple[str, float]] = []
+            for r in results:
+                chunk = r.get("chunk") or r.get("text", "")
+                score_val = r.get("score", 0.0)
+                snippets.append((chunk, float(score_val)))
+            return snippets
         except Exception:
             return []
 

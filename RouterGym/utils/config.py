@@ -42,7 +42,7 @@ class Settings:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     """Load environment-backed settings once and cache the result."""
-    env = _get_env("ROUTER_GYM_ENV", "local")
+    env = _get_env("ROUTER_GYM_ENV", "local") or "local"
     model = ModelSettings(
         slm_model=_get_env("VLLM_SLM_MODEL"),
         llm_model=_get_env("VLLM_LLM_MODEL"),

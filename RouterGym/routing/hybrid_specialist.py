@@ -1,6 +1,6 @@
 """Hybrid specialist routing policy."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from RouterGym.routing.base import BaseRouter
 
@@ -15,7 +15,7 @@ class HybridSpecialistRouter(BaseRouter):
             "hr_support": "slm",
         }
 
-    def route(self, ticket: Any, kb_retriever: Optional[Any] = None) -> Dict[str, Any]:
+    def route(self, ticket: Any, **kwargs: Any) -> Dict[str, Any]:
         """Return routing decision metadata; uses category to pick model."""
         prompt = ticket if isinstance(ticket, str) else ticket.get("text", "")
         category = None
@@ -26,7 +26,7 @@ class HybridSpecialistRouter(BaseRouter):
         return {
             "strategy": "hybrid_specialist",
             "prompt": prompt,
-            "kb_attached": kb_retriever is not None,
+            "kb_attached": kwargs.get("kb_retriever") is not None,
             "target_model": target_model,
             "fallback": target_model == "llm",
         }

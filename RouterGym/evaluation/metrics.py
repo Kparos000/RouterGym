@@ -27,7 +27,7 @@ def groundedness_score(output: str, kb_snippets: List[str]) -> float:
     if not kb_snippets:
         return 0.0
     tokens_out = set(output.lower().split())
-    score_sum = 0
+    score_sum: float = 0.0
     for snippet in kb_snippets:
         tokens_snip = set(snippet.lower().split())
         overlap = tokens_out.intersection(tokens_snip)
