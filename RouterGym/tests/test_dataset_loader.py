@@ -7,32 +7,25 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from RouterGym.data import dataset_loader
+from RouterGym.data.tickets import dataset_loader
 
 
-def test_load_tickets_success(tmp_path: Path) -> None:
-    """Ensure tickets load and columns are standardized."""
+def test_load_dataset_success(tmp_path: Path, monkeypatch: Any = None) -> None:
+    """Ensure dataset load applies column normalization and limits."""
     csv_path = tmp_path / "tickets.csv"
-    df = pd.DataFrame({"Text": ["hello"], "Label": ["greeting"]})
+    df = pd.DataFrame({"Document": ["hello"], "Topic_group": ["greeting"]})
     df.to_csv(csv_path, index=False)
-    loaded = dataset_loader.load_tickets(csv_path)
+    # monkeypatch default path
+    monkeypatch.setattr(dataset_loader, "DEFAULT_PATH", csv_path)
+    loaded = dataset_loader.load_dataset(1)
     assert list(loaded.columns) == ["text", "label"]
     assert len(loaded) == 1
 
 
-def test_load_tickets_missing_columns(tmp_path: Path) -> None:
+def test_load_dataset_missing_columns(tmp_path: Path, monkeypatch: Any = None) -> None:
     """Missing required columns raises ValueError."""
     csv_path = tmp_path / "tickets.csv"
     pd.DataFrame({"foo": ["bar"]}).to_csv(csv_path, index=False)
+    monkeypatch.setattr(dataset_loader, "DEFAULT_PATH", csv_path)
     with pytest.raises(ValueError):
-        dataset_loader.load_tickets(csv_path)
-
-
-def test_preprocess_ticket() -> None:
-    """Preprocess row into ticket dict."""
-    df = pd.DataFrame({"text": ["hello"], "label": ["greeting"]})
-    ticket = dataset_loader.preprocess_ticket(df.iloc[0])
-    assert ticket["id"] == 0
-    assert ticket["text"] == "hello"
-    assert ticket["category"] == "greeting"
-    assert ticket["metadata"] == {}
+        dataset_loader.load_dataset(1)

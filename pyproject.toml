@@ -13,3 +13,30 @@ dependencies = [
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore = ["E203", "W503"]
+
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+norecursedirs = ["__pycache__", "data", "policy_kb", "tickets"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_unused_configs = true
+
+[tool.pdm.scripts]
+test = "pytest --cov=RouterGym --cov-report=term-missing"
+lint = "ruff check ."
+format = "ruff format ."
+typecheck = "mypy RouterGym"
+all = "ruff check . && mypy RouterGym && pytest --cov=RouterGym --cov-report=term-missing"
