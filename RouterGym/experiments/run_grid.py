@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from RouterGym.evaluation import analyzer as eval_analyzer
+from RouterGym.evaluation import metrics as eval_metrics
 from RouterGym.data.tickets import dataset_loader
 from RouterGym.data.policy_kb import kb_loader
 from RouterGym.engines.model_registry import load_models
@@ -82,7 +83,7 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
     memory.add(ticket.get("text", ""))
     memory_context = memory.get_context()
     routing_meta = router.route(ticket, kb=kb_retriever, models=None, memory=memory) if router else {}
-    return {
+    record = {
         "ticket_id": ticket.get("id"),
         "router": routing_meta.get("strategy"),
         "memory": memory_mode,
@@ -96,7 +97,38 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
         "schema_validity": 0.0,
         "latency_ms": 0.0,
         "cost_usd": 0.0,
+        "output": routing_meta.get("final_output", ""),
+        "model_used": routing_meta.get("model_used", "slm"),
     }
+    # compute metrics
+    kb_texts = []
+    if kb_retriever:
+        try:
+            hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
+            kb_texts = [h.get("text") or h.get("chunk", "") for h in hits]
+        except Exception:
+            kb_texts = []
+    record["kb_snippets"] = kb_texts
+    metric_values = eval_metrics.compute_all_metrics(
+        {
+            "output": record["output"],
+            "label": ticket.get("category", ""),
+            "predicted": ticket.get("category", ""),
+            "kb_snippets": kb_texts,
+            "model_used": record["model_used"],
+            "latency_ms": record["latency_ms"],
+            "reasoning": record["output"],
+        }
+    )
+    record.update(
+        {
+            "accuracy": metric_values["accuracy"],
+            "groundedness": metric_values["groundedness"],
+            "schema_validity": metric_values["schema_validity"],
+            "cost_usd": metric_values["cost"],
+        }
+    )
+    return record
 
 
 def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]], kb_retriever: Optional[Any]) -> List[Dict[str, Any]]:
@@ -154,11 +186,14 @@ def run_full_grid(
                             "schema_validity": rec.get("schema_validity", 0.0),
                             "latency_ms": rec.get("latency_ms", 0.0),
                             "cost_usd": rec.get("cost_usd", 0.0),
+                            "model_used": rec.get("model_used", ""),
                         }
                     )
 
     df = pd.DataFrame(aggregate)
-    csv_path = RESULTS_DIR / "results.csv"
+    exp_dir = RESULTS_DIR / "experiments"
+    exp_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = exp_dir / "results.csv"
     df.to_csv(csv_path, index=False)
 
     if not df.empty:
