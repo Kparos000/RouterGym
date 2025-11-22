@@ -26,7 +26,7 @@ def summarize(run_artifacts: Dict[str, Any]) -> MetricResult:
     return evaluate(run_artifacts)
 
 
-def compute_metrics(df: pd.DataFrame) -> Dict[str, float]:
+def aggregate_metrics(df: pd.DataFrame) -> Dict[str, float]:
     """Compute aggregate metrics across the dataframe."""
     if df.empty:
         return {}
@@ -38,6 +38,17 @@ def compute_metrics(df: pd.DataFrame) -> Dict[str, float]:
         "cost": df.get("cost_usd", pd.Series(dtype=float)).mean(),
     }
     return metrics
+
+
+def compute_global_statistics(results: pd.DataFrame) -> Dict[str, float]:
+    """Compute global statistics from results."""
+    if results.empty:
+        return {}
+    return {
+        "conversion_rate": (results["model_used"] != "llm").mean() if "model_used" in results else 0.0,
+        "mean_latency_ms": results.get("latency_ms", pd.Series(dtype=float)).mean(),
+        "mean_cost_usd": results.get("cost_usd", pd.Series(dtype=float)).mean(),
+    }
 
 
 def aggregate_grid_results(df: pd.DataFrame) -> pd.DataFrame:
@@ -108,6 +119,51 @@ def plot_accuracy_vs_cost(df: pd.DataFrame, output_dir: Path | None = None) -> N
     _save_fig("accuracy_vs_cost", output_dir or FIGURES_DIR)
 
 
+def plot_groundedness_distribution(df: pd.DataFrame, output_dir: Path | None = None) -> None:
+    """Plot groundedness distribution."""
+    if df.empty or "groundedness" not in df.columns:
+        return
+    plt.figure(figsize=(6, 4))
+    sns.histplot(df["groundedness"], bins=10, kde=True)
+    plt.title("Groundedness Distribution")
+    _save_fig("groundedness_distribution", output_dir or FIGURES_DIR)
+
+
+def plot_schema_validity(df: pd.DataFrame, output_dir: Path | None = None) -> None:
+    """Plot schema validity rates."""
+    if df.empty or "schema_validity" not in df.columns:
+        return
+    plt.figure(figsize=(6, 4))
+    sns.barplot(x=["schema_validity"], y=[df["schema_validity"].mean()])
+    plt.title("Schema Validity")
+    _save_fig("schema_validity", output_dir or FIGURES_DIR)
+
+
+def plot_latency_histogram(df: pd.DataFrame, output_dir: Path | None = None) -> None:
+    """Plot latency histogram."""
+    if df.empty or "latency_ms" not in df.columns:
+        return
+    plt.figure(figsize=(6, 4))
+    sns.histplot(df["latency_ms"], bins=20)
+    plt.title("Latency Histogram")
+    _save_fig("latency_histogram", output_dir or FIGURES_DIR)
+
+
+def plot_router_conversion(df: pd.DataFrame, output_dir: Path | None = None) -> None:
+    """Plot router conversion rate per strategy."""
+    if df.empty or "model_used" not in df.columns:
+        return
+    conv = (
+        df.groupby("router", group_keys=False)["model_used"]
+        .apply(lambda s: (s != "llm").mean())
+        .reset_index(name="conversion")
+    )
+    plt.figure(figsize=(6, 4))
+    sns.barplot(data=conv, x="router", y="conversion")
+    plt.title("Router Conversion Rate (no LLM fallback)")
+    _save_fig("router_conversion", output_dir or FIGURES_DIR)
+
+
 def plot_grid_heatmap(df: pd.DataFrame, output_dir: Path | None = None) -> None:
     """Heatmap of accuracy by router and memory."""
     if df.empty or "accuracy" not in df.columns:
@@ -128,4 +184,8 @@ def export_all_figures(df: pd.DataFrame, output_dir: str | Path = FIGURES_DIR) -
     plot_router_comparison(df, out)
     plot_latency_vs_cost(df, out)
     plot_accuracy_vs_cost(df, out)
+    plot_groundedness_distribution(df, out)
+    plot_schema_validity(df, out)
+    plot_latency_histogram(df, out)
+    plot_router_conversion(df, out)
     plot_grid_heatmap(df, out)
