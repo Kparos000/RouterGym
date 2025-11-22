@@ -3,7 +3,8 @@
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract
+from RouterGym.agents.generator import SchemaContract, SelfRepair
+from RouterGym.contracts.json_contract import JSONContract
 
 
 def _run_generation(model: Any, prompt: str) -> str:
@@ -37,8 +38,6 @@ class HybridSpecialistRouter(BaseRouter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
-        category = ticket.get("category") if isinstance(ticket, dict) else None
-
         if memory:
             memory.add(text)
         models = models or {}
@@ -70,16 +69,17 @@ class HybridSpecialistRouter(BaseRouter):
         draft_output = _run_generation(slm, draft_prompt) if slm else ""
 
         contract = SchemaContract()
-        if not contract.validate(draft_output):
-            draft_output = (
-                '{"classification": "%s", "answer": "%s", "reasoning": "%s"}'
-                % (category or "general", draft_output, "Hybrid draft repair")
-            )
+        jc = JSONContract()
+        sr = SelfRepair()
+        ok_json, parsed = jc.validate(draft_output)
+        if not (ok_json and contract.validate(parsed)[0]):
+            draft_output = sr.repair(slm, draft_prompt, draft_output, contract) if slm else draft_output
 
         # Stage 4: LLM rewrite
         rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_output}"
         final_output = _run_generation(llm, rewrite_prompt) if llm else draft_output
-        if not contract.validate(final_output):
+        ok_json, parsed = jc.validate(final_output)
+        if not (ok_json and contract.validate(parsed)[0]):
             final_output = draft_output
 
         steps = [

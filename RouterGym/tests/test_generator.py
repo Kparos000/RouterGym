@@ -15,15 +15,23 @@ def test_build_prompt_includes_kb() -> None:
 
 
 def test_json_contract_validation() -> None:
-    contract = gen.JSONContract(required_fields=["a", "b"])
-    assert contract.validate(json.dumps({"a": 1, "b": 2}))
-    assert not contract.validate(json.dumps({"a": 1}))
+    contract = gen.JSONContract()
+    ok, parsed = contract.validate(json.dumps({"a": 1, "b": 2}))
+    assert ok and parsed["a"] == 1
+    ok, parsed = contract.validate("not json")
+    assert not ok and parsed is None
 
 
 def test_schema_contract_fields() -> None:
     contract = gen.SchemaContract()
-    payload = {"classification": "class", "answer": "ans", "reasoning": "why"}
-    assert contract.validate(json.dumps(payload))
+    payload = {
+        "classification": "class",
+        "reasoning": "why",
+        "action_steps": [],
+        "final_answer": "ans",
+    }
+    ok, errors = contract.validate(payload)
+    assert ok and not errors
 
 
 class DummyModel:
@@ -40,7 +48,7 @@ class DummyModel:
 def test_self_repair_fallback() -> None:
     model = DummyModel()
     contract = gen.SchemaContract()
-    repair = gen.SelfRepair(model, contract, max_retries=2)
-    fixed = repair.repair("prompt", "invalid")
+    repair = gen.SelfRepair(max_retries=2)
+    fixed = repair.repair(model, "prompt", "invalid", contract)
     data = json.loads(fixed)
-    assert data["answer"] == "a"
+    assert data["final_answer"] == "a"

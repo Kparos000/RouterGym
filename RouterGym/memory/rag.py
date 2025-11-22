@@ -39,12 +39,9 @@ class RAGMemory(MemoryBase):
             return []
 
         # Prefer live KB retrieval (allows monkeypatching in tests)
-        try:
-            live = kb_loader.retrieve(query, top_k=self.top_k)
-            if live:
-                return [(r.get("chunk") or r.get("text", ""), float(r.get("score", 0.0))) for r in live]
-        except Exception:
-            pass
+        live = kb_loader.retrieve(query, top_k=self.top_k)
+        if live:
+            return [(r.get("chunk") or r.get("text", ""), float(r.get("score", 0.0))) for r in live]
 
         if self.embedder is None or self.doc_embeddings.size == 0:
             return []
