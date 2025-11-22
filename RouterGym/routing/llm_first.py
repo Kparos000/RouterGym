@@ -43,6 +43,8 @@ class LLMFirstRouter(BaseRouter):
         use_slm = tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})
         chosen_model = slm if use_slm and slm is not None else llm or slm
 
+        if memory:
+            memory.add(text)
         memory_context = memory.get_context() if memory else ""
         kb_snippets = ""
         if kb is not None:

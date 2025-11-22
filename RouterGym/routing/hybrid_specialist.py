@@ -39,6 +39,8 @@ class HybridSpecialistRouter(BaseRouter):
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
         category = ticket.get("category") if isinstance(ticket, dict) else None
 
+        if memory:
+            memory.add(text)
         models = models or {}
         slm = models.get("slm_qwen_7b") or models.get("slm_llama_8b")
         llm = models.get("llm_deepseek_r1") or models.get("llm_qwen_72b")

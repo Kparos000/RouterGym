@@ -1,30 +1,34 @@
 """Salience-gated RAG memory backend."""
 
-from typing import List
+from typing import List, Tuple
 
 from RouterGym.memory.base import MemoryBase
-from RouterGym.memory.rag import RAGMemory
 
 
 class SalienceGatedMemory(MemoryBase):
-    """Adds simple gating before using RAG retrieval."""
+    """Adds simple gating before using salient snippets."""
 
-    def __init__(self, top_k: int = 3) -> None:
-        self.docs: List[str] = []
-        self.rag = RAGMemory(top_k=top_k)
+    def __init__(self, top_k: int = 3, max_items: int = 5) -> None:
+        self.docs: List[Tuple[str, float]] = []
+        self.top_k = top_k
+        self.max_items = max_items
 
-    def should_retrieve(self, ticket_text: str) -> bool:
-        """Decide whether to retrieve; scaffold uses length heuristic."""
-        return len(ticket_text) > 20
+    def _score(self, text: str) -> float:
+        """Simple salience heuristic: length and unique tokens."""
+        tokens = text.split()
+        unique = len(set(tokens))
+        return unique + 0.1 * len(tokens)
 
     def add(self, text: str) -> None:
-        """Store text for potential retrieval."""
-        self.docs.append(text)
-        self.rag.add(text)
+        """Store text with salience score, keep top-N."""
+        score = self._score(text)
+        self.docs.append((text, score))
+        self.docs = sorted(self.docs, key=lambda x: x[1], reverse=True)[: self.max_items]
 
     def get_context(self) -> str:
-        """Return context, gated by salience heuristic."""
-        ticket_text = self.docs[-1] if self.docs else ""
-        if self.should_retrieve(ticket_text):
-            return self.rag.get_context()
-        return f"Recent note: {ticket_text}" if ticket_text else ""
+        """Return top-k salient messages."""
+        top = self.docs[: self.top_k]
+        return "\n".join([msg for msg, _ in top])
+
+
+__all__ = ["SalienceGatedMemory"]

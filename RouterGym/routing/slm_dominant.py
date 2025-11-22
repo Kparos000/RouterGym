@@ -35,6 +35,8 @@ class SLMDominantRouter(BaseRouter):
         llm = models.get("llm_deepseek_r1") or models.get("llm_qwen_72b")
         steps = []
 
+        if memory:
+            memory.add(text)
         memory_context = memory.get_context() if memory else ""
         kb_snippets = ""
         if kb is not None:

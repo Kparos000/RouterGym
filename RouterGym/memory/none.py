@@ -15,3 +15,6 @@ class NoneMemory(MemoryBase):
     def get_context(self) -> str:
         """Return empty context."""
         return ""
+
+
+__all__ = ["NoneMemory"]
