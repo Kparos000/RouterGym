@@ -15,6 +15,8 @@ class JSONContract:
             parsed = json.loads(text)
         except Exception:
             return False, None
+        if not isinstance(parsed, dict):
+            return False, None
         return True, parsed
 
 

@@ -14,6 +14,7 @@ class BaseRouter:
         kb: Optional[Any] = None,
         models: Optional[Dict[str, Any]] = None,
         memory: Optional[Any] = None,
+        force_llm: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Return routing decision metadata."""

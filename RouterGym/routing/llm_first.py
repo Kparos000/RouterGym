@@ -3,21 +3,8 @@
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract, SelfRepair
+from RouterGym.agents.generator import SchemaContract, SelfRepair, normalize_output, _call_model
 from RouterGym.contracts.json_contract import JSONContract
-
-
-def _run_generation(model: Any, prompt: str) -> str:
-    if hasattr(model, "generate"):
-        out = model.generate(prompt, max_new_tokens=256, temperature=0.2)
-        if isinstance(out, str):
-            return out
-        # HF pipeline returns list of dict
-        if isinstance(out, list) and out and isinstance(out[0], dict) and "generated_text" in out[0]:
-            return out[0]["generated_text"]
-    if callable(model):
-        return model(prompt)  # type: ignore
-    return str(prompt)
 
 
 class LLMFirstRouter(BaseRouter):
@@ -39,11 +26,11 @@ class LLMFirstRouter(BaseRouter):
 
         # choose models
         models = models or {}
-        llm = models.get("llm_qwen_72b") or models.get("llm_llama_70b")
-        slm = models.get("slm_qwen_1_5b") or models.get("slm_tiny_llama")
+        llm = models.get("llm1") or models.get("llm2")
+        slm = models.get("slm_phi3") or models.get("slm_qwen3b")
 
         use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
-        chosen_model = slm if use_slm and slm is not None else llm or slm
+        chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)
 
         if memory:
             memory.add(text)
@@ -62,29 +49,34 @@ class LLMFirstRouter(BaseRouter):
             prompt_parts.append(f"[Memory]\n{memory_context}")
         if kb_snippets:
             prompt_parts.append(f"[KB]\n{kb_snippets}")
-        prompt_parts.append("Return JSON with fields classification, answer, reasoning.")
+        prompt_parts.append("Return JSON with fields final_answer, reasoning.")
         prompt = "\n\n".join(prompt_parts)
 
-        raw_output = _run_generation(chosen_model, prompt) if chosen_model else ""
+        raw_output = _call_model(chosen_model, prompt) if chosen_model else ""
         contract = SchemaContract()
         jc = JSONContract()
         sr = SelfRepair()
-        ok_json, parsed = jc.validate(raw_output)
+        ok_json, parsed = jc.validate(raw_output) if isinstance(raw_output, str) else (True, raw_output if isinstance(raw_output, dict) else None)
         ok_schema = False
-        if ok_json:
-            ok_schema, _ = contract.validate(parsed)
+        final_output = normalize_output(raw_output)
+        if ok_json and parsed:
+            ok_schema, _ = contract.validate(normalize_output(parsed))
         if not (ok_json and ok_schema):
-            repaired = sr.repair(chosen_model, prompt, raw_output, contract) if chosen_model else raw_output
-            raw_output = repaired
+            repaired = sr.repair(chosen_model or slm, prompt, raw_output, contract) if chosen_model else final_output
+            final_output = normalize_output(repaired)
+        else:
+            final_output = normalize_output(parsed)
 
         steps = [
             {"stage": "select_model", "model": "slm" if use_slm else "llm"},
-            {"stage": "generate", "prompt": prompt, "output": raw_output},
+            {"stage": "generate", "prompt": prompt, "output": final_output},
         ]
         return {
             "strategy": "llm_first",
             "target_model": "slm" if use_slm else "llm",
             "model_used": "slm" if use_slm else "llm",
             "steps": steps,
-            "final_output": raw_output,
+            "final_output": final_output,
+            "json_valid": ok_json,
+            "schema_valid": ok_schema,
         }

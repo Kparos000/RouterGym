@@ -1,17 +1,13 @@
-"""Model registry with small local pipelines and remote LLM inference."""
+"""Model registry with local SLM pipelines and remote LLM inference."""
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any, Dict
 
+import torch  # type: ignore
 from huggingface_hub import InferenceClient  # type: ignore
-from transformers import pipeline  # type: ignore
-
-# Disable downloads where possible and silence hub warnings
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
 
 
 @dataclass
@@ -24,14 +20,49 @@ class ModelEntry:
 
 
 SMALL_MODELS: Dict[str, ModelEntry] = {
-    "slm_qwen_1_5b": ModelEntry("slm_qwen_1_5b", "Qwen/Qwen2-1.5B-Instruct", "slm"),
-    "slm_tiny_llama": ModelEntry("slm_tiny_llama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "slm"),
+    "slm_phi3": ModelEntry("slm_phi3", "microsoft/Phi-3-mini-4k-instruct", "slm"),
+    "slm_qwen3b": ModelEntry("slm_qwen3b", "Qwen/Qwen2-3B-Instruct", "slm"),
 }
 
 LARGE_MODELS: Dict[str, ModelEntry] = {
-    "llm_qwen_72b": ModelEntry("llm_qwen_72b", "Qwen/Qwen2-72B-Instruct", "llm"),
-    "llm_llama_70b": ModelEntry("llm_llama_70b", "meta-llama/Meta-Llama-3-70B-Instruct", "llm"),
+    "llm1": ModelEntry("llm1", "Qwen/Qwen2-72B-Instruct", "llm"),
+    "llm2": ModelEntry("llm2", "meta-llama/Meta-Llama-3-70B-Instruct", "llm"),
 }
+
+
+_LOCAL_CACHE: Dict[str, Any] = {}
+
+
+class LocalPipelineEngine:
+    """Local HF pipeline wrapper with caching."""
+
+    def __init__(self, model_id: str) -> None:
+        self.model_id = model_id
+        if model_id in _LOCAL_CACHE:
+            self.pipeline = _LOCAL_CACHE[model_id]
+            return
+        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype)
+        self.pipeline = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            device=-1,
+        )
+        _LOCAL_CACHE[model_id] = self.pipeline
+
+    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, do_sample: bool = False, **_: Any) -> str:
+        outputs = self.pipeline(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=do_sample,
+            return_full_text=False,
+        )
+        if isinstance(outputs, list) and outputs and isinstance(outputs[0], dict):
+            return str(outputs[0].get("generated_text", ""))
+        return str(outputs)
 
 
 class RemoteLLMEngine:
@@ -67,10 +98,12 @@ class RemoteLLMEngine:
         except Exception:
             return "[repair-response]"
 
+    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
+        return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
+
 
 def _load_slm(entry: ModelEntry) -> Any:
-    # Use transformers pipeline directly; keep on CPU.
-    return pipeline("text-generation", model=entry.hf_id, device=-1)
+    return LocalPipelineEngine(entry.hf_id)
 
 
 def _load_llm(entry: ModelEntry) -> Any:
@@ -82,7 +115,7 @@ def load_models(sanity: bool = False) -> Dict[str, Any]:
     """Load small models locally; large models via remote inference."""
     models: Dict[str, Any] = {}
     if sanity:
-        entry = SMALL_MODELS["slm_qwen_1_5b"]
+        entry = SMALL_MODELS["slm_phi3"]
         models[entry.name] = _load_slm(entry)
         return models
 
@@ -93,12 +126,11 @@ def load_models(sanity: bool = False) -> Dict[str, Any]:
     return models
 
 
-__all__ = ["load_models", "RemoteLLMEngine", "SMALL_MODELS", "LARGE_MODELS"]
+__all__ = ["load_models", "RemoteLLMEngine", "LocalPipelineEngine", "SMALL_MODELS", "LARGE_MODELS"]
 
 
 def get_repair_model() -> RemoteLLMEngine:
     """Return the strongest available LLM engine for repair prompts."""
-    # Prefer Qwen 72B then Llama 70B
-    if "llm_qwen_72b" in LARGE_MODELS:
-        return _load_llm(LARGE_MODELS["llm_qwen_72b"])
-    return _load_llm(LARGE_MODELS["llm_llama_70b"])
+    if "llm1" in LARGE_MODELS:
+        return _load_llm(LARGE_MODELS["llm1"])
+    return _load_llm(LARGE_MODELS["llm2"])

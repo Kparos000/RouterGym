@@ -1,4 +1,4 @@
-"""Schema contract validation."""
+"""Schema contract validation (minimal)."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ from typing import Any, Dict, List, Tuple
 
 
 class SchemaContract:
-    """Validate the required schema for agent outputs."""
+    """Validate the minimal required schema for agent outputs."""
 
     required_fields = {
-        "classification": str,
         "reasoning": str,
-        "action_steps": list,
         "final_answer": str,
     }
 

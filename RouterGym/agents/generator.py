@@ -16,17 +16,16 @@ log = get_logger(__name__)
 def _call_model(model: Any, prompt: str) -> str:
     """Invoke a model or pipeline and normalize the output to string."""
     output = None
-    if hasattr(model, "generate"):
+    if callable(model):
+        try:
+            output = model(prompt, max_new_tokens=256, temperature=0.2, do_sample=False, return_full_text=False)
+        except TypeError:
+            output = model(prompt)
+    elif hasattr(model, "generate"):
         try:
             output = model.generate(prompt, max_new_tokens=256, temperature=0.2)
         except TypeError:
             output = model.generate(prompt)  # type: ignore[call-arg]
-    elif callable(model):
-        # For HF pipelines, pass constrained generation args to keep outputs short and deterministic.
-        try:
-            output = model(prompt, max_new_tokens=128, temperature=0.2, do_sample=False, return_full_text=False)
-        except TypeError:
-            output = model(prompt)
     else:
         return str(prompt)
 
@@ -37,11 +36,33 @@ def _call_model(model: Any, prompt: str) -> str:
     return str(output)
 
 
+def normalize_output(output: Any) -> Dict[str, str]:
+    """Normalize any model output into a dict with final_answer and reasoning."""
+    if isinstance(output, dict):
+        return {
+            "final_answer": str(output.get("final_answer", "")).strip(),
+            "reasoning": str(output.get("reasoning", "")).strip(),
+        }
+    if isinstance(output, str):
+        try:
+            parsed = json.loads(output)
+            if isinstance(parsed, dict):
+                return {
+                    "final_answer": str(parsed.get("final_answer", "")).strip(),
+                    "reasoning": str(parsed.get("reasoning", "")).strip(),
+                }
+        except Exception:
+            pass
+        return {"final_answer": output.strip(), "reasoning": ""}
+    return {"final_answer": str(output).strip(), "reasoning": ""}
+
+
 def build_prompt(ticket_text: str, kb_snippets: List[str]) -> str:
     """Construct a prompt with KB references."""
     prompt_parts = [ticket_text.strip()]
     for idx, snippet in enumerate(kb_snippets, start=1):
         prompt_parts.append(f"### KB Reference {idx}:\n> {snippet.strip()}")
+    prompt_parts.append("Respond with JSON containing: final_answer, reasoning.")
     return "\n\n".join([p for p in prompt_parts if p])
 
 
@@ -62,7 +83,7 @@ class SelfRepair:
         prompt: str,
         bad_output: str,
         schema: SchemaContract,
-    ) -> str:
+    ) -> Dict[str, str]:
         """Attempt to fix bad output by re-prompting the strongest LLM."""
         json_contract = JSONContract()
         try:
@@ -76,7 +97,7 @@ class SelfRepair:
         else:
             is_valid, errors = schema.validate(parsed)
             if is_valid:
-                return bad_output
+                return normalize_output(parsed)
             log.error(f"Schema errors: {errors}")
 
         attempt_output = bad_output
@@ -95,7 +116,7 @@ class SelfRepair:
             ok_schema, _ = schema.validate(parsed)
             if ok_schema:
                 log.info(f"Repair succeeded on attempt {attempt+1}")
-                return attempt_output
+                return normalize_output(parsed)
 
         # Best-effort fallback
         try:
@@ -106,16 +127,14 @@ class SelfRepair:
             data = {}
 
         defaults = {
-            "classification": "unknown",
             "reasoning": "Unable to repair output",
-            "action_steps": [],
             "final_answer": "No valid answer produced",
         }
         for field in schema.required_fields:
             if field not in data or not data[field]:
                 data[field] = defaults[field]
         log.error("Repair failed after retries; returning best-effort output")
-        return json.dumps(data)
+        return normalize_output(data)
 
 
 class ResponseGenerator:
@@ -135,12 +154,13 @@ class ResponseGenerator:
             base_text,
             memory_section,
             "\n\n".join(kb_section) if kb_section else "",
-            "### Respond with JSON containing classification, action_steps, final_answer, reasoning.",
+            "### Respond with JSON containing final_answer and reasoning.",
         ]
         return "\n\n".join([p for p in parts if p])
 
-    def generate(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> str:
+    def generate(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> Dict[str, str]:
         """Generate a response and repair if contracts fail."""
         prompt = self.build_prompt(ticket, memory_context, kb_snippets)
         raw_output = _call_model(self.model_interface, prompt)
-        return self.self_repair.repair(self.model_interface, prompt, raw_output, self.contract)
+        repaired = self.self_repair.repair(self.model_interface, prompt, raw_output, self.contract)
+        return repaired

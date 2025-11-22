@@ -17,9 +17,7 @@ class DummyModel:
         self.calls += 1
         if self.calls == 1:
             return "not json"
-        if self.calls == 2:
-            return json.dumps({"classification": "c", "reasoning": "r", "action_steps": [], "final_answer": "a"})
-        return prompt
+        return json.dumps({"reasoning": "r", "final_answer": "a"})
 
 
 def test_json_contract_valid() -> None:
@@ -36,7 +34,7 @@ def test_json_contract_invalid() -> None:
 
 def test_schema_contract_missing_fields() -> None:
     sc = SchemaContract()
-    ok, errors = sc.validate({"classification": "x"})
+    ok, errors = sc.validate({"reasoning": "x"})
     assert not ok
     assert errors
 
@@ -46,5 +44,4 @@ def test_self_repair_fills_schema() -> None:
     repair = SelfRepair()
     sc = SchemaContract()
     repaired = repair.repair(model, "prompt", "not json", sc)
-    parsed = json.loads(repaired)
-    assert sc.validate(parsed)[0]
+    assert sc.validate(repaired)[0]

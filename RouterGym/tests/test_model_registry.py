@@ -27,14 +27,16 @@ class DummyClient:
 def test_sanity_loads_small_model(monkeypatch: Any) -> None:
     calls = {}
 
-    def fake_pipeline(task: str, model: str, device: int):
+    def fake_pipeline(task: str, model: str, tokenizer: Any = None, device: int = -1):
         calls["model"] = model
         return DummyPipeline()
 
+    monkeypatch.setattr(model_registry, "AutoTokenizer", type("Tok", (), {"from_pretrained": staticmethod(lambda m: m)}))  # type: ignore[arg-type]
+    monkeypatch.setattr(model_registry, "AutoModelForCausalLM", type("Model", (), {"from_pretrained": staticmethod(lambda m, torch_dtype=None: m)}))  # type: ignore[arg-type]
     monkeypatch.setattr(model_registry, "pipeline", fake_pipeline)
     models = model_registry.load_models(sanity=True)
     assert len(models) == 1
-    assert "qwen2-1.5b" in calls["model"].lower()
+    assert "phi-3" in str(calls.get("model", "")).lower()
 
 
 def test_large_models_use_remote(monkeypatch: Any) -> None:
@@ -44,9 +46,11 @@ def test_large_models_use_remote(monkeypatch: Any) -> None:
         remote_called.append(model)
         return DummyClient(model)
 
-    def fake_pipeline(task: str, model: str, device: int):
+    def fake_pipeline(task: str, model: str, tokenizer: Any = None, device: int = -1):
         return DummyPipeline()
 
+    monkeypatch.setattr(model_registry, "AutoTokenizer", type("Tok", (), {"from_pretrained": staticmethod(lambda m: None)}))
+    monkeypatch.setattr(model_registry, "AutoModelForCausalLM", type("Model", (), {"from_pretrained": staticmethod(lambda m, torch_dtype=None: None)}))
     monkeypatch.setattr(model_registry, "InferenceClient", fake_client)
     monkeypatch.setattr(model_registry, "pipeline", fake_pipeline)
     models = model_registry.load_models(sanity=False)

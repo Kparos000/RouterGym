@@ -87,6 +87,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets.")
     parser.add_argument("--config", type=str, default=None, help="Path to grid config (yaml/json).")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
+    parser.add_argument("--strict-llm", action="store_true", help="Force strongest LLM for all routing.")
     args = parser.parse_args()
 
     if args.sanity:
@@ -96,7 +97,7 @@ def main() -> None:
         routers = cfg.get("routers") if isinstance(cfg.get("routers"), list) else None
         memories = cfg.get("memories") if isinstance(cfg.get("memories"), list) else None
         models = cfg.get("models") if isinstance(cfg.get("models"), list) else None
-        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models, verbose=args.verbose)
+        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models, verbose=args.verbose, force_llm=args.strict_llm)
 
 
 if __name__ == "__main__":

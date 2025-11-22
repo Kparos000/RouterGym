@@ -11,7 +11,7 @@ def test_groundedness_similarity() -> None:
 
 
 def test_schema_validity() -> None:
-    valid = metrics.schema_validity({"classification": "c", "reasoning": "r", "action_steps": [], "final_answer": "a"})
+    valid = metrics.schema_validity({"reasoning": "r", "final_answer": "a"})
     assert valid == 1
 
 

@@ -1,22 +1,11 @@
 """Hybrid specialist routing policy."""
 
+import json
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract, SelfRepair
+from RouterGym.agents.generator import SchemaContract, SelfRepair, normalize_output, _call_model
 from RouterGym.contracts.json_contract import JSONContract
-
-
-def _run_generation(model: Any, prompt: str) -> str:
-    if hasattr(model, "generate"):
-        out = model.generate(prompt, max_new_tokens=256, temperature=0.2)
-        if isinstance(out, str):
-            return out
-        if isinstance(out, list) and out and isinstance(out[0], dict) and "generated_text" in out[0]:
-            return out[0]["generated_text"]
-    if callable(model):
-        return model(prompt)  # type: ignore
-    return str(prompt)
 
 
 class HybridSpecialistRouter(BaseRouter):
@@ -42,12 +31,12 @@ class HybridSpecialistRouter(BaseRouter):
         if memory:
             memory.add(text)
         models = models or {}
-        slm = models.get("slm_qwen_1_5b") or models.get("slm_tiny_llama")
-        llm = models.get("llm_qwen_72b") or models.get("llm_llama_70b")
+        slm = models.get("slm_phi3") or models.get("slm_qwen3b")
+        llm = models.get("llm1") or models.get("llm2")
 
         # Stage 1: classification
-        classify_prompt = f"[Classify] {text}\nReturn JSON with classification."
-        classify_output = _run_generation(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
+        classify_prompt = f"[Classify] {text}\nReturn JSON with final_answer and reasoning."
+        classify_output = _call_model(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
 
         # Stage 2: snippet retrieval
         snippet_text = ""
@@ -64,29 +53,32 @@ class HybridSpecialistRouter(BaseRouter):
             [
                 text,
                 f"[Snippet]\n{snippet_text}" if snippet_text else "",
-                "Draft JSON with classification, answer, reasoning.",
+                "Draft JSON with final_answer and reasoning.",
             ]
         )
-        draft_output = _run_generation(llm if force_llm else slm, draft_prompt) if (llm if force_llm else slm) else ""
+        draft_raw = _call_model(llm if force_llm else slm, draft_prompt) if (llm if force_llm else slm) else ""
 
         contract = SchemaContract()
         jc = JSONContract()
         sr = SelfRepair()
-        ok_json, parsed = jc.validate(draft_output)
-        if not (ok_json and contract.validate(parsed)[0]):
-            draft_output = sr.repair(slm, draft_prompt, draft_output, contract) if slm else draft_output
+        ok_json, parsed = jc.validate(draft_raw) if isinstance(draft_raw, str) else (True, draft_raw if isinstance(draft_raw, dict) else None)
+        draft_norm = normalize_output(parsed if parsed else draft_raw)
+        if not (ok_json and contract.validate(draft_norm)[0]):
+            repaired = sr.repair(llm if force_llm else slm, draft_prompt, draft_raw, contract) if (llm or slm) else draft_norm
+            draft_norm = normalize_output(repaired)
 
         # Stage 4: LLM rewrite
-        rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_output}"
-        final_output = _run_generation(llm, rewrite_prompt) if llm else draft_output
-        ok_json, parsed = jc.validate(final_output)
-        if not (ok_json and contract.validate(parsed)[0]):
-            final_output = draft_output
+        rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
+        final_output_raw = _call_model(llm, rewrite_prompt) if llm else json.dumps(draft_norm)
+        ok_json, parsed = jc.validate(final_output_raw) if isinstance(final_output_raw, str) else (True, final_output_raw if isinstance(final_output_raw, dict) else None)
+        final_output = normalize_output(parsed if parsed else final_output_raw)
+        if not (ok_json and contract.validate(final_output)[0]):
+            final_output = draft_norm
 
         steps = [
-            {"stage": "classify_slm", "output": classify_output},
+            {"stage": "classify_slm", "output": normalize_output(classify_output)},
             {"stage": "retrieve_snippet", "snippet": snippet_text},
-            {"stage": "draft_slm", "output": draft_output},
+            {"stage": "draft_slm", "output": draft_norm},
             {"stage": "rewrite_llm", "output": final_output},
         ]
         return {
@@ -95,4 +87,6 @@ class HybridSpecialistRouter(BaseRouter):
             "model_used": "llm",
             "steps": steps,
             "final_output": final_output,
+            "json_valid": ok_json,
+            "schema_valid": contract.validate(final_output)[0],
         }
