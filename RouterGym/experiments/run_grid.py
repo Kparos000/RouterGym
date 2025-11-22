@@ -37,23 +37,22 @@ MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Load and preprocess tickets."""
     try:
-        tickets = dataset_loader.load_and_preprocess(path)
-        if limit is not None:
-            tickets = tickets[:limit]
-        return tickets
+        df = dataset_loader.load_dataset(limit if limit is not None else None)
+        records: List[Dict[str, Any]] = []
+        for idx, row in df.iterrows():
+            records.append({"id": idx, "text": row.get("text", ""), "category": row.get("label")})
+        return records
     except Exception:
         return []
 
 
 def load_kb(path: Path = DEFAULT_KB_PATH) -> Optional[Any]:
-    """Load KB index and return retriever module."""
+    """Load KB mapping and return loader module."""
     try:
-        if path.exists():
-            kb_loader.refresh_index(path)
-            return kb_loader
+        kb_loader.load_kb(path)
+        return kb_loader
     except Exception:
         return None
-    return None
 
 
 def init_router(name: str) -> Optional[BaseRouter]:

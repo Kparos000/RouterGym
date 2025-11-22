@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, List, Dict
+import sys
 
 import pandas as pd
 
 from RouterGym.experiments import run_grid
 from RouterGym.routing.llm_first import LLMFirstRouter
-import run_experiments
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+import run_experiments  # type: ignore  # noqa: E402
 
 
 def test_run_single_and_config(monkeypatch: Any) -> None:
