@@ -21,7 +21,11 @@ def _call_model(model: Any, prompt: str) -> str:
         except TypeError:
             output = model.generate(prompt)  # type: ignore[call-arg]
     elif callable(model):
-        output = model(prompt)
+        # For HF pipelines, pass constrained generation args to keep outputs short and deterministic.
+        try:
+            output = model(prompt, max_new_tokens=128, temperature=0.2, do_sample=False, return_full_text=False)
+        except TypeError:
+            output = model(prompt)
     else:
         return str(prompt)
 
