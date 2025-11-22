@@ -12,6 +12,26 @@ from RouterGym.utils.logger import get_logger
 log = get_logger(__name__)
 
 
+def _call_model(model: Any, prompt: str) -> str:
+    """Invoke a model or pipeline and normalize the output to string."""
+    output = None
+    if hasattr(model, "generate"):
+        try:
+            output = model.generate(prompt, max_new_tokens=256, temperature=0.2)
+        except TypeError:
+            output = model.generate(prompt)  # type: ignore[call-arg]
+    elif callable(model):
+        output = model(prompt)
+    else:
+        return str(prompt)
+
+    if isinstance(output, str):
+        return output
+    if isinstance(output, list) and output and isinstance(output[0], dict) and "generated_text" in output[0]:
+        return output[0]["generated_text"]
+    return str(output)
+
+
 def build_prompt(ticket_text: str, kb_snippets: List[str]) -> str:
     """Construct a prompt with KB references."""
     prompt_parts = [ticket_text.strip()]
@@ -56,7 +76,7 @@ class SelfRepair:
                 f"{prompt}\n\nYour previous output violated the schema. "
                 "Fix only the missing/incorrect fields and return valid JSON."
             )
-            attempt_output = model.generate(repair_prompt)
+            attempt_output = _call_model(model, repair_prompt)
             ok_json, parsed = json_contract.validate(attempt_output)
             if not ok_json:
                 continue
@@ -103,5 +123,5 @@ class ResponseGenerator:
     def generate(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> str:
         """Generate a response and repair if contracts fail."""
         prompt = self.build_prompt(ticket, memory_context, kb_snippets)
-        raw_output = self.model_interface.generate(prompt)
+        raw_output = _call_model(self.model_interface, prompt)
         return self.self_repair.repair(self.model_interface, prompt, raw_output, self.contract)
