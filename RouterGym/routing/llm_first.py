@@ -29,6 +29,7 @@ class LLMFirstRouter(BaseRouter):
         kb: Optional[Any] = None,
         models: Optional[Dict[str, Any]] = None,
         memory: Optional[Any] = None,
+        force_llm: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Route using LLM by default; downshift to SLM for very short or trivial tickets."""
@@ -41,7 +42,7 @@ class LLMFirstRouter(BaseRouter):
         llm = models.get("llm_qwen_72b") or models.get("llm_llama_70b")
         slm = models.get("slm_qwen_1_5b") or models.get("slm_tiny_llama")
 
-        use_slm = tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})
+        use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
         chosen_model = slm if use_slm and slm is not None else llm or slm
 
         if memory:

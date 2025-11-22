@@ -56,3 +56,18 @@ def test_run_pipeline_with_mocked_outputs(tmp_path: Path, monkeypatch: Any) -> N
 
     run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid)
     assert (tmp_path / "results.csv").exists()
+
+
+def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
+    """Sanity mode should force LLM usage."""
+    captured = {}
+
+    def fake_grid_runner(**kwargs):
+        captured.update(kwargs)
+        return pd.DataFrame([{"router": "llm_first"}])
+
+    monkeypatch.setattr(run_experiments, "run_full_grid", fake_grid_runner)
+    monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
+    monkeypatch.setattr(run_experiments.eval_stats, "export_anova_results", lambda df, filename=None: tmp_path / "anova.csv")
+    run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid_runner, force_llm=True)
+    assert captured.get("force_llm") is True

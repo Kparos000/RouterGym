@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from RouterGym.contracts.json_contract import JSONContract
 from RouterGym.contracts.schema_contract import SchemaContract
+from RouterGym.engines.model_registry import get_repair_model
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -62,8 +63,12 @@ class SelfRepair:
         bad_output: str,
         schema: SchemaContract,
     ) -> str:
-        """Attempt to fix bad output by re-prompting the model."""
+        """Attempt to fix bad output by re-prompting the strongest LLM."""
         json_contract = JSONContract()
+        try:
+            repair_model = get_repair_model()
+        except Exception:
+            repair_model = model
 
         valid_json, parsed = json_contract.validate(bad_output)
         if not valid_json:
@@ -80,7 +85,10 @@ class SelfRepair:
                 f"{prompt}\n\nYour previous output violated the schema. "
                 "Fix only the missing/incorrect fields and return valid JSON."
             )
-            attempt_output = _call_model(model, repair_prompt)
+            try:
+                attempt_output = _call_model(repair_model, repair_prompt)
+            except Exception:
+                attempt_output = _call_model(model, repair_prompt)
             ok_json, parsed = json_contract.validate(attempt_output)
             if not ok_json:
                 continue

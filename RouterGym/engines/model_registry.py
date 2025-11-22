@@ -70,3 +70,11 @@ def load_models(sanity: bool = False) -> Dict[str, Any]:
 
 
 __all__ = ["load_models", "RemoteLLMEngine", "SMALL_MODELS", "LARGE_MODELS"]
+
+
+def get_repair_model() -> RemoteLLMEngine:
+    """Return the strongest available LLM engine for repair prompts."""
+    # Prefer Qwen 72B then Llama 70B
+    if "llm_qwen_72b" in LARGE_MODELS:
+        return _load_llm(LARGE_MODELS["llm_qwen_72b"])
+    return _load_llm(LARGE_MODELS["llm_llama_70b"])

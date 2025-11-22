@@ -28,6 +28,7 @@ class SLMDominantRouter(BaseRouter):
         kb: Optional[Any] = None,
         models: Optional[Dict[str, Any]] = None,
         memory: Optional[Any] = None,
+        force_llm: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
@@ -59,7 +60,7 @@ class SLMDominantRouter(BaseRouter):
         confidence = 0.8 if ticket.get("category") else 0.4
         contract = SchemaContract()
 
-        raw_output = _run_generation(slm, prompt) if slm else ""
+        raw_output = _run_generation(llm if force_llm else slm, prompt) if (llm if force_llm else slm) else ""
         jc = JSONContract()
         sr = SelfRepair()
         ok_json, parsed = jc.validate(raw_output)
@@ -69,9 +70,9 @@ class SLMDominantRouter(BaseRouter):
             ok_json, parsed = jc.validate(raw_output)
             retries += 1
 
-        fallback = False
+        fallback = force_llm
         missing_kb = kb is not None and not kb_snippets
-        if (confidence < 0.55 or missing_kb or not (ok_json and contract.validate(parsed)[0])) and llm is not None:
+        if (confidence < 0.55 or missing_kb or not (ok_json and contract.validate(parsed)[0]) or force_llm) and llm is not None:
             fallback = True
             raw_output = _run_generation(llm, prompt) if llm else raw_output
             ok_json, parsed = jc.validate(raw_output)

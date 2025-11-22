@@ -21,10 +21,11 @@ def run_pipeline(
     run_anova: bool = True,
     result_filename: str = "results.csv",
     grid_runner=run_full_grid,
+    force_llm: bool = False,
 ) -> None:
     """Run the full grid, then generate plots and optional ANOVA."""
     results_dir = base_dir or Path("RouterGym/results")
-    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models)
+    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models, force_llm=force_llm)
     results_dir.mkdir(parents=True, exist_ok=True)
     csv_path = results_dir / result_filename
     df.to_csv(csv_path, index=False)
@@ -58,6 +59,7 @@ def run_sanity(base_dir: Path | None = None, limit: int = 5) -> None:
         models=["llm1"],
         run_anova=False,
         result_filename="sanity_results.csv",
+        force_llm=True,
     )
 
 

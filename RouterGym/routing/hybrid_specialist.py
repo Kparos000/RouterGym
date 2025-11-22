@@ -35,6 +35,7 @@ class HybridSpecialistRouter(BaseRouter):
         kb: Optional[Any] = None,
         models: Optional[Dict[str, Any]] = None,
         memory: Optional[Any] = None,
+        force_llm: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
@@ -46,7 +47,7 @@ class HybridSpecialistRouter(BaseRouter):
 
         # Stage 1: classification
         classify_prompt = f"[Classify] {text}\nReturn JSON with classification."
-        classify_output = _run_generation(slm, classify_prompt) if slm else ""
+        classify_output = _run_generation(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
 
         # Stage 2: snippet retrieval
         snippet_text = ""
@@ -66,7 +67,7 @@ class HybridSpecialistRouter(BaseRouter):
                 "Draft JSON with classification, answer, reasoning.",
             ]
         )
-        draft_output = _run_generation(slm, draft_prompt) if slm else ""
+        draft_output = _run_generation(llm if force_llm else slm, draft_prompt) if (llm if force_llm else slm) else ""
 
         contract = SchemaContract()
         jc = JSONContract()

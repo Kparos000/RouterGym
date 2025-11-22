@@ -77,12 +77,19 @@ def init_memory(name: str) -> MemoryBase:
     return NoneMemory()
 
 
-def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriever: Optional[Any], models: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def run_single(
+    ticket: Dict[str, Any],
+    router: Any,
+    memory_mode: str,
+    kb_retriever: Optional[Any],
+    models: Optional[Dict[str, Any]],
+    force_llm: bool = False,
+) -> Dict[str, Any]:
     """Run a single ticket through a router + memory."""
     memory = init_memory(memory_mode)
     memory.add(ticket.get("text", ""))
     memory_context = memory.get_context()
-    routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory) if router else {}
+    routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
     record = {
         "ticket_id": ticket.get("id"),
         "router": routing_meta.get("strategy"),
@@ -131,12 +138,19 @@ def run_single(ticket: Dict[str, Any], router: Any, memory_mode: str, kb_retriev
     return record
 
 
-def run_config(router_name: str, memory_mode: str, tickets: List[Dict[str, Any]], kb_retriever: Optional[Any], models: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def run_config(
+    router_name: str,
+    memory_mode: str,
+    tickets: List[Dict[str, Any]],
+    kb_retriever: Optional[Any],
+    models: Optional[Dict[str, Any]],
+    force_llm: bool = False,
+) -> List[Dict[str, Any]]:
     """Run all tickets for a router/memory combo."""
     router = init_router(router_name)
     outputs: List[Dict[str, Any]] = []
     for ticket in tickets:
-        outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models))
+        outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, force_llm=force_llm))
     return outputs
 
 
@@ -148,6 +162,7 @@ def run_full_grid(
     models: Optional[List[str]] = None,
     kb_retriever: Optional[Any] = None,
     verbose: bool = False,
+    force_llm: bool = False,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
     tickets = tickets if tickets is not None else load_tickets(limit=limit)
@@ -172,7 +187,7 @@ def run_full_grid(
             for model_name in model_list:
                 if verbose:
                     print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
-                records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded)
+                records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded, force_llm=force_llm)
                 raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                 with raw_path.open("w", encoding="utf-8") as f:
                     for rec in records:
@@ -213,6 +228,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets")
     parser.add_argument("--verbose", action="store_true", help="Print progress")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
+    parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
     args = parser.parse_args()
 
     try:
@@ -232,7 +248,7 @@ def main() -> None:
             print("[Grid] Loading models...")
         _ = load_models(sanity=False)
 
-        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose)
+        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm)
         out_dir = RESULTS_DIR / "experiments"
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "results.csv"

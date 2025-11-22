@@ -52,3 +52,20 @@ def test_self_repair_fallback() -> None:
     fixed = repair.repair(model, "prompt", "invalid", contract)
     data = json.loads(fixed)
     assert data["final_answer"] == "a"
+
+
+def test_repair_uses_llm(monkeypatch):
+    """Ensure repair escalates to the dedicated LLM engine."""
+    called = {}
+
+    class RepairModel:
+        def __call__(self, prompt: str, **kwargs):
+            called["used"] = True
+            return json.dumps({"classification": "c", "reasoning": "r", "action_steps": [], "final_answer": "a"})
+
+    monkeypatch.setattr(gen, "get_repair_model", lambda: RepairModel())
+    model = DummyModel()
+    contract = gen.SchemaContract()
+    repair = gen.SelfRepair(max_retries=1)
+    _ = repair.repair(model, "prompt", "invalid", contract)
+    assert called.get("used")
