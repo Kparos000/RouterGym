@@ -20,8 +20,8 @@ class DummyClient:
     def __init__(self, model: str) -> None:
         self.model = model
 
-    def text_generation(self, prompt: str, **kwargs: Any) -> str:
-        return f"remote:{self.model}"
+    def chat_completion(self, **kwargs: Any):
+        return type("Resp", (), {"choices": [{"message": {"content": f"remote:{self.model}"}}]})
 
 
 def test_sanity_loads_small_model(monkeypatch: Any) -> None:

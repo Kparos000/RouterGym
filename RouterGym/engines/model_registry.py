@@ -38,10 +38,34 @@ class RemoteLLMEngine:
     """Wrapper around HF InferenceClient to expose a .generate interface."""
 
     def __init__(self, model_id: str) -> None:
+        self.model_name = model_id
         self.client = InferenceClient(model=model_id)
 
     def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **_: Any) -> str:
-        return self.client.text_generation(prompt, max_new_tokens=max_new_tokens, temperature=temperature)
+        """Call chat_completion endpoint and normalize the response to string."""
+        try:
+            response = self.client.chat_completion(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_new_tokens,
+                temperature=temperature,
+            )
+            if hasattr(response, "choices") and response.choices:
+                choice = response.choices[0]
+                if isinstance(choice, dict):
+                    return str(choice.get("message", {}).get("content", ""))
+                # OpenAI-like object: choice.message.content
+                msg = getattr(choice, "message", None)
+                if isinstance(msg, dict):
+                    return str(msg.get("content", ""))
+                if msg is not None and hasattr(msg, "__getitem__"):
+                    try:
+                        return str(msg["content"])
+                    except Exception:
+                        pass
+            return ""
+        except Exception:
+            return "[repair-response]"
 
 
 def _load_slm(entry: ModelEntry) -> Any:

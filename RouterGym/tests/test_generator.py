@@ -45,10 +45,14 @@ class DummyModel:
         return json.dumps({"classification": "c", "reasoning": "r", "action_steps": [], "final_answer": "a"})
 
 
-def test_self_repair_fallback() -> None:
+def test_self_repair_fallback(monkeypatch) -> None:
     model = DummyModel()
     contract = gen.SchemaContract()
     repair = gen.SelfRepair(max_retries=2)
+
+    # Force repair model to be the local dummy to keep test deterministic.
+    monkeypatch.setattr(gen, "get_repair_model", lambda: model)
+
     fixed = repair.repair(model, "prompt", "invalid", contract)
     data = json.loads(fixed)
     assert data["final_answer"] == "a"
