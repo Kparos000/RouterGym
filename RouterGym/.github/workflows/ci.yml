@@ -32,14 +32,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r RouterGym/requirements.txt
-          python -m pip install black flake8 mypy pytest pytest-cov
+          python -m pip install -e .
+          python -m pip install ruff mypy pytest pytest-cov
 
       - name: Black
-        run: black --check RouterGym
-
-      - name: Flake8
-        run: flake8 RouterGym
+        run: ruff check .
 
       - name: Mypy
         run: mypy RouterGym
