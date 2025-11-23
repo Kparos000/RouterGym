@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List
 
+from RouterGym.utils.kb_utils import coerce_kb_hits
+
 KB_ROOT = Path(__file__).resolve().parent
 
 
@@ -22,7 +24,8 @@ def retrieve(query: str, top_k: int = 3) -> List[Dict[str, str]]:
     """Simple retrieval by returning the first top_k articles."""
     kb = load_kb()
     items = list(kb.items())[:top_k]
-    return [{"filename": fname, "text": text} for fname, text in items]
+    hits = [{"text": text, "source": fname} for fname, text in items]
+    return coerce_kb_hits(hits)
 
 
 __all__ = ["load_kb", "retrieve"]

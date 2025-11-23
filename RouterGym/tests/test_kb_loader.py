@@ -22,3 +22,5 @@ def test_retrieve_returns_entries(tmp_path):
     results = kb_loader.retrieve("query", top_k=1)
     assert isinstance(results, list)
     assert results
+    assert all(isinstance(r, dict) for r in results)
+    assert all("text" in r for r in results)

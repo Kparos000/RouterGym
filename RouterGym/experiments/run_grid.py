@@ -25,6 +25,7 @@ from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
 from RouterGym.agents.generator import normalize_output
+from RouterGym.utils.kb_utils import coerce_kb_hits
 
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
@@ -139,12 +140,9 @@ def run_single(
     kb_texts = []
     if kb_retriever:
         try:
-            hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
-            for h in hits:
-                if isinstance(h, dict):
-                    kb_texts.append(h.get("text") or h.get("chunk", "") or "")
-                else:
-                    kb_texts.append(str(h))
+            raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
+            hits = coerce_kb_hits(raw_hits)
+            kb_texts = [h["text"] for h in hits if h["text"]]
         except Exception:
             kb_texts = []
     record["kb_snippets"] = kb_texts

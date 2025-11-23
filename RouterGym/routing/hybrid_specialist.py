@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from RouterGym.routing.base import BaseRouter
 from RouterGym.agents.generator import SchemaContract, SelfRepair, normalize_output, _call_model
 from RouterGym.contracts.json_contract import JSONContract
+from RouterGym.utils.kb_utils import coerce_kb_hits
 
 
 class HybridSpecialistRouter(BaseRouter):
@@ -42,9 +43,9 @@ class HybridSpecialistRouter(BaseRouter):
         snippet_text = ""
         if kb is not None:
             try:
-                hits = kb.retrieve(text, top_k=1) if hasattr(kb, "retrieve") else []
+                hits = coerce_kb_hits(kb.retrieve(text, top_k=1) if hasattr(kb, "retrieve") else [])
                 if hits:
-                    snippet_text = hits[0].get("text") or hits[0].get("chunk", "")
+                    snippet_text = hits[0]["text"]
             except Exception:
                 snippet_text = ""
 
