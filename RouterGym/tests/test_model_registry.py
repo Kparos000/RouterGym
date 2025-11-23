@@ -36,6 +36,8 @@ def test_sanity_loads_small_model(monkeypatch: Any) -> None:
     monkeypatch.setattr(model_registry, "pipeline", fake_pipeline)
     models = model_registry.load_models(sanity=True)
     assert len(models) == 1
+    engine = next(iter(models.values()))
+    engine("prompt")  # trigger lazy load
     assert "phi-3" in str(calls.get("model", "")).lower()
 
 

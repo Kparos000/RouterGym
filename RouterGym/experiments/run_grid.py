@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -34,6 +35,26 @@ DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
 MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm_phi3", "slm_phi2", "llm1", "llm2"]
+
+
+def release_local_models(models: Optional[Dict[str, Any]]) -> None:
+    """Unload lazy local models and run garbage collection."""
+    if not models:
+        return
+    for engine in models.values():
+        unload = getattr(engine, "unload", None)
+        if callable(unload):
+            unload()
+    gc.collect()
+    try:  # pragma: no cover - optional
+        import torch  # type: ignore
+
+        if hasattr(torch, "cuda"):
+            torch.cuda.empty_cache()  # type: ignore[attr-defined]
+        if hasattr(torch, "mps"):
+            torch.mps.empty_cache()  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 
 def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -176,13 +197,14 @@ def run_full_grid(
     kb_retriever: Optional[Any] = None,
     verbose: bool = False,
     force_llm: bool = False,
+    slm_subset: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
     tickets = tickets if tickets is not None else load_tickets(limit=limit)
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
     try:
-        models_loaded = load_models(sanity=False)
+        models_loaded = load_models(sanity=False, slm_subset=slm_subset)
     except Exception:
         models_loaded = None
 
@@ -222,6 +244,7 @@ def run_full_grid(
                             "model_used": rec.get("model_used", ""),
                         }
                     )
+                release_local_models(models_loaded)
 
     df = pd.DataFrame(aggregate)
     exp_dir = RESULTS_DIR / "experiments"
@@ -231,6 +254,8 @@ def run_full_grid(
 
     if not df.empty:
         eval_analyzer.export_all_figures(df)
+
+    release_local_models(models_loaded)
 
     return df
 
@@ -242,7 +267,10 @@ def main() -> None:
     parser.add_argument("--verbose", action="store_true", help="Print progress")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
     parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
+    parser.add_argument("--slm_subset", type=str, default=None, help="Comma-separated SLM keys to enable")
     args = parser.parse_args()
+
+    slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
 
     try:
         if args.verbose:
@@ -261,7 +289,7 @@ def main() -> None:
             print("[Grid] Loading models...")
         _ = load_models(sanity=False)
 
-        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm)
+        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm, slm_subset=slm_subset)
         out_dir = RESULTS_DIR / "experiments"
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "results.csv"

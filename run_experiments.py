@@ -23,10 +23,11 @@ def run_pipeline(
     grid_runner=run_full_grid,
     force_llm: bool = False,
     verbose: bool = False,
+    slm_subset: list[str] | None = None,
 ) -> None:
     """Run the full grid, then generate plots and optional ANOVA."""
     results_dir = base_dir or Path("RouterGym/results")
-    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models, force_llm=force_llm, verbose=verbose)
+    df = grid_runner(limit=limit, routers=routers, memories=memories, models=models, force_llm=force_llm, verbose=verbose, slm_subset=slm_subset)
     results_dir.mkdir(parents=True, exist_ok=True)
     csv_path = results_dir / result_filename
     df.to_csv(csv_path, index=False)
@@ -62,6 +63,7 @@ def run_sanity(base_dir: Path | None = None, limit: int = 5, verbose: bool = Fal
         result_filename="sanity_results.csv",
         force_llm=True,
         verbose=verbose,
+        slm_subset=None,
     )
 
 
@@ -88,7 +90,9 @@ def main() -> None:
     parser.add_argument("--config", type=str, default=None, help="Path to grid config (yaml/json).")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument("--strict-llm", action="store_true", help="Force strongest LLM for all routing.")
+    parser.add_argument("--slm_subset", type=str, default=None, help="Comma-separated SLM keys to enable.")
     args = parser.parse_args()
+    slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
 
     if args.sanity:
         run_sanity(limit=args.limit or 5, verbose=args.verbose)
@@ -97,7 +101,7 @@ def main() -> None:
         routers = cfg.get("routers") if isinstance(cfg.get("routers"), list) else None
         memories = cfg.get("memories") if isinstance(cfg.get("memories"), list) else None
         models = cfg.get("models") if isinstance(cfg.get("models"), list) else None
-        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models, verbose=args.verbose, force_llm=args.strict_llm)
+        run_pipeline(limit=args.limit, routers=routers, memories=memories, models=models, verbose=args.verbose, force_llm=args.strict_llm, slm_subset=slm_subset)
 
 
 if __name__ == "__main__":

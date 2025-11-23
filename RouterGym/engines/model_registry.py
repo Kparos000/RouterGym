@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import os
+from os import PathLike
 from dataclasses import dataclass
-from typing import IO, Any, Dict, Optional
+from typing import IO, Any, Callable, Dict, Optional
 
 import torch  # type: ignore
+from huggingface_hub import InferenceClient  # type: ignore
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
+
 try:  # pragma: no cover - optional dependency
-    from dotenv import load_dotenv  # type: ignore
+    from dotenv import load_dotenv as _load_dotenv  # type: ignore
 except Exception:  # pragma: no cover
-    def load_dotenv(
-        dotenv_path: Optional[os.PathLike[str] | str] = None,
+    def _load_dotenv(
+        dotenv_path: Optional[str | PathLike[str]] = None,
         stream: Optional[IO[str]] = None,
         verbose: bool = False,
         override: bool = False,
@@ -19,11 +23,12 @@ except Exception:  # pragma: no cover
         encoding: Optional[str] = None,
     ) -> bool:
         return False
-from huggingface_hub import InferenceClient  # type: ignore
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
+DotenvCallable = Callable[..., bool]
+_dotenv_loader: DotenvCallable = _load_dotenv
 
 # Load environment variables from .env if present
-load_dotenv()
+if callable(_dotenv_loader):
+    _dotenv_loader()
 
 
 @dataclass
@@ -50,25 +55,30 @@ _LOCAL_CACHE: Dict[str, Any] = {}
 
 
 class LocalPipelineEngine:
-    """Local HF pipeline wrapper with caching."""
+    """Lazy local HF pipeline wrapper with caching."""
 
     def __init__(self, model_id: str) -> None:
         self.model_id = model_id
-        if model_id in _LOCAL_CACHE:
-            self.pipeline = _LOCAL_CACHE[model_id]
+        self.pipeline: Optional[Any] = _LOCAL_CACHE.get(model_id)
+
+    def _ensure_pipeline(self) -> None:
+        if self.pipeline is not None:
             return
         dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        model = AutoModelForCausalLM.from_pretrained(self.model_id, torch_dtype=dtype)
         self.pipeline = pipeline(
             "text-generation",
             model=model,
             tokenizer=tokenizer,
             device=-1,
         )
-        _LOCAL_CACHE[model_id] = self.pipeline
+        _LOCAL_CACHE[self.model_id] = self.pipeline
 
     def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, do_sample: bool = False, **_: Any) -> str:
+        self._ensure_pipeline()
+        if self.pipeline is None:  # Safety for type-checkers
+            raise RuntimeError("Pipeline failed to initialize")
         outputs = self.pipeline(
             prompt,
             max_new_tokens=max_new_tokens,
@@ -79,6 +89,12 @@ class LocalPipelineEngine:
         if isinstance(outputs, list) and outputs and isinstance(outputs[0], dict):
             return str(outputs[0].get("generated_text", ""))
         return str(outputs)
+
+    def unload(self) -> None:
+        """Release cached pipeline to free memory."""
+        if self.pipeline is not None:
+            self.pipeline = None
+        _LOCAL_CACHE.pop(self.model_id, None)
 
 
 class RemoteLLMEngine:
@@ -162,17 +178,23 @@ def _load_llm(entry: ModelEntry) -> Any:
     return RemoteLLMEngine(entry.hf_id, token=token)
 
 
-def load_models(sanity: bool = False) -> Dict[str, Any]:
+def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None) -> Dict[str, Any]:
     """Load small models locally; large models via remote inference."""
     models: Dict[str, Any] = {}
     use_google_slm = (os.getenv("USE_GOOGLE_SLM") or "false").lower() == "true"
     google_key = os.getenv("GOOGLE_API_KEY")
+    subset = set(slm_subset or [])
+    slm_names = list(SMALL_MODELS.keys())
+    if subset:
+        slm_names = [name for name in slm_names if name in subset]
+    sanity_target = slm_names[0] if slm_names else "slm_phi3"
     if sanity:
-        entry = SMALL_MODELS["slm_phi3"]
+        entry = SMALL_MODELS.get(sanity_target, SMALL_MODELS["slm_phi3"])
         models[entry.name] = _load_slm(entry)
         return models
 
-    for entry in SMALL_MODELS.values():
+    for name in slm_names:
+        entry = SMALL_MODELS[name]
         if entry.name == "slm_phi2" and use_google_slm and google_key:
             models[entry.name] = RemoteGoogleSLMEngine(api_key=google_key)
         else:
