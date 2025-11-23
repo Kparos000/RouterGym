@@ -88,6 +88,6 @@ class HybridSpecialistRouter(BaseRouter):
             "model_used": "llm",
             "steps": steps,
             "final_output": final_output,
-            "json_valid": ok_json,
+            "json_valid": bool(ok_json),
             "schema_valid": contract.validate(final_output)[0],
         }

@@ -84,6 +84,6 @@ class SLMDominantRouter(BaseRouter):
             "model_used": "llm" if fallback else "slm",
             "steps": steps,
             "final_output": final_output,
-            "json_valid": ok_json,
-            "schema_valid": schema_ok,
+            "json_valid": bool(ok_json),
+            "schema_valid": bool(schema_ok),
         }

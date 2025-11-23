@@ -71,3 +71,27 @@ def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
     monkeypatch.setattr(run_experiments.eval_stats, "export_anova_results", lambda df, filename=None: tmp_path / "anova.csv")
     run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid_runner, force_llm=True)
     assert captured.get("force_llm") is True
+
+
+def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
+    """Grid should not crash if routers or KB return unexpected types."""
+    class FakeKB:
+        def retrieve(self, query: str, top_k: int = 3):
+            return ["snippet"]  # not a dict
+
+    class BadRouter:
+        def route(self, *args: Any, **kwargs: Any):
+            return "oops"  # not a dict
+
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: BadRouter())
+    df = run_grid.run_full_grid(
+        tickets=[{"id": 1, "text": "hello"}],
+        kb_retriever=FakeKB(),
+        limit=1,
+        routers=["llm_first"],
+        memories=["none"],
+        models=["llm1"],
+        verbose=False,
+    )
+    assert not df.empty
+    assert "router" in df.columns

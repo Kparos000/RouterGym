@@ -38,6 +38,13 @@ MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm_phi3", "slm_phi2", "llm1", "llm2"]
 
 
+def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Return obj if dict else a safe default dict."""
+    if isinstance(obj, dict):
+        return obj
+    return default or {}
+
+
 def release_local_models(models: Optional[Dict[str, Any]]) -> None:
     """Unload lazy local models and run garbage collection."""
     if not models:
@@ -121,8 +128,7 @@ def run_single(
     memory.add(ticket.get("text", ""))
     memory_context = memory.get_context()
     routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
-    if not isinstance(routing_meta, dict):
-        routing_meta = {}
+    routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
     final_output = normalize_output(routing_meta.get("final_output", ""))
     record = {
         "ticket_id": ticket.get("id"),

@@ -78,6 +78,6 @@ class LLMFirstRouter(BaseRouter):
             "model_used": "slm" if use_slm else "llm",
             "steps": steps,
             "final_output": final_output,
-            "json_valid": ok_json,
-            "schema_valid": ok_schema,
+            "json_valid": bool(ok_json),
+            "schema_valid": bool(ok_schema),
         }
