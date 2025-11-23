@@ -46,6 +46,15 @@ def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, An
     return default or {}
 
 
+def _coerce_tickets(tickets: Any) -> List[Dict[str, Any]]:
+    """Ensure tickets is a list of dicts."""
+    if isinstance(tickets, pd.DataFrame):
+        return tickets.to_dict(orient="records")
+    if isinstance(tickets, list):
+        return [t if isinstance(t, dict) else {"text": str(t)} for t in tickets]
+    return []
+
+
 def release_local_models(models: Optional[Dict[str, Any]]) -> None:
     """Unload lazy local models and run garbage collection."""
     if not models:
@@ -237,7 +246,7 @@ def run_full_grid(
     slm_subset: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
-    tickets = tickets if tickets is not None else load_tickets(limit=limit)
+    tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
     try:
@@ -327,7 +336,8 @@ def main() -> None:
     try:
         if args.verbose:
             print("[Grid] Loading dataset...")
-        tickets = dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit) if hasattr(dataset_loader, "load_and_preprocess") else dataset_loader.load_dataset(args.limit)
+        tickets_loaded = dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit) if hasattr(dataset_loader, "load_and_preprocess") else dataset_loader.load_dataset(args.limit)
+        tickets = _coerce_tickets(tickets_loaded)
         if args.verbose:
             print(f"[Grid] Loaded tickets: {len(tickets)}")
 
