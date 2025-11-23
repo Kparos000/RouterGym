@@ -36,25 +36,49 @@ def _call_model(model: Any, prompt: str) -> str:
     return str(output)
 
 
+def _extract_json_fragment(text: str) -> Any:
+    """Try to extract a JSON object substring from arbitrary text."""
+    if not isinstance(text, str):
+        return None
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        snippet = text[start : end + 1]
+        try:
+            return json.loads(snippet)
+        except Exception:
+            return None
+    return None
+
+
 def normalize_output(output: Any) -> Dict[str, str]:
     """Normalize any model output into a dict with final_answer and reasoning."""
+    parsed: Dict[str, Any] = {}
     if isinstance(output, dict):
-        return {
-            "final_answer": str(output.get("final_answer", "")).strip(),
-            "reasoning": str(output.get("reasoning", "")).strip(),
-        }
-    if isinstance(output, str):
+        parsed = output
+    elif isinstance(output, str):
         try:
-            parsed = json.loads(output)
-            if isinstance(parsed, dict):
-                return {
-                    "final_answer": str(parsed.get("final_answer", "")).strip(),
-                    "reasoning": str(parsed.get("reasoning", "")).strip(),
-                }
+            maybe = json.loads(output)
+            if isinstance(maybe, dict):
+                parsed = maybe
         except Exception:
-            pass
-        return {"final_answer": output.strip(), "reasoning": ""}
-    return {"final_answer": str(output).strip(), "reasoning": ""}
+            fragment = _extract_json_fragment(output)
+            if isinstance(fragment, dict):
+                parsed = fragment
+    if not parsed and not isinstance(output, dict):
+        parsed = {}
+    return {
+        "final_answer": str(parsed.get("final_answer", "")).strip(),
+        "reasoning": str(parsed.get("reasoning", "")).strip(),
+    }
+
+
+def _ensure_minimum_fields(data: Dict[str, str]) -> Dict[str, str]:
+    """Guarantee required fields are present and non-empty."""
+    return {
+        "final_answer": data.get("final_answer") or "No valid answer produced",
+        "reasoning": data.get("reasoning") or "",
+    }
 
 
 def build_prompt(ticket_text: str, kb_snippets: List[str]) -> str:
@@ -92,13 +116,13 @@ class SelfRepair:
             repair_model = model
 
         valid_json, parsed = json_contract.validate(bad_output)
-        if not valid_json:
-            log.error("Contract failure: invalid JSON")
-        else:
-            is_valid, errors = schema.validate(parsed)
+        if valid_json and parsed:
+            is_valid, errors = schema.validate(normalize_output(parsed))
             if is_valid:
-                return normalize_output(parsed)
+                return _ensure_minimum_fields(normalize_output(parsed))
             log.error(f"Schema errors: {errors}")
+        else:
+            log.error("Contract failure: invalid JSON")
 
         attempt_output = bad_output
         for attempt in range(self.max_retries):
@@ -111,12 +135,11 @@ class SelfRepair:
             except Exception:
                 attempt_output = _call_model(model, repair_prompt)
             ok_json, parsed = json_contract.validate(attempt_output)
-            if not ok_json:
-                continue
-            ok_schema, _ = schema.validate(parsed)
+            candidate = normalize_output(parsed if ok_json and parsed else attempt_output)
+            ok_schema, _ = schema.validate(candidate)
             if ok_schema:
                 log.info(f"Repair succeeded on attempt {attempt+1}")
-                return normalize_output(parsed)
+                return _ensure_minimum_fields(candidate)
 
         # Best-effort fallback
         try:
@@ -134,7 +157,7 @@ class SelfRepair:
             if field not in data or not data[field]:
                 data[field] = defaults[field]
         log.error("Repair failed after retries; returning best-effort output")
-        return normalize_output(data)
+        return _ensure_minimum_fields(normalize_output(data))
 
 
 class ResponseGenerator:

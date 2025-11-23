@@ -57,6 +57,7 @@ class SLMDominantRouter(BaseRouter):
         final_output = normalize_output(raw_output)
         if ok_json and parsed:
             schema_ok, _ = contract.validate(normalize_output(parsed))
+        fallback = False
         if not schema_ok:
             fallback = True
             raw_output = _call_model(llm, prompt) if llm else raw_output
@@ -70,7 +71,6 @@ class SLMDominantRouter(BaseRouter):
             else:
                 final_output = normalize_output(parsed if parsed else raw_output)
         else:
-            fallback = False
             final_output = normalize_output(parsed if parsed else raw_output)
 
         steps.append({"stage": "generate", "output": final_output, "confidence": confidence})

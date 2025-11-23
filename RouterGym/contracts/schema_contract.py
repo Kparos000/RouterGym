@@ -24,6 +24,9 @@ class SchemaContract:
                 continue
             if not isinstance(json_obj[field], ftype):
                 errors.append(f"Field {field} has wrong type")
+                continue
+            if isinstance(json_obj[field], str) and not json_obj[field].strip():
+                errors.append(f"Field {field} is empty")
         return len(errors) == 0, errors
 
 

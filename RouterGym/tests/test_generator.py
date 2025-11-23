@@ -36,7 +36,7 @@ class DummyModel:
     def __init__(self) -> None:
         self.calls = 0
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, **kwargs) -> str:
         self.calls += 1
         if self.calls == 1:
             return "invalid json"
