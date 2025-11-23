@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -124,66 +125,76 @@ def run_single(
     verbose: bool = False,
 ) -> Dict[str, Any]:
     """Run a single ticket through a router + memory."""
-    memory = init_memory(memory_mode)
-    memory.add(ticket.get("text", ""))
-    memory_context = memory.get_context()
-    routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
-    routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
-    final_output = normalize_output(routing_meta.get("final_output", ""))
-    record = {
-        "ticket_id": ticket.get("id"),
-        "router": routing_meta.get("strategy"),
-        "memory": memory_mode,
-        "target_model": routing_meta.get("target_model", "slm"),
-        "kb_attached": routing_meta.get("kb_attached", False),
-        "routing_meta": routing_meta,
-        "memory_context": memory_context,
-        "result": "success",
-        "accuracy": 0.0,
-        "groundedness": 0.0,
-        "schema_validity": 0.0,
-        "latency_ms": 0.0,
-        "cost_usd": 0.0,
-        "output": final_output,
-        "model_used": routing_meta.get("model_used", "slm"),
-        "json_valid": routing_meta.get("json_valid", False),
-        "schema_valid": routing_meta.get("schema_valid", False),
-    }
-    # compute metrics
-    kb_texts = []
-    if kb_retriever:
-        try:
-            raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
-            hits = coerce_kb_hits(raw_hits)
-            kb_texts = [h["text"] for h in hits if h["text"]]
-        except Exception:
-            kb_texts = []
-    record["kb_snippets"] = kb_texts
-    metric_values = eval_metrics.compute_all_metrics(
-        {
-            "output": record["output"],
-            "label": ticket.get("category", ""),
-            "predicted": ticket.get("category", ""),
-            "kb_snippets": kb_texts,
-            "model_used": record["model_used"],
-            "latency_ms": record["latency_ms"],
-            "reasoning": record["output"].get("reasoning", "") if isinstance(record["output"], dict) else "",
+    try:
+        memory = init_memory(memory_mode)
+        memory.add(ticket.get("text", ""))
+        memory_context = memory.get_context()
+        routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
+        routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
+        final_output = normalize_output(routing_meta.get("final_output", ""))
+        record = {
+            "ticket_id": ticket.get("id"),
+            "router": routing_meta.get("strategy"),
+            "memory": memory_mode,
+            "target_model": routing_meta.get("target_model", "slm"),
+            "kb_attached": routing_meta.get("kb_attached", False),
+            "routing_meta": routing_meta,
+            "memory_context": memory_context,
+            "result": "success",
+            "accuracy": 0.0,
+            "groundedness": 0.0,
+            "schema_validity": 0.0,
+            "latency_ms": 0.0,
+            "cost_usd": 0.0,
+            "output": final_output,
+            "model_used": routing_meta.get("model_used", "slm"),
+            "json_valid": routing_meta.get("json_valid", False),
+            "schema_valid": routing_meta.get("schema_valid", False),
         }
-    )
-    record.update(
-        {
-            "accuracy": metric_values["accuracy"],
-            "groundedness": metric_values["groundedness"],
-            "schema_validity": metric_values["schema_validity"],
-            "cost_usd": metric_values["cost"],
-        }
-    )
-    if verbose:
-        print(
-            f"[Single] model_used={record['model_used']} json_valid={record['json_valid']} "
-            f"schema_valid={record['schema_valid']} cost={record['cost_usd']:.4f}"
+        # compute metrics
+        kb_texts = []
+        if kb_retriever:
+            try:
+                raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
+                hits = coerce_kb_hits(raw_hits)
+                kb_texts = [h["text"] for h in hits if h["text"]]
+            except Exception:
+                kb_texts = []
+        record["kb_snippets"] = kb_texts
+        metric_values = eval_metrics.compute_all_metrics(
+            {
+                "output": record["output"],
+                "label": ticket.get("category", ""),
+                "predicted": ticket.get("category", ""),
+                "kb_snippets": kb_texts,
+                "model_used": record["model_used"],
+                "latency_ms": record["latency_ms"],
+                "reasoning": record["output"].get("reasoning", "") if isinstance(record["output"], dict) else "",
+            }
         )
-    return record
+        record.update(
+            {
+                "accuracy": metric_values["accuracy"],
+                "groundedness": metric_values["groundedness"],
+                "schema_validity": metric_values["schema_validity"],
+                "cost_usd": metric_values["cost"],
+            }
+        )
+        if verbose:
+            print(
+                f"[Single] model_used={record['model_used']} json_valid={record['json_valid']} "
+                f"schema_valid={record['schema_valid']} cost={record['cost_usd']:.4f}"
+            )
+        return record
+    except Exception:
+        print("[Single] Exception encountered")
+        print(traceback.format_exc())
+        print(
+            f"[Single][Types] routing_meta={type(locals().get('routing_meta')).__name__} "
+            f"kb_retriever={type(kb_retriever).__name__ if kb_retriever else 'None'} "
+            f"ticket={type(ticket).__name__} models={type(models).__name__}"
+        )
+        raise
 
 
 def run_config(
@@ -199,7 +210,18 @@ def run_config(
     router = init_router(router_name)
     outputs: List[Dict[str, Any]] = []
     for ticket in tickets:
-        outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, force_llm=force_llm, verbose=verbose))
+        try:
+            outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, force_llm=force_llm, verbose=verbose))
+        except Exception:
+            if verbose:
+                print("[Config] Exception in run_single")
+                print(traceback.format_exc())
+                print(
+                    f"[Config][Types] ticket={type(ticket).__name__} router={type(router).__name__ if router else 'None'} "
+                    f"kb={type(kb_retriever).__name__ if kb_retriever else 'None'} models={type(models).__name__}"
+                )
+                raise
+            raise
     return outputs
 
 
@@ -237,31 +259,44 @@ def run_full_grid(
             for model_name in model_list:
                 if verbose:
                     print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
-                records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded, force_llm=force_llm, verbose=verbose)
-                raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
-                with raw_path.open("w", encoding="utf-8") as f:
+                try:
+                    records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded, force_llm=force_llm, verbose=verbose)
+                    raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
+                    with raw_path.open("w", encoding="utf-8") as f:
+                        for rec in records:
+                            safe_rec = _coerce_record(rec)
+                            f.write(json.dumps(safe_rec) + "\n")
                     for rec in records:
                         safe_rec = _coerce_record(rec)
-                        f.write(json.dumps(safe_rec) + "\n")
-                for rec in records:
-                    safe_rec = _coerce_record(rec)
-                    aggregate.append(
-                        {
-                            "router": router_name,
-                            "memory": memory_mode,
-                            "model": model_name,
-                            "ticket_id": safe_rec.get("ticket_id"),
-                            "kb_attached": safe_rec.get("kb_attached", False),
-                            "result": safe_rec.get("result"),
-                            "accuracy": safe_rec.get("accuracy", 0.0),
-                            "groundedness": safe_rec.get("groundedness", 0.0),
-                            "schema_validity": safe_rec.get("schema_validity", 0.0),
-                            "latency_ms": safe_rec.get("latency_ms", 0.0),
-                            "cost_usd": safe_rec.get("cost_usd", 0.0),
-                            "model_used": safe_rec.get("model_used", ""),
-                        }
-                    )
-                release_local_models(models_loaded)
+                        aggregate.append(
+                            {
+                                "router": router_name,
+                                "memory": memory_mode,
+                                "model": model_name,
+                                "ticket_id": safe_rec.get("ticket_id"),
+                                "kb_attached": safe_rec.get("kb_attached", False),
+                                "result": safe_rec.get("result"),
+                                "accuracy": safe_rec.get("accuracy", 0.0),
+                                "groundedness": safe_rec.get("groundedness", 0.0),
+                                "schema_validity": safe_rec.get("schema_validity", 0.0),
+                                "latency_ms": safe_rec.get("latency_ms", 0.0),
+                                "cost_usd": safe_rec.get("cost_usd", 0.0),
+                                "model_used": safe_rec.get("model_used", ""),
+                            }
+                        )
+                except Exception:
+                    if verbose:
+                        print("[Grid] Exception in run_config loop:")
+                        print(traceback.format_exc())
+                        print(
+                            f"[Grid][Types] routing_meta_type={type({}).__name__} "
+                            f"kb_retriever_type={type(kb_retriever).__name__} "
+                            f"ticket_type={type(tickets[0]).__name__ if tickets else 'n/a'} "
+                            f"models_type={type(models_loaded).__name__}"
+                        )
+                        raise
+                    raise
+            release_local_models(models_loaded)
 
     df = pd.DataFrame(aggregate)
     exp_dir = RESULTS_DIR / "experiments"
@@ -304,7 +339,7 @@ def main() -> None:
 
         if args.verbose:
             print("[Grid] Loading models...")
-        _ = load_models(sanity=False)
+        _ = load_models(sanity=False, slm_subset=slm_subset)
 
         df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm, slm_subset=slm_subset)
         out_dir = RESULTS_DIR / "experiments"
@@ -313,8 +348,16 @@ def main() -> None:
         df.to_csv(out_path, index=False)
         if args.verbose:
             print(f"[Grid] Results saved to {out_path}")
-    except Exception as exc:  # pragma: no cover - CLI error handling
-        print(f"[Grid] Error: {exc}")
+    except Exception:  # pragma: no cover - CLI error handling
+        print("[Grid] Fatal error during grid run:")
+        print(traceback.format_exc())
+        print(
+            f"[Grid][Types] tickets_type={type(locals().get('tickets'))} "
+            f"first_ticket={type(tickets[0]).__name__ if 'tickets' in locals() and tickets else 'n/a'} "
+            f"kb_type={type(kb_loader)}"
+        )
+        if args.verbose:
+            raise
 
 
 if __name__ == "__main__":
