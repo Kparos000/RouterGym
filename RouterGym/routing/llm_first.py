@@ -27,7 +27,7 @@ class LLMFirstRouter(BaseRouter):
         # choose models
         models = models or {}
         llm = models.get("llm1") or models.get("llm2")
-        slm = models.get("slm_phi3") or models.get("slm_qwen3b")
+        slm = models.get("slm_phi3") or models.get("slm_phi2")
 
         use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
         chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)

@@ -21,7 +21,7 @@ class SLMDominantRouter(BaseRouter):
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
         models = models or {}
-        slm = models.get("slm_phi3") or models.get("slm_qwen3b")
+        slm = models.get("slm_phi3") or models.get("slm_phi2")
         llm = models.get("llm1") or models.get("llm2")
         steps = []
 

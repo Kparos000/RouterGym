@@ -42,7 +42,7 @@ def test_sanity_loads_small_model(monkeypatch: Any) -> None:
 def test_large_models_use_remote(monkeypatch: Any) -> None:
     remote_called = []
 
-    def fake_client(model: str):
+    def fake_client(model: str, token: Any = None):
         remote_called.append(model)
         return DummyClient(model)
 
@@ -71,7 +71,7 @@ def test_get_repair_model(monkeypatch: Any) -> None:
 
     called = {}
 
-    def fake_client(model: str):
+    def fake_client(model: str, token: Any = None):
         called["model"] = model
         return DummyClient(model)
 

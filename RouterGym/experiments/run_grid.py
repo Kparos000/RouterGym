@@ -33,7 +33,7 @@ DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
 MEMORY_MODES = ["none", "transcript", "rag", "salience"]
-MODEL_NAMES = ["slm_phi3", "slm_qwen3b", "llm1", "llm2"]
+MODEL_NAMES = ["slm_phi3", "slm_phi2", "llm1", "llm2"]
 
 
 def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:

@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import IO, Any, Dict, Optional
 
 import torch  # type: ignore
+try:  # pragma: no cover - optional dependency
+    from dotenv import load_dotenv  # type: ignore
+except Exception:  # pragma: no cover
+    def load_dotenv(
+        dotenv_path: Optional[os.PathLike[str] | str] = None,
+        stream: Optional[IO[str]] = None,
+        verbose: bool = False,
+        override: bool = False,
+        interpolate: bool = True,
+        encoding: Optional[str] = None,
+    ) -> bool:
+        return False
 from huggingface_hub import InferenceClient  # type: ignore
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
+
+# Load environment variables from .env if present
+load_dotenv()
 
 
 @dataclass
@@ -21,7 +37,7 @@ class ModelEntry:
 
 SMALL_MODELS: Dict[str, ModelEntry] = {
     "slm_phi3": ModelEntry("slm_phi3", "microsoft/Phi-3-mini-4k-instruct", "slm"),
-    "slm_qwen3b": ModelEntry("slm_qwen3b", "Qwen/Qwen2-3B-Instruct", "slm"),
+    "slm_phi2": ModelEntry("slm_phi2", "microsoft/phi-2", "slm"),
 }
 
 LARGE_MODELS: Dict[str, ModelEntry] = {
@@ -68,9 +84,9 @@ class LocalPipelineEngine:
 class RemoteLLMEngine:
     """Wrapper around HF InferenceClient to expose a .generate interface."""
 
-    def __init__(self, model_id: str) -> None:
+    def __init__(self, model_id: str, token: Optional[str] = None) -> None:
         self.model_name = model_id
-        self.client = InferenceClient(model=model_id)
+        self.client = InferenceClient(model=model_id, token=token)
 
     def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **_: Any) -> str:
         """Call chat_completion endpoint and normalize the response to string."""
@@ -102,31 +118,78 @@ class RemoteLLMEngine:
         return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
 
 
+class RemoteGoogleSLMEngine:
+    """Minimal remote SLM engine using a Google/Gemini-style endpoint."""
+
+    def __init__(self, api_key: str, model: str = "gemini-pro") -> None:
+        self.api_key = api_key
+        self.model = model
+
+    def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
+        try:
+            import requests  # type: ignore
+        except Exception:
+            return "[google-slm-unavailable]"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": max_new_tokens, "temperature": temperature},
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            candidates = data.get("candidates") or []
+            if candidates and "content" in candidates[0]:
+                parts = candidates[0]["content"].get("parts") or []
+                if parts and "text" in parts[0]:
+                    return str(parts[0]["text"])
+        except Exception:
+            return "[google-slm-error]"
+        return "[google-slm-empty]"
+
+    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
+        return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
+
+
 def _load_slm(entry: ModelEntry) -> Any:
     return LocalPipelineEngine(entry.hf_id)
 
 
 def _load_llm(entry: ModelEntry) -> Any:
     # Remote client only; no local downloads.
-    return RemoteLLMEngine(entry.hf_id)
+    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
+    return RemoteLLMEngine(entry.hf_id, token=token)
 
 
 def load_models(sanity: bool = False) -> Dict[str, Any]:
     """Load small models locally; large models via remote inference."""
     models: Dict[str, Any] = {}
+    use_google_slm = (os.getenv("USE_GOOGLE_SLM") or "false").lower() == "true"
+    google_key = os.getenv("GOOGLE_API_KEY")
     if sanity:
         entry = SMALL_MODELS["slm_phi3"]
         models[entry.name] = _load_slm(entry)
         return models
 
     for entry in SMALL_MODELS.values():
-        models[entry.name] = _load_slm(entry)
+        if entry.name == "slm_phi2" and use_google_slm and google_key:
+            models[entry.name] = RemoteGoogleSLMEngine(api_key=google_key)
+        else:
+            models[entry.name] = _load_slm(entry)
     for entry in LARGE_MODELS.values():
         models[entry.name] = _load_llm(entry)
     return models
 
 
-__all__ = ["load_models", "RemoteLLMEngine", "LocalPipelineEngine", "SMALL_MODELS", "LARGE_MODELS"]
+__all__ = [
+    "load_models",
+    "RemoteLLMEngine",
+    "LocalPipelineEngine",
+    "RemoteGoogleSLMEngine",
+    "SMALL_MODELS",
+    "LARGE_MODELS",
+]
 
 
 def get_repair_model() -> RemoteLLMEngine:
