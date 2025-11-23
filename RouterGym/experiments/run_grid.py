@@ -140,7 +140,11 @@ def run_single(
     if kb_retriever:
         try:
             hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
-            kb_texts = [h.get("text") or h.get("chunk", "") for h in hits]
+            for h in hits:
+                if isinstance(h, dict):
+                    kb_texts.append(h.get("text") or h.get("chunk", "") or "")
+                else:
+                    kb_texts.append(str(h))
         except Exception:
             kb_texts = []
     record["kb_snippets"] = kb_texts
