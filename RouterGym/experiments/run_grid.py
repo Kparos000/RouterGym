@@ -79,6 +79,13 @@ def load_kb(path: Path = DEFAULT_KB_PATH) -> Optional[Any]:
         return None
 
 
+def _coerce_record(rec: Any) -> Dict[str, Any]:
+    """Ensure records are dictionaries to avoid attribute errors downstream."""
+    if isinstance(rec, dict):
+        return rec
+    return {"result": "error", "raw_record": str(rec)}
+
+
 def init_router(name: str) -> Optional[BaseRouter]:
     router_map = {
         "llm_first": LLMFirstRouter(),
@@ -228,22 +235,24 @@ def run_full_grid(
                 raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                 with raw_path.open("w", encoding="utf-8") as f:
                     for rec in records:
-                        f.write(json.dumps(rec) + "\n")
+                        safe_rec = _coerce_record(rec)
+                        f.write(json.dumps(safe_rec) + "\n")
                 for rec in records:
+                    safe_rec = _coerce_record(rec)
                     aggregate.append(
                         {
                             "router": router_name,
                             "memory": memory_mode,
                             "model": model_name,
-                            "ticket_id": rec.get("ticket_id"),
-                            "kb_attached": rec.get("kb_attached", False),
-                            "result": rec.get("result"),
-                            "accuracy": rec.get("accuracy", 0.0),
-                            "groundedness": rec.get("groundedness", 0.0),
-                            "schema_validity": rec.get("schema_validity", 0.0),
-                            "latency_ms": rec.get("latency_ms", 0.0),
-                            "cost_usd": rec.get("cost_usd", 0.0),
-                            "model_used": rec.get("model_used", ""),
+                            "ticket_id": safe_rec.get("ticket_id"),
+                            "kb_attached": safe_rec.get("kb_attached", False),
+                            "result": safe_rec.get("result"),
+                            "accuracy": safe_rec.get("accuracy", 0.0),
+                            "groundedness": safe_rec.get("groundedness", 0.0),
+                            "schema_validity": safe_rec.get("schema_validity", 0.0),
+                            "latency_ms": safe_rec.get("latency_ms", 0.0),
+                            "cost_usd": safe_rec.get("cost_usd", 0.0),
+                            "model_used": safe_rec.get("model_used", ""),
                         }
                     )
                 release_local_models(models_loaded)
