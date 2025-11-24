@@ -48,11 +48,29 @@ def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, An
 
 def _coerce_tickets(tickets: Any) -> List[Dict[str, Any]]:
     """Ensure tickets is a list of dicts."""
+    records: List[Dict[str, Any]] = []
     if isinstance(tickets, pd.DataFrame):
-        return tickets.to_dict(orient="records")
+        for idx, row in tickets.iterrows():
+            rec = {
+                "id": row.get("id", idx),
+                "text": row.get("text", row.get("document", "")),
+                "category": row.get("category", row.get("label", "")),
+            }
+            records.append(rec)
+        return records
     if isinstance(tickets, list):
-        return [t if isinstance(t, dict) else {"text": str(t)} for t in tickets]
-    return []
+        for idx, t in enumerate(tickets):
+            if isinstance(t, dict):
+                records.append(
+                    {
+                        "id": t.get("id", idx),
+                        "text": t.get("text", ""),
+                        "category": t.get("category", t.get("label", "")),
+                    }
+                )
+            else:
+                records.append({"id": idx, "text": str(t), "category": ""})
+    return records
 
 
 def release_local_models(models: Optional[Dict[str, Any]]) -> None:
@@ -134,6 +152,26 @@ def run_single(
     verbose: bool = False,
 ) -> Dict[str, Any]:
     """Run a single ticket through a router + memory."""
+    if not isinstance(ticket, dict):
+        return {
+            "ticket_id": None,
+            "router": None,
+            "memory": memory_mode,
+            "target_model": "unknown",
+            "kb_attached": False,
+            "routing_meta": {},
+            "memory_context": "",
+            "result": "error",
+            "accuracy": 0.0,
+            "groundedness": 0.0,
+            "schema_validity": 0.0,
+            "latency_ms": 0.0,
+            "cost_usd": 0.0,
+            "output": normalize_output(""),
+            "model_used": "unknown",
+            "json_valid": False,
+            "schema_valid": False,
+        }
     try:
         memory = init_memory(memory_mode)
         memory.add(ticket.get("text", ""))
@@ -298,11 +336,11 @@ def run_full_grid(
                         print("[Grid] Exception in run_config loop:")
                         print(traceback.format_exc())
                         print(
-                            f"[Grid][Types] routing_meta_type={type({}).__name__} "
-                            f"kb_retriever_type={type(kb_retriever).__name__} "
-                            f"ticket_type={type(tickets[0]).__name__ if tickets else 'n/a'} "
-                            f"models_type={type(models_loaded).__name__}"
-                        )
+            f"[Grid][Types] routing_meta_type={type({}).__name__} "
+            f"kb_retriever_type={type(kb_retriever).__name__} "
+            f"ticket_type={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
+            f"models_type={type(models_loaded).__name__}"
+        )
                         raise
                     raise
             release_local_models(models_loaded)
@@ -363,7 +401,7 @@ def main() -> None:
         print(traceback.format_exc())
         print(
             f"[Grid][Types] tickets_type={type(locals().get('tickets'))} "
-            f"first_ticket={type(tickets[0]).__name__ if 'tickets' in locals() and tickets else 'n/a'} "
+            f"first_ticket={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
             f"kb_type={type(kb_loader)}"
         )
         if args.verbose:
