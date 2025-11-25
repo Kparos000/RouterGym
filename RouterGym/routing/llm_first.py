@@ -3,7 +3,15 @@
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract, SelfRepair, normalize_output, _call_model
+from RouterGym.agents.generator import (
+    CLASS_LABELS,
+    SchemaContract,
+    SelfRepair,
+    classification_instruction,
+    infer_category_from_text,
+    normalize_output,
+    _call_model,
+)
 from RouterGym.contracts.json_contract import JSONContract
 from RouterGym.utils.kb_utils import coerce_kb_hits
 
@@ -62,8 +70,9 @@ class LLMFirstRouter(BaseRouter):
             prompt_parts.append(f"[Memory]\n{memory_context}")
         if kb_snippets:
             prompt_parts.append("\n\n".join([f"[KB]\n{snip}" for snip in kb_snippets]))
+        prompt_parts.append(classification_instruction())
         prompt_parts.append(
-            "Classify the ticket and return JSON with fields final_answer, reasoning, predicted_category."
+            f"Use predicted_category from: {', '.join(CLASS_LABELS)}. Respond with JSON only."
         )
         prompt = "\n\n".join(prompt_parts)
 
@@ -83,7 +92,7 @@ class LLMFirstRouter(BaseRouter):
             final_output = normalize_output(parsed)
 
         if not final_output.get("predicted_category"):
-            final_output["predicted_category"] = _infer_category(text, "")
+            final_output["predicted_category"] = infer_category_from_text(text)
 
         steps = [
             {"stage": "select_model", "model": "slm" if use_slm else "llm"},

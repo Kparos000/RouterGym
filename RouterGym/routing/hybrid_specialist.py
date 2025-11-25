@@ -4,7 +4,15 @@ import json
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import SchemaContract, SelfRepair, normalize_output, _call_model
+from RouterGym.agents.generator import (
+    CLASS_LABELS,
+    SchemaContract,
+    SelfRepair,
+    classification_instruction,
+    infer_category_from_text,
+    normalize_output,
+    _call_model,
+)
 from RouterGym.contracts.json_contract import JSONContract
 from RouterGym.utils.kb_utils import coerce_kb_hits
 
@@ -49,8 +57,12 @@ class HybridSpecialistRouter(BaseRouter):
         llm = models.get("llm1") or models.get("llm2")
 
         # Stage 1: classification
-        classify_prompt = (
-            f"[Classify] {text}\nReturn JSON with final_answer, reasoning, predicted_category."
+        classify_prompt = "\n".join(
+            [
+                f"[Classify] {text}",
+                classification_instruction(),
+                f"Use predicted_category from: {', '.join(CLASS_LABELS)}.",
+            ]
         )
         classify_output = _call_model(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
 
@@ -69,6 +81,8 @@ class HybridSpecialistRouter(BaseRouter):
             [
                 text,
                 f"[Snippet]\n{snippet_text}" if snippet_text else "",
+                classification_instruction(),
+                f"Use predicted_category from: {', '.join(CLASS_LABELS)}.",
                 "Draft JSON with final_answer, reasoning, predicted_category (classify the ticket).",
             ]
         )
@@ -83,7 +97,7 @@ class HybridSpecialistRouter(BaseRouter):
             repaired = sr.repair(llm if force_llm else slm, draft_prompt, draft_raw, contract) if (llm or slm) else draft_norm
             draft_norm = normalize_output(repaired)
         if not draft_norm.get("predicted_category"):
-            draft_norm["predicted_category"] = _infer_category(text, "")
+            draft_norm["predicted_category"] = infer_category_from_text(text)
 
         # Stage 4: LLM rewrite
         rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
@@ -93,7 +107,7 @@ class HybridSpecialistRouter(BaseRouter):
         if not (ok_json and contract.validate(final_output)[0]):
             final_output = draft_norm
         if not final_output.get("predicted_category"):
-            final_output["predicted_category"] = draft_norm.get("predicted_category", _infer_category(text, ""))
+            final_output["predicted_category"] = draft_norm.get("predicted_category", infer_category_from_text(text))
 
         steps = [
             {"stage": "classify_slm", "output": normalize_output(classify_output)},

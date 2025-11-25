@@ -26,7 +26,7 @@ from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
-from RouterGym.agents.generator import normalize_output
+from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
 
 
@@ -197,6 +197,8 @@ def run_single(
         kb_used_in_prompt = bool(kb_texts) and memory_mode in {"rag", "salience"}
         gold_category = _norm_label(ticket.get("gold_category", ticket.get("category", "")))
         predicted_category = _norm_label(final_output.get("predicted_category", routing_meta.get("predicted_category", "")))
+        if predicted_category not in CLASS_LABELS or predicted_category == "unknown":
+            predicted_category = infer_category_from_text(ticket.get("text", ""))
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),

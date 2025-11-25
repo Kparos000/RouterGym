@@ -133,7 +133,13 @@ def router_conversion_rate(router_stats: List[Dict[str, Any]]) -> float:
 
 
 def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
-    """Compute all metrics from a record."""
+    """Compute all metrics from a record.
+
+    gold_category comes from the dataset; predicted_category comes from the model output.
+    accuracy is an exact match between normalized predicted_category and gold_category
+    (unknown/other counts as incorrect). Groundedness compares the answer to KB snippets
+    that were actually injected into the prompt for this ticket.
+    """
     output_raw = record.get("output", "")
     output = output_raw.get("final_answer") if isinstance(output_raw, dict) else output_raw
     label = _normalize_label(str(record.get("gold_category", record.get("label", ""))))
