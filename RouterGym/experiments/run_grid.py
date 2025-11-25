@@ -288,7 +288,7 @@ def run_full_grid(
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
     try:
-        models_loaded = load_models(sanity=False, slm_subset=slm_subset)
+        models_loaded = load_models(sanity=False, slm_subset=slm_subset, force_llm=force_llm)
     except Exception:
         models_loaded = None
 
@@ -299,7 +299,7 @@ def run_full_grid(
 
     router_list = routers or ROUTER_NAMES
     memory_list = memories or MEMORY_MODES
-    model_list = models or MODEL_NAMES
+    model_list = models or (["llm1", "llm2"] if force_llm else MODEL_NAMES)
 
     for router_name in router_list:
         for memory_mode in memory_list:
@@ -387,7 +387,7 @@ def main() -> None:
 
         if args.verbose:
             print("[Grid] Loading models...")
-        _ = load_models(sanity=False, slm_subset=slm_subset)
+        _ = load_models(sanity=False, slm_subset=slm_subset, force_llm=args.force_llm)
 
         df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm, slm_subset=slm_subset)
         out_dir = RESULTS_DIR / "experiments"

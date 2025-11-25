@@ -98,37 +98,46 @@ class LocalPipelineEngine:
 
 
 class RemoteLLMEngine:
-    """Wrapper around HF InferenceClient to expose a .generate interface."""
+    """Wrapper around HF InferenceClient to expose a .generate interface with timeout/retries."""
 
-    def __init__(self, model_id: str, token: Optional[str] = None) -> None:
+    def __init__(self, model_id: str, token: Optional[str] = None, timeout: int = 30, max_retries: int = 2) -> None:
         self.model_name = model_id
-        self.client = InferenceClient(model=model_id, token=token)
+        self.client = InferenceClient(model=model_id, token=token, timeout=timeout)
+        self.timeout = timeout
+        self.max_retries = max_retries
 
     def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **_: Any) -> str:
-        """Call chat_completion endpoint and normalize the response to string."""
-        try:
-            response = self.client.chat_completion(
-                model=self.model_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_new_tokens,
-                temperature=temperature,
-            )
-            if hasattr(response, "choices") and response.choices:
-                choice = response.choices[0]
-                if isinstance(choice, dict):
-                    return str(choice.get("message", {}).get("content", ""))
-                # OpenAI-like object: choice.message.content
-                msg = getattr(choice, "message", None)
-                if isinstance(msg, dict):
-                    return str(msg.get("content", ""))
-                if msg is not None and hasattr(msg, "__getitem__"):
-                    try:
-                        return str(msg["content"])
-                    except Exception:
-                        pass
-            return ""
-        except Exception:
-            return "[repair-response]"
+        """Call chat_completion endpoint with retries and normalize the response to string."""
+        last_error: Optional[Exception] = None
+        for attempt in range(self.max_retries):
+            try:
+                response = self.client.chat_completion(
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_new_tokens,
+                    temperature=temperature,
+                )
+                if hasattr(response, "choices") and response.choices:
+                    choice = response.choices[0]
+                    if isinstance(choice, dict):
+                        return str(choice.get("message", {}).get("content", ""))
+                    msg = getattr(choice, "message", None)
+                    if isinstance(msg, dict):
+                        return str(msg.get("content", ""))
+                    if msg is not None and hasattr(msg, "__getitem__"):
+                        try:
+                            return str(msg["content"])
+                        except Exception:
+                            pass
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                continue
+        if last_error:
+            # Log failure in return string to avoid hang
+            return f"[llm-timeout:{self.model_name}]"
+        return ""
 
     def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
         return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
@@ -178,7 +187,7 @@ def _load_llm(entry: ModelEntry) -> Any:
     return RemoteLLMEngine(entry.hf_id, token=token)
 
 
-def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None) -> Dict[str, Any]:
+def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
     """Load small models locally; large models via remote inference."""
     models: Dict[str, Any] = {}
     use_google_slm = (os.getenv("USE_GOOGLE_SLM") or "false").lower() == "true"
@@ -193,12 +202,13 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None) ->
         models[entry.name] = _load_slm(entry)
         return models
 
-    for name in slm_names:
-        entry = SMALL_MODELS[name]
-        if entry.name == "slm_phi2" and use_google_slm and google_key:
-            models[entry.name] = RemoteGoogleSLMEngine(api_key=google_key)
-        else:
-            models[entry.name] = _load_slm(entry)
+    if not force_llm:
+        for name in slm_names:
+            entry = SMALL_MODELS[name]
+            if entry.name == "slm_phi2" and use_google_slm and google_key:
+                models[entry.name] = RemoteGoogleSLMEngine(api_key=google_key)
+            else:
+                models[entry.name] = _load_slm(entry)
     for entry in LARGE_MODELS.values():
         models[entry.name] = _load_llm(entry)
     return models
