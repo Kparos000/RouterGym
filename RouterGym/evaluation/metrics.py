@@ -12,7 +12,14 @@ except Exception:  # pragma: no cover
     SentenceTransformer = None  # type: ignore
 
 EMBED_MODEL = "all-MiniLM-L6-v2"
-_embedder = SentenceTransformer(EMBED_MODEL) if SentenceTransformer is not None else None
+_embedder = None
+
+
+def _get_embedder():
+    global _embedder
+    if _embedder is None and SentenceTransformer is not None:
+        _embedder = SentenceTransformer(EMBED_MODEL)
+    return _embedder
 
 
 @dataclass
@@ -30,9 +37,10 @@ class MetricResult:
 
 
 def _embed(texts: List[str]) -> np.ndarray:
-    if _embedder is None or not texts:
+    embedder = _get_embedder()
+    if embedder is None or not texts:
         return np.zeros((0, 0), dtype="float32")
-    return np.array(_embedder.encode(texts), dtype="float32")
+    return np.array(embedder.encode(texts), dtype="float32")
 
 
 def schema_validity(pred: Any) -> int:
