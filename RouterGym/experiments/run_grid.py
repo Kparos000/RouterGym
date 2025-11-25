@@ -27,7 +27,6 @@ from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
 from RouterGym.agents.generator import normalize_output
-from RouterGym.utils.kb_utils import coerce_kb_hits
 from RouterGym.contracts.schema_contract import SchemaContract
 
 
@@ -39,6 +38,12 @@ DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
 MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
+
+
+def _norm_label(label: Any) -> str:
+    """Normalize category labels."""
+    text = str(label or "").strip().lower()
+    return text or "unknown"
 
 
 def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -53,25 +58,29 @@ def _coerce_tickets(tickets: Any) -> List[Dict[str, Any]]:
     records: List[Dict[str, Any]] = []
     if isinstance(tickets, pd.DataFrame):
         for idx, row in tickets.iterrows():
+            label = _norm_label(row.get("category", row.get("label", "")))
             rec = {
                 "id": row.get("id", idx),
                 "text": row.get("text", row.get("document", "")),
-                "category": row.get("category", row.get("label", "")),
+                "category": label,
+                "gold_category": label,
             }
             records.append(rec)
         return records
     if isinstance(tickets, list):
         for idx, t in enumerate(tickets):
             if isinstance(t, dict):
+                label = _norm_label(t.get("category", t.get("label", "")))
                 records.append(
                     {
                         "id": t.get("id", idx),
                         "text": t.get("text", ""),
-                        "category": t.get("category", t.get("label", "")),
+                        "category": label,
+                        "gold_category": label,
                     }
                 )
             else:
-                records.append({"id": idx, "text": str(t), "category": ""})
+                records.append({"id": idx, "text": str(t), "category": "unknown", "gold_category": "unknown"})
     return records
 
 
@@ -88,7 +97,8 @@ def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None)
         df = dataset_loader.load_dataset(limit if limit is not None else None)
         records: List[Dict[str, Any]] = []
         for idx, row in df.iterrows():
-            records.append({"id": idx, "text": row.get("text", ""), "category": row.get("label")})
+            label = _norm_label(row.get("label"))
+            records.append({"id": idx, "text": row.get("text", ""), "category": label, "gold_category": label})
         return records
     except Exception:
         return []
@@ -174,7 +184,8 @@ def run_single(
         memory = init_memory(memory_mode)
         memory.add(ticket.get("text", ""))
         memory_context = memory.get_context()
-        routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
+        router_kb = kb_retriever if memory_mode in {"rag", "salience"} else None
+        routing_meta = router.route(ticket, kb=router_kb, models=models, memory=memory, force_llm=force_llm) if router else {}
         routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
         routing_time = (time.perf_counter() - t_route_start) * 1000
         t_gen_start = time.perf_counter()
@@ -183,12 +194,15 @@ def run_single(
         schema = SchemaContract()
         schema_valid, _ = schema.validate(final_output)
         kb_texts = list(routing_meta.get("kb_snippets", [])) if isinstance(routing_meta, dict) else []
+        kb_used_in_prompt = bool(kb_texts) and memory_mode in {"rag", "salience"}
+        gold_category = _norm_label(ticket.get("gold_category", ticket.get("category", "")))
+        predicted_category = _norm_label(final_output.get("predicted_category", routing_meta.get("predicted_category", "")))
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
             "memory": memory_mode,
             "target_model": routing_meta.get("target_model", "slm"),
-            "kb_attached": routing_meta.get("kb_attached", False),
+            "kb_attached": kb_used_in_prompt,
             "routing_meta": routing_meta,
             "memory_context": memory_context,
             "result": "success",
@@ -201,7 +215,8 @@ def run_single(
             "model_used": routing_meta.get("model_used", "slm"),
             "json_valid": True,
             "schema_valid": schema_valid,
-            "predicted_category": final_output.get("predicted_category", "") or routing_meta.get("predicted_category", ""),
+            "predicted_category": predicted_category,
+            "gold_category": gold_category,
             "routing_time": routing_time,
             "retrieval_time": 0.0,
             "generation_time": generation_time,
@@ -211,24 +226,14 @@ def run_single(
             "prompt": routing_meta.get("prompt", ""),
         }
         # compute metrics
-        if not kb_texts and kb_retriever:
-            try:
-                t_retr_start = time.perf_counter()
-                raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
-                hits = coerce_kb_hits(raw_hits)
-                kb_texts = [h["text"] for h in hits if h["text"]]
-                record["retrieval_time"] = (time.perf_counter() - t_retr_start) * 1000
-            except Exception:
-                kb_texts = []
-        record["kb_snippets"] = kb_texts
-        record["kb_attached"] = bool(kb_texts)
+        record["kb_snippets"] = kb_texts if kb_used_in_prompt else []
         t_metrics_start = time.perf_counter()
         metric_values = eval_metrics.compute_all_metrics(
             {
                 "output": record["output"],
-                "label": ticket.get("category", ""),
-                "predicted": record.get("predicted_category", ""),
-                "kb_snippets": kb_texts,
+                "gold_category": record.get("gold_category", ""),
+                "predicted_category": record.get("predicted_category", ""),
+                "kb_snippets": record["kb_snippets"],
                 "model_used": record["model_used"],
                 "latency_ms": record["latency_ms"],
                 "kb_attached": record["kb_attached"],
@@ -355,6 +360,8 @@ def run_full_grid(
                                 "model_used": safe_rec.get("model_used", ""),
                                 "json_valid": bool(safe_rec.get("json_valid", False)),
                                 "schema_valid": bool(safe_rec.get("schema_valid", False)),
+                                "gold_category": safe_rec.get("gold_category", ""),
+                                "predicted_category": safe_rec.get("predicted_category", ""),
                             }
                         )
                 except Exception:

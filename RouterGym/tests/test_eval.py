@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy as np
+
 from RouterGym.evaluation import metrics
 
 
-def test_groundedness_similarity() -> None:
-    score = metrics.groundedness_score("hello world", ["hello there"])
-    assert score > 0
+def test_groundedness_similarity(monkeypatch: Any) -> None:
+    def fake_embed(texts: list[str]) -> np.ndarray:
+        token_index = {"hello": 0, "world": 1, "kb": 2, "unrelated": 3, "text": 4, "networks": 5}
+        vectors = []
+        for text in texts:
+            vec = np.zeros(len(token_index), dtype="float32")
+            for tok in text.lower().split():
+                if tok in token_index:
+                    vec[token_index[tok]] = 1.0
+            vectors.append(vec)
+        return np.stack(vectors)
+
+    monkeypatch.setattr(metrics, "_embed", fake_embed)
+    score_high = metrics.groundedness_score("hello world", ["hello world context"])
+    score_low = metrics.groundedness_score("unrelated text", ["kb snippet about networks"])
+    assert score_high > score_low
+    assert score_low <= 0.6
 
 
 def test_schema_validity() -> None:
@@ -24,7 +42,7 @@ def test_router_conversion() -> None:
 def test_accuracy_and_cost() -> None:
     rec = {
         "output": {"final_answer": "hello", "reasoning": "r", "predicted_category": "access"},
-        "label": "access",
+        "gold_category": "access",
         "predicted_category": "access",
         "kb_snippets": ["hello world"],
         "kb_attached": True,
@@ -39,7 +57,7 @@ def test_accuracy_and_cost() -> None:
     assert cheaper < expensive
     rec_missing_kb = {
         "output": {"final_answer": "hello", "reasoning": "r", "predicted_category": "unknown"},
-        "label": "access",
+        "gold_category": "access",
         "predicted_category": "unknown",
         "kb_snippets": [],
         "kb_attached": False,

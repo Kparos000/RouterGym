@@ -82,7 +82,11 @@ def groundedness_score(answer: str, kb_snippets: List[str]) -> float:
     sims = norm_kb @ norm_ans.T
     sims = np.clip(sims, -1.0, 1.0)
     normalized = (sims + 1.0) / 2.0
-    return float(normalized.mean())
+    flat = normalized.flatten()
+    if flat.size == 0:
+        return 0.0
+    topk = np.sort(flat)[-min(3, flat.size) :]
+    return float(topk.mean())
 
 
 def faithfulness_score(reasoning: str, kb_snippets: List[str]) -> float:
@@ -103,7 +107,7 @@ def latency(start_time: float, end_time: float) -> float:
 
 
 def _normalize_label(label: str) -> str:
-    return label.strip().lower()
+    return str(label or "").strip().lower() or "unknown"
 
 
 def estimate_tokens(*texts: str) -> int:
@@ -132,14 +136,14 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     """Compute all metrics from a record."""
     output_raw = record.get("output", "")
     output = output_raw.get("final_answer") if isinstance(output_raw, dict) else output_raw
-    label = _normalize_label(str(record.get("label", "")))
-    predicted_label = _normalize_label(str(record.get("predicted", "") or record.get("predicted_category", "")))
+    label = _normalize_label(str(record.get("gold_category", record.get("label", ""))))
+    predicted_label = _normalize_label(str(record.get("predicted_category", record.get("predicted", ""))))
     kb_snippets = record.get("kb_snippets", [])
     model_used = str(record.get("model_used", "slm")).lower()
     reasoning = ""
     if isinstance(output_raw, dict):
         reasoning = output_raw.get("reasoning", "")
-    prompt_text = record.get("prompt_text", "")
+    prompt_text = record.get("prompt_text", record.get("prompt", ""))
     kb_attached = bool(record.get("kb_attached", False))
 
     acc = 1.0 if predicted_label and predicted_label == label and predicted_label not in {"unknown", "other"} else 0.0

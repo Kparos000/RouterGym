@@ -11,6 +11,7 @@ import pandas as pd
 from RouterGym.experiments import run_grid
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.engines import model_registry
+from RouterGym.evaluation import metrics as eval_metrics
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -113,7 +114,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
 
         def route(self, ticket: dict, **kwargs: Any):
             self.count += 1
-            predicted = ["network", "access", "hardware"][self.count % 3]
+            predicted = ["network", "access", "hardware"][(self.count - 1) % 3]
             return {
                 "strategy": "llm_first",
                 "target_model": "llm",
@@ -126,6 +127,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
                 "json_valid": True,
                 "schema_valid": True,
                 "kb_attached": True,
+                "kb_snippets": [f"kb snippet {self.count}"],
             }
 
     monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
@@ -141,6 +143,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
     )
     assert not df.empty
     assert df["kb_attached"].any()
+    assert "gold_category" in df.columns and "predicted_category" in df.columns
     assert df["latency_ms"].max() >= 0
     assert df["accuracy"].nunique() >= 1 or df["groundedness"].nunique() >= 1
 
@@ -167,6 +170,37 @@ def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
     )
     assert not df.empty
     assert "router" in df.columns
+
+
+def test_kb_attached_depends_on_memory(monkeypatch: Any) -> None:
+    """kb_attached should reflect prompt inclusion, not retriever existence."""
+    monkeypatch.setattr(eval_metrics, "groundedness_score", lambda answer, snippets: 0.9 if snippets else 0.0)
+
+    class FakeRouter:
+        def route(self, *args: Any, **kwargs: Any):
+            return {
+                "strategy": "llm_first",
+                "target_model": "slm",
+                "model_used": "slm",
+                "final_output": {
+                    "final_answer": "ans",
+                    "reasoning": "r",
+                    "predicted_category": "billing",
+                },
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": True,
+                "kb_snippets": ["kb used"],
+            }
+
+    ticket = {"id": 1, "text": "hello", "category": "billing"}
+    res_none = run_grid.run_single(ticket, FakeRouter(), "none", kb_retriever=None, models=None)
+    assert res_none["kb_attached"] is False
+    assert res_none["groundedness"] == 0.0
+
+    res_rag = run_grid.run_single(ticket, FakeRouter(), "rag", kb_retriever=None, models=None)
+    assert res_rag["kb_attached"] is True
+    assert res_rag["groundedness"] == 0.9
 
 
 def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
