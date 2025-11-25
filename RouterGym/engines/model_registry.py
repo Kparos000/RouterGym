@@ -109,6 +109,18 @@ class RemoteLLMEngine:
     def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **_: Any) -> str:
         """Call chat_completion endpoint with retries and normalize the response to string."""
         last_error: Optional[Exception] = None
+        response_schema = {
+            "name": "RouterGymResponse",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "final_answer": {"type": "string"},
+                    "reasoning": {"type": "string"},
+                },
+                "required": ["final_answer", "reasoning"],
+            },
+            "strict": True,
+        }
         for attempt in range(self.max_retries):
             try:
                 response = self.client.chat_completion(
@@ -116,6 +128,7 @@ class RemoteLLMEngine:
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=max_new_tokens,
                     temperature=temperature,
+                    response_format={"type": "json_schema", "json_schema": response_schema},
                 )
                 if hasattr(response, "choices") and response.choices:
                     choice = response.choices[0]
@@ -135,8 +148,8 @@ class RemoteLLMEngine:
                 last_error = exc
                 continue
         if last_error:
-            # Log failure in return string to avoid hang
-            return f"[llm-timeout:{self.model_name}]"
+            # Fallback JSON to avoid downstream crashes
+            return '{"final_answer":"LLM unavailable","reasoning":"timeout or error"}'
         return ""
 
     def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:

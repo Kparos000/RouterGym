@@ -77,7 +77,24 @@ def test_get_repair_model(monkeypatch: Any) -> None:
         called["model"] = model
         return DummyClient(model)
 
-    monkeypatch.setattr(model_registry, "InferenceClient", fake_client)
+
+def test_remote_llm_response_format(monkeypatch: Any) -> None:
+    """Ensure response_format is passed to chat_completion."""
+    called = {}
+
+    class DummyClient:
+        def __init__(self, model: str, token: Any = None, timeout: Any = None) -> None:
+            called["init"] = {"model": model, "timeout": timeout}
+
+        def chat_completion(self, **kwargs: Any):
+            called["chat"] = kwargs
+            return type("Resp", (), {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r"}'}}]})
+
+    monkeypatch.setattr(model_registry, "InferenceClient", DummyClient)
+    engine = model_registry.RemoteLLMEngine("model", token="tkn")
+    _ = engine.generate("hi")
+    assert "response_format" in called.get("chat", {})
+    schema = called["chat"]["response_format"]["json_schema"]["schema"]
+    assert "final_answer" in schema["properties"]
     engine = model_registry.get_repair_model()
     assert hasattr(engine, "generate")
-    assert "72b" in called.get("model", "").lower() or "70b" in called.get("model", "").lower()

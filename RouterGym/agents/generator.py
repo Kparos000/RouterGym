@@ -125,7 +125,8 @@ class SelfRepair:
             log.error("Contract failure: invalid JSON")
 
         attempt_output = bad_output
-        for attempt in range(self.max_retries):
+        max_attempts = 1 if callable(repair_model) else self.max_retries
+        for attempt in range(max_attempts):
             repair_prompt = (
                 f"{prompt}\n\nYour previous output violated the schema. "
                 "Fix only the missing/incorrect fields and return valid JSON."
