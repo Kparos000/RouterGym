@@ -1,6 +1,6 @@
 """RAG memory backend."""
 
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -18,11 +18,72 @@ class RAGMemory(MemoryBase):
 
     def __init__(self, top_k: int = 3, embed_model: str = "all-MiniLM-L6-v2") -> None:
         self.top_k = top_k
+        self.embed_model = embed_model
         self.docs: List[str] = []
         self.kb = kb_loader.load_kb()
+        self.doc_keys, self.doc_texts = self._collect_docs(self.kb)
+        self.kb_hash = self._kb_hash_safe()
         self.embedder = SentenceTransformer(embed_model) if SentenceTransformer is not None else None
-        self.doc_texts = list(self.kb.values()) if isinstance(self.kb, dict) else []
-        self.doc_embeddings = self._embed(self.doc_texts)
+        cached = self._load_cached_embeddings()
+        if cached is not None:
+            self.doc_embeddings = cached
+        else:
+            self.doc_embeddings = self._embed(self.doc_texts)
+            self._maybe_cache_embeddings(self.doc_embeddings)
+
+    def _collect_docs(self, kb: Dict[str, str] | Any) -> Tuple[List[str], List[str]]:
+        if isinstance(kb, dict):
+            items = sorted(kb.items())
+            keys = [path for path, _ in items]
+            texts = [text for _, text in items]
+            return keys, texts
+        return [], []
+
+    def _kb_hash_safe(self) -> str:
+        try:
+            return kb_loader.kb_hash()
+        except Exception:
+            return ""
+
+    def _cache_key(self) -> str:
+        return f"{self.embed_model}:{self.kb_hash}"
+
+    def _load_cached_embeddings(self) -> np.ndarray | None:
+        if self.embedder is None or not self.kb_hash or not self.doc_texts:
+            return None
+        try:
+            cache = kb_loader.load_cached_embeddings()
+            entry = cache.get(self._cache_key(), {})
+        except Exception:
+            return None
+        if not isinstance(entry, dict):
+            return None
+        if entry.get("kb_hash") != self.kb_hash or entry.get("model") != self.embed_model:
+            return None
+        if entry.get("kb_order") and entry["kb_order"] != self.doc_keys:
+            return None
+        embeddings = entry.get("embeddings")
+        if embeddings is None:
+            return None
+        arr = np.array(embeddings, dtype="float32")
+        if arr.shape[0] != len(self.doc_texts):
+            return None
+        return arr
+
+    def _maybe_cache_embeddings(self, embeddings: np.ndarray) -> None:
+        if self.embedder is None or not self.kb_hash or embeddings.size == 0:
+            return
+        try:
+            cache = kb_loader.load_cached_embeddings()
+            cache[self._cache_key()] = {
+                "kb_hash": self.kb_hash,
+                "kb_order": self.doc_keys,
+                "model": self.embed_model,
+                "embeddings": embeddings,
+            }
+            kb_loader.save_cached_embeddings(cache)
+        except Exception:
+            return
 
     def _embed(self, texts: List[str]) -> np.ndarray:
         if self.embedder is None or not texts:

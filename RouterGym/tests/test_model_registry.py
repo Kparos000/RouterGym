@@ -1,100 +1,91 @@
-"""Model registry tests."""
+"""Model registry tests for remote-only engines."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, List
 
 from RouterGym.engines import model_registry
 
 
-class DummyPipeline:
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, prompt: str, **kwargs: Any) -> str:
-        return f"pipeline:{prompt}"
-
-
 class DummyClient:
-    def __init__(self, model: str) -> None:
-        self.model = model
+    def __init__(
+        self,
+        model: str | None = None,
+        token: str | None = None,
+        timeout: int | None = None,
+    ) -> None:
+        self.init_args = {"model": model, "token": token, "timeout": timeout}
+        self.calls: List[dict[str, Any]] = []
 
     def chat_completion(self, **kwargs: Any):
-        return type("Resp", (), {"choices": [{"message": {"content": f"remote:{self.model}"}}]})
+        self.calls.append(kwargs)
+        return type(
+            "Resp",
+            (),
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'
+                        }
+                    }
+                ]
+            },
+        )
 
 
-def test_sanity_loads_small_model(monkeypatch: Any) -> None:
-    calls = {}
+def test_load_models_all_remote(monkeypatch: Any) -> None:
+    """All model entries should be remote engines and respect subsets."""
+    created: list[str] = []
 
-    def fake_pipeline(task: str, model: str, tokenizer: Any = None, device: int = -1):
-        calls["model"] = model
-        return DummyPipeline()
+    def fake_client(
+        model: str | None = None,
+        token: str | None = None,
+        timeout: int | None = None,
+    ):
+        created.append(model or "")
+        return DummyClient(model=model, token=token, timeout=timeout)
 
-    monkeypatch.setattr(model_registry, "AutoTokenizer", type("Tok", (), {"from_pretrained": staticmethod(lambda m: m)}))  # type: ignore[arg-type]
-    monkeypatch.setattr(model_registry, "AutoModelForCausalLM", type("Model", (), {"from_pretrained": staticmethod(lambda m, torch_dtype=None: m)}))  # type: ignore[arg-type]
-    monkeypatch.setattr(model_registry, "pipeline", fake_pipeline)
-    models = model_registry.load_models(sanity=True)
-    assert len(models) == 1
-    engine = next(iter(models.values()))
-    engine("prompt")  # trigger lazy load
-    assert "phi-3" in str(calls.get("model", "")).lower()
-
-
-def test_large_models_use_remote(monkeypatch: Any) -> None:
-    remote_called = []
-
-    def fake_client(model: str, token: Any = None, timeout: Any = None):
-        remote_called.append(model)
-        return DummyClient(model)
-
-    def fake_pipeline(task: str, model: str, tokenizer: Any = None, device: int = -1):
-        return DummyPipeline()
-
-    monkeypatch.setattr(model_registry, "AutoTokenizer", type("Tok", (), {"from_pretrained": staticmethod(lambda m: None)}))
-    monkeypatch.setattr(model_registry, "AutoModelForCausalLM", type("Model", (), {"from_pretrained": staticmethod(lambda m, torch_dtype=None: None)}))
     monkeypatch.setattr(model_registry, "InferenceClient", fake_client)
-    monkeypatch.setattr(model_registry, "pipeline", fake_pipeline)
     models = model_registry.load_models(sanity=False)
-    assert any("72b" in m.lower() for m in remote_called)
-    assert any("llama-3" in m.lower() for m in remote_called)
-    assert any(name.startswith("slm") for name in models)
-    assert any(name.startswith("llm") for name in models)
+    assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
+    assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
+    assert any("Mistral" in m or "mistral" in m for m in created)
+    assert any("Llama" in m or "llama" in m for m in created)
+
+
+def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
+    """Sanity mode should still produce one SLM and one LLM engine."""
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    models = model_registry.load_models(sanity=True)
+    kinds = {getattr(engine, "kind", "") for engine in models.values()}
+    assert "slm" in kinds
+    assert "llm" in kinds
+    assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
+
+
+def test_remote_engine_response_format(monkeypatch: Any) -> None:
+    """Ensure response_format is passed to chat_completion."""
+    captured = {}
+
+    class CapturingClient(DummyClient):
+        def chat_completion(self, **kwargs: Any):
+            captured.update(kwargs)
+            return super().chat_completion(**kwargs)
+
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: CapturingClient(*args, **kwargs))
+    engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
+    _ = engine.generate("hi")
+    assert captured.get("model") == "model"
+    assert captured.get("response_format", {}).get("type") == "json_object"
+    assert captured.get("messages")
+    assert captured.get("max_tokens") is not None
+    assert captured.get("temperature") is not None
 
 
 def test_get_repair_model(monkeypatch: Any) -> None:
-    """Repair model should be a remote engine, not a local pipeline."""
-    class DummyClient:
-        def __init__(self, model: str) -> None:
-            self.model = model
-
-        def text_generation(self, prompt: str, **kwargs: Any) -> str:
-            return f"remote:{self.model}"
-
-    called = {}
-
-    def fake_client(model: str, token: Any = None, timeout: Any = None):
-        called["model"] = model
-        return DummyClient(model)
-
-
-def test_remote_llm_response_format(monkeypatch: Any) -> None:
-    """Ensure response_format is passed to chat_completion."""
-    called = {}
-
-    class DummyClient:
-        def __init__(self, model: str, token: Any = None, timeout: Any = None) -> None:
-            called["init"] = {"model": model, "timeout": timeout}
-
-        def chat_completion(self, **kwargs: Any):
-            called["chat"] = kwargs
-            return type("Resp", (), {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r"}'}}]})
-
-    monkeypatch.setattr(model_registry, "InferenceClient", DummyClient)
-    engine = model_registry.RemoteLLMEngine("model", token="tkn")
-    _ = engine.generate("hi")
-    assert "response_format" in called.get("chat", {})
-    schema = called["chat"]["response_format"]["json_schema"]["schema"]
-    assert "final_answer" in schema["properties"]
+    """Repair model should return strongest LLM remote engine."""
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
     engine = model_registry.get_repair_model()
-    assert hasattr(engine, "generate")
+    assert isinstance(engine, model_registry.RemoteInferenceEngine)
+    assert engine.kind == "llm"

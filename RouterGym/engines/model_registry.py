@@ -1,15 +1,14 @@
-"""Model registry with local SLM pipelines and remote LLM inference."""
+"""Model registry using only remote HF Inference chat endpoints."""
 
 from __future__ import annotations
 
+import json
 import os
-from os import PathLike
 from dataclasses import dataclass
+from os import PathLike
 from typing import IO, Any, Callable, Dict, Optional
 
-import torch  # type: ignore
 from huggingface_hub import InferenceClient  # type: ignore
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # type: ignore
 
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv as _load_dotenv  # type: ignore
@@ -40,205 +39,158 @@ class ModelEntry:
     kind: str  # slm or llm
 
 
-SMALL_MODELS: Dict[str, ModelEntry] = {
-    "slm_phi3": ModelEntry("slm_phi3", "microsoft/Phi-3-mini-4k-instruct", "slm"),
-    "slm_phi2": ModelEntry("slm_phi2", "microsoft/phi-2", "slm"),
+SLM_MODELS: Dict[str, ModelEntry] = {
+    "slm1": ModelEntry("slm1", "mistralai/Mistral-7B-Instruct-v0.3", "slm"),
+    "slm2": ModelEntry("slm2", "meta-llama/Meta-Llama-3-8B-Instruct", "slm"),
 }
 
-LARGE_MODELS: Dict[str, ModelEntry] = {
+LLM_MODELS: Dict[str, ModelEntry] = {
     "llm1": ModelEntry("llm1", "Qwen/Qwen2-72B-Instruct", "llm"),
     "llm2": ModelEntry("llm2", "meta-llama/Meta-Llama-3-70B-Instruct", "llm"),
 }
 
 
-_LOCAL_CACHE: Dict[str, Any] = {}
+class RemoteInferenceEngine:
+    """Remote HF InferenceClient wrapper with chat_completion + retries."""
 
-
-class LocalPipelineEngine:
-    """Lazy local HF pipeline wrapper with caching."""
-
-    def __init__(self, model_id: str) -> None:
-        self.model_id = model_id
-        self.pipeline: Optional[Any] = _LOCAL_CACHE.get(model_id)
-
-    def _ensure_pipeline(self) -> None:
-        if self.pipeline is not None:
-            return
-        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        model = AutoModelForCausalLM.from_pretrained(self.model_id, torch_dtype=dtype)
-        self.pipeline = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            device=-1,
-        )
-        _LOCAL_CACHE[self.model_id] = self.pipeline
-
-    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, do_sample: bool = False, **_: Any) -> str:
-        self._ensure_pipeline()
-        if self.pipeline is None:  # Safety for type-checkers
-            raise RuntimeError("Pipeline failed to initialize")
-        outputs = self.pipeline(
-            prompt,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            do_sample=do_sample,
-            return_full_text=False,
-        )
-        if isinstance(outputs, list) and outputs and isinstance(outputs[0], dict):
-            return str(outputs[0].get("generated_text", ""))
-        return str(outputs)
-
-    def unload(self) -> None:
-        """Release cached pipeline to free memory."""
-        if self.pipeline is not None:
-            self.pipeline = None
-        _LOCAL_CACHE.pop(self.model_id, None)
-
-
-class RemoteLLMEngine:
-    """Wrapper around HF InferenceClient to expose a .generate interface with timeout/retries."""
-
-    def __init__(self, model_id: str, token: Optional[str] = None, timeout: int = 30, max_retries: int = 2) -> None:
+    def __init__(
+        self,
+        model_id: str,
+        kind: str = "llm",
+        token: Optional[str] = None,
+        timeout: int = 30,
+        max_retries: int = 1,
+    ) -> None:
         self.model_name = model_id
+        self.kind = kind
         self.client = InferenceClient(model=model_id, token=token, timeout=timeout)
         self.timeout = timeout
         self.max_retries = max_retries
 
-    def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **_: Any) -> str:
+    def _extract_content(self, response: Any) -> Optional[str]:
+        if response is None or not hasattr(response, "choices"):
+            return None
+        choices = getattr(response, "choices", None)
+        if not choices:
+            return None
+        first = choices[0]
+        if isinstance(first, dict):
+            msg = first.get("message") or {}
+            return str(msg.get("content", ""))
+        msg = getattr(first, "message", None)
+        if isinstance(msg, dict):
+            return str(msg.get("content", ""))
+        if msg is not None and hasattr(msg, "__getitem__"):
+            try:
+                return str(msg["content"])
+            except Exception:
+                return None
+        return None
+
+    def generate(
+        self,
+        prompt: str,
+        max_new_tokens: int = 256,
+        temperature: float = 0.2,
+        **kwargs: Any,
+    ) -> str:
         """Call chat_completion endpoint with retries and normalize the response to string."""
-        last_error: Optional[Exception] = None
-        response_schema = {
-            "name": "RouterGymResponse",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "final_answer": {"type": "string"},
-                    "reasoning": {"type": "string"},
-                },
-                "required": ["final_answer", "reasoning"],
-            },
-            "strict": True,
-        }
-        for attempt in range(self.max_retries):
+        fallback = json.dumps(
+            {
+                "final_answer": "LLM unavailable",
+                "reasoning": "timeout or error",
+                "predicted_category": "unknown",
+            }
+        )
+        for _attempt in range(max(1, self.max_retries + 1)):
             try:
                 response = self.client.chat_completion(  # type: ignore[call-overload]
-                    messages=[{"role": "user", "content": prompt}],
                     model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}],
                     max_tokens=max_new_tokens,
                     temperature=temperature,
-                    response_format={"type": "json_schema", "json_schema": response_schema},
+                    response_format={"type": "json_object"},
                 )
-                if hasattr(response, "choices") and response.choices:
-                    choice = response.choices[0]
-                    if isinstance(choice, dict):
-                        return str(choice.get("message", {}).get("content", ""))
-                    msg = getattr(choice, "message", None)
-                    if isinstance(msg, dict):
-                        return str(msg.get("content", ""))
-                    if msg is not None and hasattr(msg, "__getitem__"):
-                        try:
-                            return str(msg["content"])
-                        except Exception:
-                            pass
-                last_error = None
-                break
-            except Exception as exc:
-                last_error = exc
+                content = self._extract_content(response)
+                if content is not None:
+                    return str(content)
+            except Exception:
                 continue
-        if last_error:
-            # Fallback JSON to avoid downstream crashes
-            return '{"final_answer":"LLM unavailable","reasoning":"timeout or error"}'
-        return ""
+        return fallback
 
-    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
+    def __call__(
+        self,
+        prompt: str,
+        max_new_tokens: int = 256,
+        temperature: float = 0.2,
+        **kwargs: Any,
+    ) -> str:
         return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
 
 
-class RemoteGoogleSLMEngine:
-    """Minimal remote SLM engine using a Google/Gemini-style endpoint."""
-
-    def __init__(self, api_key: str, model: str = "gemini-pro") -> None:
-        self.api_key = api_key
-        self.model = model
-
-    def generate(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
-        try:
-            import requests  # type: ignore
-        except Exception:
-            return "[google-slm-unavailable]"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": max_new_tokens, "temperature": temperature},
-        }
-        try:
-            resp = requests.post(url, json=payload, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            candidates = data.get("candidates") or []
-            if candidates and "content" in candidates[0]:
-                parts = candidates[0]["content"].get("parts") or []
-                if parts and "text" in parts[0]:
-                    return str(parts[0]["text"])
-        except Exception:
-            return "[google-slm-error]"
-        return "[google-slm-empty]"
-
-    def __call__(self, prompt: str, max_new_tokens: int = 256, temperature: float = 0.2, **kwargs: Any) -> str:
-        return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
+def _get_token() -> Optional[str]:
+    return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
 
 
-def _load_slm(entry: ModelEntry) -> Any:
-    return LocalPipelineEngine(entry.hf_id)
+def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]]) -> list[ModelEntry]:
+    if subset:
+        allowed = set(subset)
+        return [entry for entry in entries.values() if entry.name in allowed]
+    return list(entries.values())
 
 
-def _load_llm(entry: ModelEntry) -> Any:
-    # Remote client only; no local downloads.
-    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
-    return RemoteLLMEngine(entry.hf_id, token=token)
+def _build_engine(entry: ModelEntry, token: Optional[str]) -> RemoteInferenceEngine:
+    return RemoteInferenceEngine(entry.hf_id, kind=entry.kind, token=token)
 
 
 def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
-    """Load small models locally; large models via remote inference."""
+    """Load all models as remote HF Inference engines (no local weights)."""
+    token = _get_token()
     models: Dict[str, Any] = {}
-    use_google_slm = (os.getenv("USE_GOOGLE_SLM") or "false").lower() == "true"
-    google_key = os.getenv("GOOGLE_API_KEY")
-    subset = set(slm_subset or [])
-    slm_names = list(SMALL_MODELS.keys())
-    if subset:
-        slm_names = [name for name in slm_names if name in subset]
-    sanity_target = slm_names[0] if slm_names else "slm_phi3"
+    subset = slm_subset or None
+
+    slm_entries = _filter_entries(SLM_MODELS, subset)
+    llm_entries = _filter_entries(LLM_MODELS, subset)
+
     if sanity:
-        entry = SMALL_MODELS.get(sanity_target, SMALL_MODELS["slm_phi3"])
-        models[entry.name] = _load_slm(entry)
+        if not slm_entries:
+            slm_entries = _filter_entries(SLM_MODELS, None)
+        if not llm_entries:
+            llm_entries = _filter_entries(LLM_MODELS, None)
+
+        if slm_entries:
+            slm_entry = slm_entries[0]
+            models[slm_entry.name] = _build_engine(slm_entry, token)
+        if llm_entries:
+            llm_entry = llm_entries[0]
+            models[llm_entry.name] = _build_engine(llm_entry, token)
         return models
 
+    if force_llm and not llm_entries:
+        llm_entries = _filter_entries(LLM_MODELS, None)
+
     if not force_llm:
-        for name in slm_names:
-            entry = SMALL_MODELS[name]
-            if entry.name == "slm_phi2" and use_google_slm and google_key:
-                models[entry.name] = RemoteGoogleSLMEngine(api_key=google_key)
-            else:
-                models[entry.name] = _load_slm(entry)
-    for entry in LARGE_MODELS.values():
-        models[entry.name] = _load_llm(entry)
+        for entry in slm_entries:
+            models[entry.name] = _build_engine(entry, token)
+
+    for entry in llm_entries:
+        models[entry.name] = _build_engine(entry, token)
+
     return models
+
+
+def get_repair_model() -> RemoteInferenceEngine:
+    """Return the strongest available LLM engine for repair prompts."""
+    token = _get_token()
+    if "llm1" in LLM_MODELS:
+        return _build_engine(LLM_MODELS["llm1"], token)
+    return _build_engine(LLM_MODELS["llm2"], token)
 
 
 __all__ = [
     "load_models",
-    "RemoteLLMEngine",
-    "LocalPipelineEngine",
-    "RemoteGoogleSLMEngine",
-    "SMALL_MODELS",
-    "LARGE_MODELS",
+    "RemoteInferenceEngine",
+    "SLM_MODELS",
+    "LLM_MODELS",
+    "get_repair_model",
 ]
-
-
-def get_repair_model() -> RemoteLLMEngine:
-    """Return the strongest available LLM engine for repair prompts."""
-    if "llm1" in LARGE_MODELS:
-        return _load_llm(LARGE_MODELS["llm1"])
-    return _load_llm(LARGE_MODELS["llm2"])

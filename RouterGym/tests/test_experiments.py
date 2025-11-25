@@ -10,11 +10,25 @@ import pandas as pd
 
 from RouterGym.experiments import run_grid
 from RouterGym.routing.llm_first import LLMFirstRouter
+from RouterGym.engines import model_registry
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 import run_experiments  # type: ignore  # noqa: E402
+
+
+class DummyClient:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+    def chat_completion(self, **kwargs: Any):
+        return type(
+            "Resp",
+            (),
+            {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'}}]},
+        )
 
 
 def test_run_single_and_config(monkeypatch: Any) -> None:
@@ -52,7 +66,11 @@ def test_run_pipeline_with_mocked_outputs(tmp_path: Path, monkeypatch: Any) -> N
         return dummy_df
 
     monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
-    monkeypatch.setattr(run_experiments.eval_stats, "export_anova_results", lambda df, filename=None: tmp_path / "anova.csv")
+    monkeypatch.setattr(
+        run_experiments.eval_stats,
+        "export_anova_results",
+        lambda df, filename=None: tmp_path / "anova.csv",
+    )
 
     run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid)
     assert (tmp_path / "results.csv").exists()
@@ -68,7 +86,11 @@ def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
 
     monkeypatch.setattr(run_experiments, "run_full_grid", fake_grid_runner)
     monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
-    monkeypatch.setattr(run_experiments.eval_stats, "export_anova_results", lambda df, filename=None: tmp_path / "anova.csv")
+    monkeypatch.setattr(
+        run_experiments.eval_stats,
+        "export_anova_results",
+        lambda df, filename=None: tmp_path / "anova.csv",
+    )
     run_experiments.run_pipeline(base_dir=tmp_path, grid_runner=fake_grid_runner, force_llm=True)
     assert captured.get("force_llm") is True
 
@@ -107,7 +129,16 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
             }
 
     monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
-    df = run_grid.run_full_grid(tickets=tickets, kb_retriever=FakeKB(), limit=3, routers=["llm_first"], memories=["rag"], models=["llm1"], verbose=False, force_llm=True)
+    df = run_grid.run_full_grid(
+        tickets=tickets,
+        kb_retriever=FakeKB(),
+        limit=3,
+        routers=["llm_first"],
+        memories=["rag"],
+        models=["llm1"],
+        verbose=False,
+        force_llm=True,
+    )
     assert not df.empty
     assert df["kb_attached"].any()
     assert df["latency_ms"].max() >= 0
@@ -136,3 +167,25 @@ def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
     )
     assert not df.empty
     assert "router" in df.columns
+
+
+def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
+    """Smoke test: remote-only models and grid run with limit=1."""
+
+    # Ensure load_models can initialize without network
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    _ = model_registry.load_models(sanity=True)
+
+    df = run_grid.run_full_grid(
+        limit=1,
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1", "llm1"],
+        force_llm=False,
+        verbose=False,
+    )
+    assert not df.empty
+    assert df["model_used"].isin({"slm", "llm"}).any()
+    assert df["latency_ms"].max() > 0
+    assert df["json_valid"].apply(lambda v: isinstance(v, bool)).all()
+    assert df["schema_valid"].apply(lambda v: isinstance(v, bool)).all()

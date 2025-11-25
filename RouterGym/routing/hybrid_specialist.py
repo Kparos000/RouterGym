@@ -45,7 +45,7 @@ class HybridSpecialistRouter(BaseRouter):
         if memory:
             memory.add(text)
         models = models or {}
-        slm = models.get("slm_phi3") or models.get("slm_phi2")
+        slm = models.get("slm1") or models.get("slm2")
         llm = models.get("llm1") or models.get("llm2")
 
         # Stage 1: classification

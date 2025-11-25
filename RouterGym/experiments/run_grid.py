@@ -38,7 +38,7 @@ DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
 MEMORY_MODES = ["none", "transcript", "rag", "salience"]
-MODEL_NAMES = ["slm_phi3", "slm_phi2", "llm1", "llm2"]
+MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 
 
 def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -76,23 +76,10 @@ def _coerce_tickets(tickets: Any) -> List[Dict[str, Any]]:
 
 
 def release_local_models(models: Optional[Dict[str, Any]]) -> None:
-    """Unload lazy local models and run garbage collection."""
+    """Placeholder for backward compatibility; remote models do not need unloading."""
     if not models:
         return
-    for engine in models.values():
-        unload = getattr(engine, "unload", None)
-        if callable(unload):
-            unload()
     gc.collect()
-    try:  # pragma: no cover - optional
-        import torch  # type: ignore
-
-        if hasattr(torch, "cuda"):
-            torch.cuda.empty_cache()  # type: ignore[attr-defined]
-        if hasattr(torch, "mps"):
-            torch.mps.empty_cache()  # type: ignore[attr-defined]
-    except Exception:
-        pass
 
 
 def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -327,7 +314,12 @@ def run_full_grid(
 
     router_list = routers or ROUTER_NAMES
     memory_list = memories or MEMORY_MODES
-    model_list = models or (["llm1", "llm2"] if force_llm else MODEL_NAMES)
+    if models:
+        model_list = models
+    elif slm_subset:
+        model_list = slm_subset
+    else:
+        model_list = ["llm1", "llm2"] if force_llm else MODEL_NAMES
 
     for router_name in router_list:
         for memory_mode in memory_list:
@@ -357,6 +349,8 @@ def run_full_grid(
                                 "latency_ms": safe_rec.get("latency_ms", 0.0),
                                 "cost_usd": safe_rec.get("cost_usd", 0.0),
                                 "model_used": safe_rec.get("model_used", ""),
+                                "json_valid": bool(safe_rec.get("json_valid", False)),
+                                "schema_valid": bool(safe_rec.get("schema_valid", False)),
                             }
                         )
                 except Exception:

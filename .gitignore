@@ -5,3 +5,4 @@ RouterGym/*/__pycache__/
 RouterGym/results/figures/
 RouterGym/results/raw/
 RouterGym/results/experiments/
+RouterGym/results/cache/

@@ -16,16 +16,16 @@ log = get_logger(__name__)
 def _call_model(model: Any, prompt: str) -> str:
     """Invoke a model or pipeline and normalize the output to string."""
     output = None
-    if callable(model):
-        try:
-            output = model(prompt, max_new_tokens=256, temperature=0.2, do_sample=False, return_full_text=False)
-        except TypeError:
-            output = model(prompt)
-    elif hasattr(model, "generate"):
+    if hasattr(model, "generate"):
         try:
             output = model.generate(prompt, max_new_tokens=256, temperature=0.2)
         except TypeError:
             output = model.generate(prompt)  # type: ignore[call-arg]
+    elif callable(model):
+        try:
+            output = model(prompt, max_new_tokens=256, temperature=0.2)
+        except TypeError:
+            output = model(prompt)
     else:
         return str(prompt)
 
