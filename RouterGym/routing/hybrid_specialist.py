@@ -19,7 +19,7 @@ def _infer_category(text: str, default: str = "") -> str:
         return "hr_support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "general"
+    return default or "unknown"
 
 
 class HybridSpecialistRouter(BaseRouter):
@@ -49,7 +49,9 @@ class HybridSpecialistRouter(BaseRouter):
         llm = models.get("llm1") or models.get("llm2")
 
         # Stage 1: classification
-        classify_prompt = f"[Classify] {text}\nReturn JSON with final_answer and reasoning."
+        classify_prompt = (
+            f"[Classify] {text}\nReturn JSON with final_answer, reasoning, predicted_category."
+        )
         classify_output = _call_model(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
 
         # Stage 2: snippet retrieval
@@ -67,7 +69,7 @@ class HybridSpecialistRouter(BaseRouter):
             [
                 text,
                 f"[Snippet]\n{snippet_text}" if snippet_text else "",
-                "Draft JSON with final_answer and reasoning.",
+                "Draft JSON with final_answer, reasoning, predicted_category (classify the ticket).",
             ]
         )
         draft_raw = _call_model(llm if force_llm else slm, draft_prompt) if (llm if force_llm else slm) else ""
@@ -81,7 +83,7 @@ class HybridSpecialistRouter(BaseRouter):
             repaired = sr.repair(llm if force_llm else slm, draft_prompt, draft_raw, contract) if (llm or slm) else draft_norm
             draft_norm = normalize_output(repaired)
         if not draft_norm.get("predicted_category"):
-            draft_norm["predicted_category"] = _infer_category(text, str(ticket.get("category", "")))
+            draft_norm["predicted_category"] = _infer_category(text, "")
 
         # Stage 4: LLM rewrite
         rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
@@ -91,7 +93,7 @@ class HybridSpecialistRouter(BaseRouter):
         if not (ok_json and contract.validate(final_output)[0]):
             final_output = draft_norm
         if not final_output.get("predicted_category"):
-            final_output["predicted_category"] = draft_norm.get("predicted_category", _infer_category(text, str(ticket.get("category", ""))))
+            final_output["predicted_category"] = draft_norm.get("predicted_category", _infer_category(text, ""))
 
         steps = [
             {"stage": "classify_slm", "output": normalize_output(classify_output)},
@@ -109,4 +111,6 @@ class HybridSpecialistRouter(BaseRouter):
             "schema_valid": contract.validate(final_output)[0],
             "predicted_category": final_output.get("predicted_category", ""),
             "kb_attached": bool(snippet_text),
+            "kb_snippets": [snippet_text] if snippet_text else [],
+            "prompt": draft_prompt,
         }

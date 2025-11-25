@@ -18,7 +18,7 @@ def _infer_category(text: str, default: str = "") -> str:
         return "hr_support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "general"
+    return default or "unknown"
 
 
 class LLMFirstRouter(BaseRouter):
@@ -62,7 +62,9 @@ class LLMFirstRouter(BaseRouter):
             prompt_parts.append(f"[Memory]\n{memory_context}")
         if kb_snippets:
             prompt_parts.append("\n\n".join([f"[KB]\n{snip}" for snip in kb_snippets]))
-        prompt_parts.append("Return JSON with fields final_answer, reasoning, predicted_category.")
+        prompt_parts.append(
+            "Classify the ticket and return JSON with fields final_answer, reasoning, predicted_category."
+        )
         prompt = "\n\n".join(prompt_parts)
 
         raw_output = _call_model(chosen_model, prompt) if chosen_model else ""
@@ -81,7 +83,7 @@ class LLMFirstRouter(BaseRouter):
             final_output = normalize_output(parsed)
 
         if not final_output.get("predicted_category"):
-            final_output["predicted_category"] = _infer_category(text, str(category or ""))
+            final_output["predicted_category"] = _infer_category(text, "")
 
         steps = [
             {"stage": "select_model", "model": "slm" if use_slm else "llm"},
@@ -97,4 +99,6 @@ class LLMFirstRouter(BaseRouter):
             "schema_valid": bool(ok_schema),
             "predicted_category": final_output.get("predicted_category", ""),
             "kb_attached": bool(kb_snippets),
+            "kb_snippets": kb_snippets,
+            "prompt": prompt,
         }

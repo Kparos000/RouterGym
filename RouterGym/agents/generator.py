@@ -67,10 +67,13 @@ def normalize_output(output: Any) -> Dict[str, str]:
                 parsed = fragment
     if not parsed and not isinstance(output, dict):
         parsed = {}
+    predicted = str(parsed.get("predicted_category", "")).strip()
+    if not predicted:
+        predicted = "unknown"
     return {
         "final_answer": str(parsed.get("final_answer", "")).strip(),
         "reasoning": str(parsed.get("reasoning", "")).strip(),
-        "predicted_category": str(parsed.get("predicted_category", "")).strip(),
+        "predicted_category": predicted,
     }
 
 

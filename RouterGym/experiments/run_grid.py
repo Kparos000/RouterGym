@@ -182,6 +182,7 @@ def run_single(
         generation_time = (time.perf_counter() - t_gen_start) * 1000
         schema = SchemaContract()
         schema_valid, _ = schema.validate(final_output)
+        kb_texts = list(routing_meta.get("kb_snippets", [])) if isinstance(routing_meta, dict) else []
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
@@ -207,10 +208,10 @@ def run_single(
             "repair_time": 0.0,
             "metrics_time": 0.0,
             "latency_escalated": routing_meta.get("latency_escalated", False),
+            "prompt": routing_meta.get("prompt", ""),
         }
         # compute metrics
-        kb_texts = []
-        if kb_retriever:
+        if not kb_texts and kb_retriever:
             try:
                 t_retr_start = time.perf_counter()
                 raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
@@ -220,6 +221,7 @@ def run_single(
             except Exception:
                 kb_texts = []
         record["kb_snippets"] = kb_texts
+        record["kb_attached"] = bool(kb_texts)
         t_metrics_start = time.perf_counter()
         metric_values = eval_metrics.compute_all_metrics(
             {
@@ -229,6 +231,8 @@ def run_single(
                 "kb_snippets": kb_texts,
                 "model_used": record["model_used"],
                 "latency_ms": record["latency_ms"],
+                "kb_attached": record["kb_attached"],
+                "prompt_text": record.get("prompt", ""),
                 "reasoning": record["output"].get("reasoning", "") if isinstance(record["output"], dict) else "",
             }
         )
@@ -374,7 +378,10 @@ def run_full_grid(
     df.to_csv(csv_path, index=False)
 
     if not df.empty:
-        eval_analyzer.export_all_figures(df)
+        try:
+            eval_analyzer.export_all_figures(df)
+        except Exception:
+            pass
 
     release_local_models(models_loaded)
 

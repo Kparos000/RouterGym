@@ -14,6 +14,10 @@ except Exception:  # pragma: no cover
 EMBED_MODEL = "all-MiniLM-L6-v2"
 _embedder = None
 
+COST_PER_1K_SLM = 0.0005
+COST_PER_1K_LLM = 0.02
+TOKENS_PER_CHAR = 0.25  # rough heuristic
+
 
 def _get_embedder():
     global _embedder
@@ -60,7 +64,7 @@ def schema_validity(pred: Any) -> int:
 
 
 def groundedness_score(answer: str, kb_snippets: List[str]) -> float:
-    """Max similarity between answer and KB snippets."""
+    """Similarity between answer and KB snippets, normalized to [0, 1]."""
     if not kb_snippets or not answer:
         return 0.0
     ans_emb = _embed([answer])
@@ -76,21 +80,14 @@ def groundedness_score(answer: str, kb_snippets: List[str]) -> float:
     norm_ans = ans_emb / (np.linalg.norm(ans_emb, axis=1, keepdims=True) + 1e-9)
     norm_kb = kb_emb / (np.linalg.norm(kb_emb, axis=1, keepdims=True) + 1e-9)
     sims = norm_kb @ norm_ans.T
-    return float(sims.max())
+    sims = np.clip(sims, -1.0, 1.0)
+    normalized = (sims + 1.0) / 2.0
+    return float(normalized.mean())
 
 
 def faithfulness_score(reasoning: str, kb_snippets: List[str]) -> float:
     """Faithfulness based on reasoning similarity to KB."""
     return groundedness_score(reasoning, kb_snippets)
-
-
-def classification_f1(true_label: str, predicted_label: str) -> float:
-    """Binary F1 for single label."""
-    if not true_label and not predicted_label:
-        return 1.0
-    if true_label == predicted_label:
-        return 1.0
-    return 0.0
 
 
 def semantic_correctness(answer: str, reference: Optional[str] = None) -> float:
@@ -100,20 +97,27 @@ def semantic_correctness(answer: str, reference: Optional[str] = None) -> float:
     return groundedness_score(answer, [reference])
 
 
-COST_FACTOR = {"slm": 0.0001, "llm": 0.001}
-
-
-def token_cost(model_name: str, output_text: str) -> float:
-    """Estimate token cost by model family."""
-    tokens = len(output_text.split())
-    family = "slm" if model_name.startswith("slm") else "llm"
-    rate = COST_FACTOR.get(family, 0.001)
-    return rate * tokens
-
-
 def latency(start_time: float, end_time: float) -> float:
     """Latency in ms."""
     return max((end_time - start_time) * 1000.0, 0.0)
+
+
+def _normalize_label(label: str) -> str:
+    return label.strip().lower()
+
+
+def estimate_tokens(*texts: str) -> int:
+    """Rough token estimate based on character length."""
+    total_chars = sum(len(t or "") for t in texts)
+    est = int(total_chars * TOKENS_PER_CHAR)
+    return max(est, 1)
+
+
+def estimate_cost_usd(model_used: str, prompt_text: str, answer_text: str, reasoning: str = "") -> float:
+    """Estimate cost per call using simple token heuristic and model family price."""
+    tokens = estimate_tokens(prompt_text, answer_text, reasoning)
+    rate = COST_PER_1K_SLM if model_used == "slm" else COST_PER_1K_LLM
+    return (tokens / 1000.0) * rate
 
 
 def router_conversion_rate(router_stats: List[Dict[str, Any]]) -> float:
@@ -128,19 +132,21 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     """Compute all metrics from a record."""
     output_raw = record.get("output", "")
     output = output_raw.get("final_answer") if isinstance(output_raw, dict) else output_raw
-    label = record.get("label", "")
-    predicted_label = record.get("predicted", "") or record.get("predicted_category", "")
+    label = _normalize_label(str(record.get("label", "")))
+    predicted_label = _normalize_label(str(record.get("predicted", "") or record.get("predicted_category", "")))
     kb_snippets = record.get("kb_snippets", [])
-    model_name = record.get("model_used", "slm")
+    model_used = str(record.get("model_used", "slm")).lower()
     reasoning = ""
     if isinstance(output_raw, dict):
         reasoning = output_raw.get("reasoning", "")
+    prompt_text = record.get("prompt_text", "")
+    kb_attached = bool(record.get("kb_attached", False))
 
-    acc = classification_f1(label, predicted_label)
-    grounded = groundedness_score(str(output), kb_snippets)
-    faithful = faithfulness_score(reasoning or str(output), kb_snippets)
+    acc = 1.0 if predicted_label and predicted_label == label and predicted_label not in {"unknown", "other"} else 0.0
+    grounded = 0.0 if not kb_attached else groundedness_score(str(output), kb_snippets)
+    faithful = groundedness_score(reasoning or str(output), kb_snippets) if kb_attached else 0.0
     schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))
-    cost = token_cost(model_name, str(output))
+    cost = estimate_cost_usd(model_used, str(prompt_text), str(output), reasoning)
 
     return {
         "accuracy": acc,

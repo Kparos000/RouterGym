@@ -18,7 +18,7 @@ def _infer_category(text: str, default: str = "") -> str:
         return "hr_support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "general"
+    return default or "unknown"
 
 
 class SLMDominantRouter(BaseRouter):
@@ -55,7 +55,9 @@ class SLMDominantRouter(BaseRouter):
             prompt_parts.append(f"[Memory]\n{memory_context}")
         if kb_snippets:
             prompt_parts.append("\n\n".join([f"[KB]\n{snip}" for snip in kb_snippets]))
-        prompt_parts.append("Return JSON with final_answer, reasoning, predicted_category.")
+        prompt_parts.append(
+            "Classify the ticket and return JSON with final_answer, reasoning, predicted_category."
+        )
         prompt = "\n\n".join(prompt_parts)
 
         confidence = 0.8 if ticket.get("category") else 0.4
@@ -87,7 +89,7 @@ class SLMDominantRouter(BaseRouter):
             final_output = normalize_output(parsed if parsed else raw_output)
 
         if not final_output.get("predicted_category"):
-            final_output["predicted_category"] = _infer_category(text, str(ticket.get("category", "")))
+            final_output["predicted_category"] = _infer_category(text, "")
 
         steps.append({"stage": "generate", "output": final_output, "confidence": confidence})
         if fallback:
@@ -103,4 +105,6 @@ class SLMDominantRouter(BaseRouter):
             "schema_valid": bool(schema_ok),
             "predicted_category": final_output.get("predicted_category", ""),
             "kb_attached": bool(kb_snippets),
+            "kb_snippets": kb_snippets,
+            "prompt": prompt,
         }
