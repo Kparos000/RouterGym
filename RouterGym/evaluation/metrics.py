@@ -129,13 +129,14 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     output_raw = record.get("output", "")
     output = output_raw.get("final_answer") if isinstance(output_raw, dict) else output_raw
     label = record.get("label", "")
+    predicted_label = record.get("predicted", "") or record.get("predicted_category", "")
     kb_snippets = record.get("kb_snippets", [])
     model_name = record.get("model_used", "slm")
     reasoning = ""
     if isinstance(output_raw, dict):
         reasoning = output_raw.get("reasoning", "")
 
-    acc = classification_f1(label, record.get("predicted", label))
+    acc = classification_f1(label, predicted_label)
     grounded = groundedness_score(str(output), kb_snippets)
     faithful = faithfulness_score(reasoning or str(output), kb_snippets)
     schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))

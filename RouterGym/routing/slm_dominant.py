@@ -8,6 +8,19 @@ from RouterGym.contracts.json_contract import JSONContract
 from RouterGym.utils.kb_utils import coerce_kb_hits
 
 
+def _infer_category(text: str, default: str = "") -> str:
+    lower = text.lower()
+    if "vpn" in lower or "network" in lower:
+        return "network"
+    if "password" in lower or "login" in lower or "access" in lower:
+        return "access"
+    if "hr" in lower or "leave" in lower:
+        return "hr_support"
+    if "printer" in lower or "laptop" in lower or "hardware" in lower:
+        return "hardware"
+    return default or "general"
+
+
 class SLMDominantRouter(BaseRouter):
     """Prefer SLM routes and escalate on contract or confidence failures."""
 
@@ -29,21 +42,20 @@ class SLMDominantRouter(BaseRouter):
         if memory:
             memory.add(text)
         memory_context = memory.get_context() if memory else ""
-        kb_snippets = ""
+        kb_snippets = []
         if kb is not None:
             try:
-                hits = coerce_kb_hits(kb.retrieve(text, top_k=1) if hasattr(kb, "retrieve") else [])
-                if hits:
-                    kb_snippets = hits[0]["text"]
+                hits = coerce_kb_hits(kb.retrieve(text, top_k=3) if hasattr(kb, "retrieve") else [])
+                kb_snippets = [h["text"] for h in hits if h["text"]]
             except Exception:
-                kb_snippets = ""
+                kb_snippets = []
 
         prompt_parts = [text]
         if memory_context:
             prompt_parts.append(f"[Memory]\n{memory_context}")
         if kb_snippets:
-            prompt_parts.append(f"[KB]\n{kb_snippets}")
-        prompt_parts.append("Return JSON with final_answer, reasoning.")
+            prompt_parts.append("\n\n".join([f"[KB]\n{snip}" for snip in kb_snippets]))
+        prompt_parts.append("Return JSON with final_answer, reasoning, predicted_category.")
         prompt = "\n\n".join(prompt_parts)
 
         confidence = 0.8 if ticket.get("category") else 0.4
@@ -74,6 +86,9 @@ class SLMDominantRouter(BaseRouter):
         else:
             final_output = normalize_output(parsed if parsed else raw_output)
 
+        if not final_output.get("predicted_category"):
+            final_output["predicted_category"] = _infer_category(text, str(ticket.get("category", "")))
+
         steps.append({"stage": "generate", "output": final_output, "confidence": confidence})
         if fallback:
             steps.append({"stage": "fallback_llm", "output": final_output})
@@ -86,4 +101,6 @@ class SLMDominantRouter(BaseRouter):
             "final_output": final_output,
             "json_valid": bool(ok_json),
             "schema_valid": bool(schema_ok),
+            "predicted_category": final_output.get("predicted_category", ""),
+            "kb_attached": bool(kb_snippets),
         }

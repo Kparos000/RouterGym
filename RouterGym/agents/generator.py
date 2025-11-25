@@ -70,6 +70,7 @@ def normalize_output(output: Any) -> Dict[str, str]:
     return {
         "final_answer": str(parsed.get("final_answer", "")).strip(),
         "reasoning": str(parsed.get("reasoning", "")).strip(),
+        "predicted_category": str(parsed.get("predicted_category", "")).strip(),
     }
 
 
@@ -78,6 +79,7 @@ def _ensure_minimum_fields(data: Dict[str, str]) -> Dict[str, str]:
     return {
         "final_answer": data.get("final_answer") or "No valid answer produced",
         "reasoning": data.get("reasoning") or "",
+        "predicted_category": data.get("predicted_category") or "unknown",
     }
 
 
@@ -153,6 +155,7 @@ class SelfRepair:
         defaults = {
             "reasoning": "Unable to repair output",
             "final_answer": "No valid answer produced",
+            "predicted_category": "unknown",
         }
         for field in schema.required_fields:
             if field not in data or not data[field]:

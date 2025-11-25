@@ -17,7 +17,7 @@ class DummyModel:
         self.calls += 1
         if self.calls == 1:
             return "not json"
-        return json.dumps({"reasoning": "r", "final_answer": "a"})
+        return json.dumps({"reasoning": "r", "final_answer": "a", "predicted_category": "access"})
 
 
 def test_json_contract_valid() -> None:
@@ -45,3 +45,4 @@ def test_self_repair_fills_schema() -> None:
     sc = SchemaContract()
     repaired = repair.repair(model, "prompt", "not json", sc)
     assert sc.validate(repaired)[0]
+    assert repaired["predicted_category"]

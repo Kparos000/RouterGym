@@ -123,9 +123,9 @@ class RemoteLLMEngine:
         }
         for attempt in range(self.max_retries):
             try:
-                response = self.client.chat_completion(
-                    model=self.model_name,
+                response = self.client.chat_completion(  # type: ignore[call-overload]
                     messages=[{"role": "user", "content": prompt}],
+                    model=self.model_name,
                     max_tokens=max_new_tokens,
                     temperature=temperature,
                     response_format={"type": "json_schema", "json_schema": response_schema},

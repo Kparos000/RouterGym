@@ -11,6 +11,7 @@ class SchemaContract:
     required_fields = {
         "reasoning": str,
         "final_answer": str,
+        "predicted_category": str,
     }
 
     def validate(self, json_obj: Dict[str, Any]) -> Tuple[bool, List[str]]:

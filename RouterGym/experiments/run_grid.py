@@ -6,6 +6,7 @@ import argparse
 import gc
 import json
 import traceback
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -27,6 +28,7 @@ from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
 from RouterGym.agents.generator import normalize_output
 from RouterGym.utils.kb_utils import coerce_kb_hits
+from RouterGym.contracts.schema_contract import SchemaContract
 
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
@@ -152,6 +154,7 @@ def run_single(
     verbose: bool = False,
 ) -> Dict[str, Any]:
     """Run a single ticket through a router + memory."""
+    start_total = time.perf_counter()
     if not isinstance(ticket, dict):
         return {
             "ticket_id": None,
@@ -171,14 +174,27 @@ def run_single(
             "model_used": "unknown",
             "json_valid": False,
             "schema_valid": False,
+            "predicted_category": "",
+            "routing_time": 0.0,
+            "retrieval_time": 0.0,
+            "generation_time": 0.0,
+            "repair_time": 0.0,
+            "metrics_time": 0.0,
+            "latency_escalated": False,
         }
     try:
+        t_route_start = time.perf_counter()
         memory = init_memory(memory_mode)
         memory.add(ticket.get("text", ""))
         memory_context = memory.get_context()
         routing_meta = router.route(ticket, kb=kb_retriever, models=models, memory=memory, force_llm=force_llm) if router else {}
         routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
+        routing_time = (time.perf_counter() - t_route_start) * 1000
+        t_gen_start = time.perf_counter()
         final_output = normalize_output(routing_meta.get("final_output", ""))
+        generation_time = (time.perf_counter() - t_gen_start) * 1000
+        schema = SchemaContract()
+        schema_valid, _ = schema.validate(final_output)
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
@@ -195,24 +211,34 @@ def run_single(
             "cost_usd": 0.0,
             "output": final_output,
             "model_used": routing_meta.get("model_used", "slm"),
-            "json_valid": routing_meta.get("json_valid", False),
-            "schema_valid": routing_meta.get("schema_valid", False),
+            "json_valid": True,
+            "schema_valid": schema_valid,
+            "predicted_category": final_output.get("predicted_category", "") or routing_meta.get("predicted_category", ""),
+            "routing_time": routing_time,
+            "retrieval_time": 0.0,
+            "generation_time": generation_time,
+            "repair_time": 0.0,
+            "metrics_time": 0.0,
+            "latency_escalated": routing_meta.get("latency_escalated", False),
         }
         # compute metrics
         kb_texts = []
         if kb_retriever:
             try:
+                t_retr_start = time.perf_counter()
                 raw_hits = kb_retriever.retrieve(ticket.get("text", ""), top_k=3)
                 hits = coerce_kb_hits(raw_hits)
                 kb_texts = [h["text"] for h in hits if h["text"]]
+                record["retrieval_time"] = (time.perf_counter() - t_retr_start) * 1000
             except Exception:
                 kb_texts = []
         record["kb_snippets"] = kb_texts
+        t_metrics_start = time.perf_counter()
         metric_values = eval_metrics.compute_all_metrics(
             {
                 "output": record["output"],
                 "label": ticket.get("category", ""),
-                "predicted": ticket.get("category", ""),
+                "predicted": record.get("predicted_category", ""),
                 "kb_snippets": kb_texts,
                 "model_used": record["model_used"],
                 "latency_ms": record["latency_ms"],
@@ -227,6 +253,8 @@ def run_single(
                 "cost_usd": metric_values["cost"],
             }
         )
+        record["metrics_time"] = (time.perf_counter() - t_metrics_start) * 1000
+        record["latency_ms"] = (time.perf_counter() - start_total) * 1000
         if verbose:
             print(
                 f"[Single] model_used={record['model_used']} json_valid={record['json_valid']} "

@@ -27,6 +27,7 @@ def test_schema_contract_fields() -> None:
     payload = {
         "reasoning": "why",
         "final_answer": "ans",
+        "predicted_category": "access",
     }
     ok, errors = contract.validate(payload)
     assert ok and not errors
@@ -40,7 +41,7 @@ class DummyModel:
         self.calls += 1
         if self.calls == 1:
             return "invalid json"
-        return json.dumps({"reasoning": "r", "final_answer": "a"})
+        return json.dumps({"reasoning": "r", "final_answer": "a", "predicted_category": "access"})
 
 
 def test_self_repair_fallback(monkeypatch) -> None:
@@ -53,6 +54,7 @@ def test_self_repair_fallback(monkeypatch) -> None:
 
     fixed = repair.repair(model, "prompt", "invalid", contract)
     assert fixed["final_answer"] == "a"
+    assert fixed["predicted_category"]
 
 
 def test_repair_uses_llm(monkeypatch):
@@ -62,7 +64,7 @@ def test_repair_uses_llm(monkeypatch):
     class RepairModel:
         def __call__(self, prompt: str, **kwargs):
             called["used"] = True
-            return json.dumps({"reasoning": "r", "final_answer": "a"})
+            return json.dumps({"reasoning": "r", "final_answer": "a", "predicted_category": "access"})
 
     monkeypatch.setattr(gen, "get_repair_model", lambda: RepairModel())
     model = DummyModel()

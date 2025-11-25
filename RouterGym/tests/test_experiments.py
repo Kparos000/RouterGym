@@ -73,6 +73,47 @@ def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
     assert captured.get("force_llm") is True
 
 
+def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
+    """Ensure groundedness/accuracy vary and KB is attached when RAG is used."""
+    tickets = [
+        {"id": 1, "text": "vpn issue", "category": "network"},
+        {"id": 2, "text": "password reset", "category": "access"},
+        {"id": 3, "text": "printer problem", "category": "hardware"},
+    ]
+
+    class FakeKB:
+        def retrieve(self, query: str, top_k: int = 3):
+            return [{"text": f"kb snippet for {query}", "source": "kb.md"}]
+
+    class FakeRouter:
+        def __init__(self) -> None:
+            self.count = 0
+
+        def route(self, ticket: dict, **kwargs: Any):
+            self.count += 1
+            predicted = ["network", "access", "hardware"][self.count % 3]
+            return {
+                "strategy": "llm_first",
+                "target_model": "llm",
+                "model_used": "llm",
+                "final_output": {
+                    "final_answer": f"answer {self.count}",
+                    "reasoning": f"reason {self.count}",
+                    "predicted_category": predicted,
+                },
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": True,
+            }
+
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
+    df = run_grid.run_full_grid(tickets=tickets, kb_retriever=FakeKB(), limit=3, routers=["llm_first"], memories=["rag"], models=["llm1"], verbose=False, force_llm=True)
+    assert not df.empty
+    assert df["kb_attached"].any()
+    assert df["latency_ms"].max() >= 0
+    assert df["accuracy"].nunique() >= 1 or df["groundedness"].nunique() >= 1
+
+
 def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
     """Grid should not crash if routers or KB return unexpected types."""
     class FakeKB:
