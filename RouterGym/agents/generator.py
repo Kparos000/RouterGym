@@ -40,7 +40,7 @@ def classification_instruction() -> str:
         "You are a support agent AND classifier. "
         "Return EXACTLY one JSON object with keys: final_answer (string), reasoning (string), predicted_category (string). "
         f"predicted_category MUST be one of: {LABELS_LIST_TEXT}. "
-        "If unsure, choose the closest label from this list; do NOT invent labels or output unknown. "
+        "Choose exactly one label from this list; do NOT invent labels, do NOT output unknown, and do NOT include explanations inside predicted_category. "
         f"{FEW_SHOT_GUIDE}"
     )
 
@@ -139,25 +139,68 @@ def _normalize_category(raw: str, context: str = "") -> str:
     """Map raw category text + context into canonical CLASS_LABELS or unknown."""
     text = (raw or "").lower()
     text = re.sub("[^a-z0-9\\s_-]", " ", text).strip()
+    combined = f"{text} {context.lower()}".strip()
+
+    strong_access = {
+        "login",
+        "log in",
+        "signin",
+        "sign in",
+        "password",
+        "credential",
+        "sso",
+        "mfa",
+        "otp",
+        "lockout",
+        "locked out",
+        "cannot access",
+        "access denied",
+        "access",
+        "account",
+        "auth",
+    }
+    strong_hardware = {
+        "laptop",
+        "printer",
+        "device",
+        "hardware",
+        "dock",
+        "monitor",
+        "screen",
+        "keyboard",
+        "mouse",
+        "pc",
+        "desktop",
+        "computer",
+        "headset",
+    }
+
+    def contains_any(keys: set[str]) -> bool:
+        return any(k in combined for k in keys)
+
+    if contains_any(strong_access):
+        return "access"
+    if contains_any(strong_hardware):
+        return "hardware"
+
     if text in CLASS_LABELS:
         return text
 
-    combined = f"{text} {context.lower()}".strip()
     keyword_map = [
-        ({"login", "password", "account", "access", "credential"}, "access"),
         ({"admin", "administrator", "permission", "privilege", "rights"}, "administrative rights"),
-        ({"laptop", "printer", "device", "hardware", "dock"}, "hardware"),
         ({"hr", "benefit", "leave", "vacation", "payroll"}, "hr support"),
         ({"project", "repo", "repository", "internal"}, "internal project"),
         ({"buy", "purchase", "order", "procure", "invoice", "billing"}, "purchase"),
-        ({"storage", "quota", "space", "drive"}, "storage"),
+        ({"storage", "quota", "space", "drive", "share"}, "storage"),
     ]
     for keywords, label in keyword_map:
         if any(k in combined for k in keywords):
             return label
+
     if "misc" in combined or "general" in combined or "other" in combined:
         return "miscellaneous"
-    return "unknown"
+    # If no strong match, prefer miscellaneous over unknown to avoid empty labels
+    return "miscellaneous"
 
 
 def infer_category_from_text(text: str) -> str:

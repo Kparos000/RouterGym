@@ -199,6 +199,10 @@ def run_single(
         predicted_category = _norm_label(final_output.get("predicted_category", routing_meta.get("predicted_category", "")))
         if predicted_category not in CLASS_LABELS or predicted_category == "unknown":
             predicted_category = infer_category_from_text(ticket.get("text", ""))
+        elif predicted_category == "miscellaneous":
+            inferred = infer_category_from_text(ticket.get("text", ""))
+            if inferred in CLASS_LABELS and inferred != "miscellaneous":
+                predicted_category = inferred
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
