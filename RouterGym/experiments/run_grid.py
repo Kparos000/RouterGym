@@ -387,8 +387,15 @@ def run_full_grid(
     df = pd.DataFrame(aggregate)
     exp_dir = RESULTS_DIR / "experiments"
     exp_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = exp_dir / "results.csv"
+    n_tickets = df["ticket_id"].nunique()
+
+    # results.csv = latest run (overwritten on each run)
+    # results_{N}tickets.csv = archived snapshot for large runs (N >= 50)
+    csv_path = Path("RouterGym") / "results" / "experiments" / "results.csv"
     df.to_csv(csv_path, index=False)
+    if n_tickets >= 50:
+        snapshot_path = exp_dir / f"results_{n_tickets}tickets.csv"
+        df.to_csv(snapshot_path, index=False)
 
     if not df.empty:
         try:
