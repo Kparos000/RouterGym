@@ -1,0 +1,3 @@
+router,memory,model,ticket_id,kb_attached,result,accuracy,groundedness,schema_validity,latency_ms,cost_usd,model_used,json_valid,schema_valid,gold_category,predicted_category
+llm_first,none,slm1,0,False,success,0.0,0.0,1,0.29419997008517385,0.000155,slm,True,True,hardware,access
+llm_first,none,llm1,0,False,success,0.0,0.0,1,0.3635999746620655,0.000155,slm,True,True,hardware,access
