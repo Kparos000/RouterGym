@@ -13,7 +13,8 @@ from RouterGym.agents.generator import (
     _call_model,
 )
 from RouterGym.contracts.json_contract import JSONContract
-from RouterGym.utils.kb_utils import coerce_kb_hits
+from RouterGym.utils.kb_utils import coerce_kb_hits, rerank_and_trim_hits
+from RouterGym.routing.classifier import predict_label_with_confidence
 
 
 def _infer_category(text: str, default: str = "") -> str:
@@ -45,13 +46,18 @@ class LLMFirstRouter(BaseRouter):
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
         tokens = len(text.split())
         category = ticket.get("category") if isinstance(ticket, dict) else None
+        cls_label, cls_conf = predict_label_with_confidence(text)
 
         # choose models
         models = models or {}
         llm = models.get("llm1") or models.get("llm2")
         slm = models.get("slm1") or models.get("slm2")
 
-        use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
+        use_slm = (
+            not force_llm
+            and (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"}))
+            and cls_conf >= 0.55
+        )
         chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)
 
         if memory:
@@ -61,7 +67,7 @@ class LLMFirstRouter(BaseRouter):
         if kb is not None:
             try:
                 hits = coerce_kb_hits(kb.retrieve(text, top_k=3) if hasattr(kb, "retrieve") else [])
-                kb_snippets = [h["text"] for h in hits if h["text"]]
+                kb_snippets = rerank_and_trim_hits(text, hits, top_k=3, max_chars=400)
             except Exception:
                 kb_snippets = []
 
@@ -74,6 +80,7 @@ class LLMFirstRouter(BaseRouter):
         prompt_parts.append(
             f"Use predicted_category from: {', '.join(CLASS_LABELS)}. Respond with JSON only."
         )
+        prompt_parts.append(f"[Classifier] predicted_category={cls_label} (p={cls_conf:.2f})")
         prompt = "\n\n".join(prompt_parts)
 
         raw_output = _call_model(chosen_model, prompt) if chosen_model else ""
@@ -110,4 +117,6 @@ class LLMFirstRouter(BaseRouter):
             "kb_attached": bool(kb_snippets),
             "kb_snippets": kb_snippets,
             "prompt": prompt,
+            "classifier_label": cls_label,
+            "classifier_confidence": cls_conf,
         }

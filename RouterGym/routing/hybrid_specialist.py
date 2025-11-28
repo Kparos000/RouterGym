@@ -1,6 +1,5 @@
 """Hybrid specialist routing policy."""
 
-import json
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
@@ -14,7 +13,8 @@ from RouterGym.agents.generator import (
     _call_model,
 )
 from RouterGym.contracts.json_contract import JSONContract
-from RouterGym.utils.kb_utils import coerce_kb_hits
+from RouterGym.utils.kb_utils import coerce_kb_hits, rerank_and_trim_hits
+from RouterGym.routing.classifier import predict_label_with_confidence
 
 
 def _infer_category(text: str, default: str = "") -> str:
@@ -50,6 +50,7 @@ class HybridSpecialistRouter(BaseRouter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
+        cls_label, cls_conf = predict_label_with_confidence(text)
         if memory:
             memory.add(text)
         models = models or {}
@@ -71,8 +72,9 @@ class HybridSpecialistRouter(BaseRouter):
         if kb is not None:
             try:
                 hits = coerce_kb_hits(kb.retrieve(text, top_k=3) if hasattr(kb, "retrieve") else [])
-                if hits:
-                    snippet_text = "\n".join([h["text"] for h in hits if h["text"]])
+                snippets = rerank_and_trim_hits(text, hits, top_k=3, max_chars=400)
+                if snippets:
+                    snippet_text = "\n".join(snippets)
             except Exception:
                 snippet_text = ""
 
@@ -99,13 +101,25 @@ class HybridSpecialistRouter(BaseRouter):
         if not draft_norm.get("predicted_category"):
             draft_norm["predicted_category"] = infer_category_from_text(text)
 
-        # Stage 4: LLM rewrite
-        rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
-        final_output_raw = _call_model(llm, rewrite_prompt) if llm else json.dumps(draft_norm)
-        ok_json, parsed = jc.validate(final_output_raw) if isinstance(final_output_raw, str) else (True, final_output_raw if isinstance(final_output_raw, dict) else None)
-        final_output = normalize_output(parsed if parsed else final_output_raw)
-        if not (ok_json and contract.validate(final_output)[0]):
+        # Stage 4: Optional LLM rewrite only if schema fails or classifier is uncertain
+        do_rewrite = False
+        if not contract.validate(draft_norm)[0]:
+            do_rewrite = True
+        if cls_conf < 0.55:
+            do_rewrite = True
+
+        if do_rewrite and llm:
+            rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
+            final_output_raw = _call_model(llm, rewrite_prompt)
+            ok_json, parsed = jc.validate(final_output_raw) if isinstance(final_output_raw, str) else (True, final_output_raw if isinstance(final_output_raw, dict) else None)
+            final_output = normalize_output(parsed if parsed else final_output_raw)
+            if not (ok_json and contract.validate(final_output)[0]):
+                final_output = draft_norm
+            model_used = "llm"
+        else:
             final_output = draft_norm
+            model_used = "slm"
+
         if not final_output.get("predicted_category"):
             final_output["predicted_category"] = draft_norm.get("predicted_category", infer_category_from_text(text))
 
@@ -113,12 +127,13 @@ class HybridSpecialistRouter(BaseRouter):
             {"stage": "classify_slm", "output": normalize_output(classify_output)},
             {"stage": "retrieve_snippet", "snippet": snippet_text},
             {"stage": "draft_slm", "output": draft_norm},
-            {"stage": "rewrite_llm", "output": final_output},
         ]
+        if do_rewrite:
+            steps.append({"stage": "rewrite_llm", "output": final_output})
         return {
             "strategy": "hybrid_specialist",
-            "target_model": "llm",
-            "model_used": "llm",
+            "target_model": "llm" if do_rewrite else "slm",
+            "model_used": model_used,
             "steps": steps,
             "final_output": final_output,
             "json_valid": bool(ok_json),
@@ -127,4 +142,6 @@ class HybridSpecialistRouter(BaseRouter):
             "kb_attached": bool(snippet_text),
             "kb_snippets": [snippet_text] if snippet_text else [],
             "prompt": draft_prompt,
+            "classifier_label": cls_label,
+            "classifier_confidence": cls_conf,
         }

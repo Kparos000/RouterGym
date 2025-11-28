@@ -13,7 +13,8 @@ from RouterGym.agents.generator import (
     _call_model,
 )
 from RouterGym.contracts.json_contract import JSONContract
-from RouterGym.utils.kb_utils import coerce_kb_hits
+from RouterGym.utils.kb_utils import coerce_kb_hits, rerank_and_trim_hits
+from RouterGym.routing.classifier import predict_label_with_confidence
 
 
 def _infer_category(text: str, default: str = "") -> str:
@@ -42,6 +43,7 @@ class SLMDominantRouter(BaseRouter):
         **kwargs: Any,
     ) -> Dict[str, Any]:
         text = ticket.get("text", "") if isinstance(ticket, dict) else str(ticket)
+        cls_label, cls_conf = predict_label_with_confidence(text)
         models = models or {}
         slm = models.get("slm1") or models.get("slm2")
         llm = models.get("llm1") or models.get("llm2")
@@ -54,7 +56,7 @@ class SLMDominantRouter(BaseRouter):
         if kb is not None:
             try:
                 hits = coerce_kb_hits(kb.retrieve(text, top_k=3) if hasattr(kb, "retrieve") else [])
-                kb_snippets = [h["text"] for h in hits if h["text"]]
+                kb_snippets = rerank_and_trim_hits(text, hits, top_k=3, max_chars=400)
             except Exception:
                 kb_snippets = []
 
@@ -67,12 +69,14 @@ class SLMDominantRouter(BaseRouter):
         prompt_parts.append(
             f"Use predicted_category from: {', '.join(CLASS_LABELS)}. Return JSON only."
         )
+        prompt_parts.append(f"[Classifier] predicted_category={cls_label} (p={cls_conf:.2f})")
         prompt = "\n\n".join(prompt_parts)
 
         confidence = 0.8 if ticket.get("category") else 0.4
         contract = SchemaContract()
 
-        initial_model = llm if force_llm else slm
+        # If classifier is uncertain, prefer LLM; otherwise stick to SLM.
+        initial_model = llm if force_llm or cls_conf < 0.45 else slm
         raw_output = _call_model(initial_model, prompt) if initial_model else ""
         jc = JSONContract()
         sr = SelfRepair()
@@ -81,7 +85,7 @@ class SLMDominantRouter(BaseRouter):
         final_output = normalize_output(raw_output)
         if ok_json and parsed:
             schema_ok, _ = contract.validate(normalize_output(parsed))
-        fallback = False
+        fallback = initial_model is llm and cls_conf < 0.45
         if not schema_ok:
             fallback = True
             raw_output = _call_model(llm, prompt) if llm else raw_output

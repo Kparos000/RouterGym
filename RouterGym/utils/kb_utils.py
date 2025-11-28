@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 def coerce_kb_hits(hits: Any) -> List[Dict[str, str]]:
@@ -23,4 +23,24 @@ def coerce_kb_hits(hits: Any) -> List[Dict[str, str]]:
     return normalized
 
 
-__all__ = ["coerce_kb_hits"]
+def rerank_and_trim_hits(query: str, hits: List[Dict[str, str]], top_k: int = 3, max_chars: int = 400) -> List[str]:
+    """Simple token-overlap reranker + trimmer for KB hits."""
+    if not hits:
+        return []
+    q_tokens = set((query or "").lower().split())
+
+    def score(hit: Dict[str, str]) -> Tuple[int, int]:
+        text = hit.get("text", "")
+        t_tokens = set(text.lower().split())
+        overlap = len(q_tokens & t_tokens)
+        return (overlap, -len(text))
+
+    ranked = sorted(hits, key=score, reverse=True)
+    snippets: List[str] = []
+    for hit in ranked[:top_k]:
+        text = hit.get("text", "")
+        snippets.append(text[:max_chars])
+    return snippets
+
+
+__all__ = ["coerce_kb_hits", "rerank_and_trim_hits"]
