@@ -1,1 +1,2 @@
 """RouterGym scaffold requirements."""
+scikit-learn

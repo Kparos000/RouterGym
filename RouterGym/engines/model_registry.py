@@ -9,6 +9,7 @@ from os import PathLike
 from typing import IO, Any, Callable, Dict, Optional
 
 from huggingface_hub import InferenceClient  # type: ignore
+from pathlib import Path
 
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv as _load_dotenv  # type: ignore
@@ -143,6 +144,11 @@ def _build_engine(entry: ModelEntry, token: Optional[str]) -> RemoteInferenceEng
     return RemoteInferenceEngine(entry.hf_id, kind=entry.kind, token=token)
 
 
+CLASSIFIER_MODELS: Dict[str, Path] = {
+    "classifier_tfidf": Path("RouterGym/models/tfidf_classifier.pkl"),
+}
+
+
 def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
     """Load all models as remote HF Inference engines (no local weights)."""
     token = _get_token()
@@ -179,6 +185,22 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
     return models
 
 
+def load_classifier(name: str = "classifier_tfidf", path: Optional[str] = None) -> Optional[Any]:
+    """Load a local classifier by name (currently TF-IDF)."""
+    try:
+        from RouterGym.classification.tfidf_classifier import TFIDFClassifier
+    except Exception:
+        return None
+
+    model_path = Path(path) if path else CLASSIFIER_MODELS.get(name)
+    if not model_path:
+        return None
+    try:
+        return TFIDFClassifier.load(model_path)
+    except Exception:
+        return None
+
+
 def get_repair_model() -> RemoteInferenceEngine:
     """Return the strongest available LLM engine for repair prompts."""
     token = _get_token()
@@ -189,6 +211,7 @@ def get_repair_model() -> RemoteInferenceEngine:
 
 __all__ = [
     "load_models",
+    "load_classifier",
     "RemoteInferenceEngine",
     "SLM_MODELS",
     "LLM_MODELS",

@@ -8,6 +8,7 @@ dependencies = [
     "sentence-transformers",
     "matplotlib",
     "pyyaml",
+    "scikit-learn",
 ]
 
 [build-system]

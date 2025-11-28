@@ -26,6 +26,7 @@ from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
+from RouterGym.routing.router_core import load_classifier_by_name
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
 
@@ -147,6 +148,7 @@ def run_single(
     memory_mode: str,
     kb_retriever: Optional[Any],
     models: Optional[Dict[str, Any]],
+    classifier: Optional[Any] = None,
     force_llm: bool = False,
     verbose: bool = False,
 ) -> Dict[str, Any]:
@@ -203,6 +205,17 @@ def run_single(
             inferred = infer_category_from_text(ticket.get("text", ""))
             if inferred in CLASS_LABELS and inferred != "miscellaneous":
                 predicted_category = inferred
+
+        clf_label = None
+        clf_conf = 0.0
+        clf_probs: Dict[str, float] = {}
+        if classifier is not None:
+            try:
+                clf_label, clf_conf, clf_probs = classifier.predict_with_confidence(ticket.get("text", ""))
+                if clf_label and clf_conf >= 0.5:
+                    predicted_category = _norm_label(clf_label)
+            except Exception:
+                clf_label, clf_conf, clf_probs = None, 0.0, {}
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
@@ -223,6 +236,9 @@ def run_single(
             "schema_valid": schema_valid,
             "predicted_category": predicted_category,
             "gold_category": gold_category,
+            "classifier_label": clf_label or "",
+            "classifier_confidence": clf_conf,
+            "classifier_probs": clf_probs,
             "routing_time": routing_time,
             "retrieval_time": 0.0,
             "generation_time": generation_time,
@@ -280,6 +296,7 @@ def run_config(
     tickets: List[Dict[str, Any]],
     kb_retriever: Optional[Any],
     models: Optional[Dict[str, Any]],
+    classifier: Optional[Any] = None,
     force_llm: bool = False,
     verbose: bool = False,
 ) -> List[Dict[str, Any]]:
@@ -288,7 +305,7 @@ def run_config(
     outputs: List[Dict[str, Any]] = []
     for ticket in tickets:
         try:
-            outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, force_llm=force_llm, verbose=verbose))
+            outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, classifier=classifier, force_llm=force_llm, verbose=verbose))
         except Exception:
             if verbose:
                 print("[Config] Exception in run_single")
@@ -312,11 +329,13 @@ def run_full_grid(
     verbose: bool = False,
     force_llm: bool = False,
     slm_subset: Optional[List[str]] = None,
+    classifier_name: Optional[str] = None,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, and models (models are placeholders)."""
     tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
+    classifier = load_classifier_by_name(classifier_name)
     try:
         models_loaded = load_models(sanity=False, slm_subset=slm_subset, force_llm=force_llm)
     except Exception:
@@ -342,7 +361,16 @@ def run_full_grid(
                 if verbose:
                     print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
                 try:
-                    records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded, force_llm=force_llm, verbose=verbose)
+                    records = run_config(
+                        router_name,
+                        memory_mode,
+                        tickets,
+                        kb_retriever,
+                        models_loaded,
+                        classifier=classifier,
+                        force_llm=force_llm,
+                        verbose=verbose,
+                    )
                     raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
                     with raw_path.open("w", encoding="utf-8") as f:
                         for rec in records:
@@ -368,6 +396,8 @@ def run_full_grid(
                                 "schema_valid": bool(safe_rec.get("schema_valid", False)),
                                 "gold_category": safe_rec.get("gold_category", ""),
                                 "predicted_category": safe_rec.get("predicted_category", ""),
+                                "classifier_label": safe_rec.get("classifier_label", ""),
+                                "classifier_confidence": safe_rec.get("classifier_confidence", 0.0),
                             }
                         )
                 except Exception:
@@ -416,6 +446,7 @@ def main() -> None:
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
     parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
     parser.add_argument("--slm_subset", type=str, default=None, help="Comma-separated SLM keys to enable")
+    parser.add_argument("--classifier", type=str, default=None, help="Classifier name (e.g., tfidf)")
     args = parser.parse_args()
 
     slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
@@ -438,7 +469,15 @@ def main() -> None:
             print("[Grid] Loading models...")
         _ = load_models(sanity=False, slm_subset=slm_subset, force_llm=args.force_llm)
 
-        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm, slm_subset=slm_subset)
+        df = run_full_grid(
+            tickets=tickets,
+            kb_retriever=kb_loader,
+            limit=args.limit,
+            verbose=args.verbose,
+            force_llm=args.force_llm,
+            slm_subset=slm_subset,
+            classifier_name=args.classifier,
+        )
         out_dir = RESULTS_DIR / "experiments"
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "results.csv"
