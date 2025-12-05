@@ -1,5 +1,6 @@
 """RAG memory backend."""
 
+import os
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -23,13 +24,25 @@ class RAGMemory(MemoryBase):
         self.kb = kb_loader.load_kb()
         self.doc_keys, self.doc_texts = self._collect_docs(self.kb)
         self.kb_hash = self._kb_hash_safe()
-        self.embedder = SentenceTransformer(embed_model) if SentenceTransformer is not None else None
+        self.embedder = self._maybe_load_embedder(embed_model)
         cached = self._load_cached_embeddings()
         if cached is not None:
             self.doc_embeddings = cached
         else:
             self.doc_embeddings = self._embed(self.doc_texts)
             self._maybe_cache_embeddings(self.doc_embeddings)
+
+    def _maybe_load_embedder(self, model_name: str) -> Any | None:
+        """Return a SentenceTransformer instance when available."""
+        if SentenceTransformer is None:
+            return None
+        # Disable hf_transfer to avoid hard dependency during tests/offline runs.
+        if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER") not in {"0", "false", "False"}:
+            os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+        try:
+            return SentenceTransformer(model_name)
+        except Exception:
+            return None
 
     def _collect_docs(self, kb: Dict[str, str] | Any) -> Tuple[List[str], List[str]]:
         if isinstance(kb, dict):

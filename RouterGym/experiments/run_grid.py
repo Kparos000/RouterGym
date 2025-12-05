@@ -26,6 +26,7 @@ from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 from RouterGym.routing.base import BaseRouter
+from RouterGym.routing.router_engine import CLASSIFIER_MODES, RouterEngine
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
 
@@ -149,11 +150,14 @@ def run_single(
     models: Optional[Dict[str, Any]],
     force_llm: bool = False,
     verbose: bool = False,
+    router_engine: Optional[RouterEngine] = None,
+    classifier_mode: str = "tfidf",
 ) -> Dict[str, Any]:
-    """Run a single ticket through a router + memory."""
+    """Run a single ticket through a router + memory + optional classifier."""
     start_total = time.perf_counter()
+    active_mode = router_engine.classifier_mode if router_engine else classifier_mode
     if not isinstance(ticket, dict):
-        return {
+        base_record = {
             "ticket_id": None,
             "router": None,
             "memory": memory_mode,
@@ -179,6 +183,13 @@ def run_single(
             "metrics_time": 0.0,
             "latency_escalated": False,
         }
+        if router_engine:
+            summary = router_engine.classify_ticket(ticket)
+            base_record.update(summary.as_dict(active_mode))
+        else:
+            base_record["classifier_mode"] = active_mode
+        return base_record
+    classifier_summary = router_engine.classify_ticket(ticket) if router_engine else None
     try:
         t_route_start = time.perf_counter()
         memory = init_memory(memory_mode)
@@ -231,7 +242,10 @@ def run_single(
             "latency_escalated": routing_meta.get("latency_escalated", False),
             "prompt": routing_meta.get("prompt", ""),
         }
-        # compute metrics
+        if classifier_summary:
+            record.update(classifier_summary.as_dict(active_mode))
+        else:
+            record["classifier_mode"] = active_mode
         record["kb_snippets"] = kb_texts if kb_used_in_prompt else []
         t_metrics_start = time.perf_counter()
         metric_values = eval_metrics.compute_all_metrics(
@@ -260,7 +274,8 @@ def run_single(
         if verbose:
             print(
                 f"[Single] model_used={record['model_used']} json_valid={record['json_valid']} "
-                f"schema_valid={record['schema_valid']} cost={record['cost_usd']:.4f}"
+                f"schema_valid={record['schema_valid']} cost={record['cost_usd']:.4f} "
+                f"classifier={record.get('classifier_mode', active_mode)}"
             )
         return record
     except Exception:
@@ -282,13 +297,27 @@ def run_config(
     models: Optional[Dict[str, Any]],
     force_llm: bool = False,
     verbose: bool = False,
+    router_engine: Optional[RouterEngine] = None,
+    classifier_mode: str = "tfidf",
 ) -> List[Dict[str, Any]]:
     """Run all tickets for a router/memory combo."""
     router = init_router(router_name)
     outputs: List[Dict[str, Any]] = []
     for ticket in tickets:
         try:
-            outputs.append(run_single(ticket, router, memory_mode, kb_retriever, models, force_llm=force_llm, verbose=verbose))
+            outputs.append(
+                run_single(
+                    ticket,
+                    router,
+                    memory_mode,
+                    kb_retriever,
+                    models,
+                    force_llm=force_llm,
+                    verbose=verbose,
+                    router_engine=router_engine,
+                    classifier_mode=classifier_mode,
+                )
+            )
         except Exception:
             if verbose:
                 print("[Config] Exception in run_single")
@@ -312,8 +341,9 @@ def run_full_grid(
     verbose: bool = False,
     force_llm: bool = False,
     slm_subset: Optional[List[str]] = None,
+    classifier_modes: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Run the full grid over routers, memories, and models (models are placeholders)."""
+    """Run the full grid over routers, memories, models, and classifier modes."""
     tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
@@ -335,54 +365,78 @@ def run_full_grid(
         model_list = slm_subset
     else:
         model_list = ["llm1", "llm2"] if force_llm else MODEL_NAMES
+    classifier_list = classifier_modes or CLASSIFIER_MODES
 
-    for router_name in router_list:
-        for memory_mode in memory_list:
-            for model_name in model_list:
-                if verbose:
-                    print(f"[Grid] Router={router_name} Memory={memory_mode} Model={model_name} Tickets={len(tickets)}")
-                try:
-                    records = run_config(router_name, memory_mode, tickets, kb_retriever, models_loaded, force_llm=force_llm, verbose=verbose)
-                    raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}.jsonl"
-                    with raw_path.open("w", encoding="utf-8") as f:
+    for classifier_mode in classifier_list:
+        engine = RouterEngine(classifier_mode)
+        for router_name in router_list:
+            for memory_mode in memory_list:
+                for model_name in model_list:
+                    if verbose:
+                        print(
+                            f"[Grid] Classifier={classifier_mode} Router={router_name} "
+                            f"Memory={memory_mode} Model={model_name} Tickets={len(tickets)}"
+                        )
+                    try:
+                        records = run_config(
+                            router_name,
+                            memory_mode,
+                            tickets,
+                            kb_retriever,
+                            models_loaded,
+                            force_llm=force_llm,
+                            verbose=verbose,
+                            router_engine=engine,
+                            classifier_mode=classifier_mode,
+                        )
+                        raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}__{classifier_mode}.jsonl"
+                        with raw_path.open("w", encoding="utf-8") as f:
+                            for rec in records:
+                                safe_rec = _coerce_record(rec)
+                                f.write(json.dumps(safe_rec) + "\n")
                         for rec in records:
                             safe_rec = _coerce_record(rec)
-                            f.write(json.dumps(safe_rec) + "\n")
-                    for rec in records:
-                        safe_rec = _coerce_record(rec)
-                        aggregate.append(
-                            {
-                                "router": router_name,
-                                "memory": memory_mode,
-                                "model": model_name,
-                                "ticket_id": safe_rec.get("ticket_id"),
-                                "kb_attached": safe_rec.get("kb_attached", False),
-                                "result": safe_rec.get("result"),
-                                "accuracy": safe_rec.get("accuracy", 0.0),
-                                "groundedness": safe_rec.get("groundedness", 0.0),
-                                "schema_validity": safe_rec.get("schema_validity", 0.0),
-                                "latency_ms": safe_rec.get("latency_ms", 0.0),
-                                "cost_usd": safe_rec.get("cost_usd", 0.0),
-                                "model_used": safe_rec.get("model_used", ""),
-                                "json_valid": bool(safe_rec.get("json_valid", False)),
-                                "schema_valid": bool(safe_rec.get("schema_valid", False)),
-                                "gold_category": safe_rec.get("gold_category", ""),
-                                "predicted_category": safe_rec.get("predicted_category", ""),
-                            }
-                        )
-                except Exception:
-                    if verbose:
-                        print("[Grid] Exception in run_config loop:")
-                        print(traceback.format_exc())
-                        print(
-            f"[Grid][Types] routing_meta_type={type({}).__name__} "
-            f"kb_retriever_type={type(kb_retriever).__name__} "
-            f"ticket_type={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
-            f"models_type={type(models_loaded).__name__}"
-        )
+                            aggregate.append(
+                                {
+                                    "router": router_name,
+                                    "memory": memory_mode,
+                                    "model": model_name,
+                                    "classifier_mode": safe_rec.get("classifier_mode", classifier_mode),
+                                    "classifier_label": safe_rec.get("classifier_label", ""),
+                                    "classifier_confidence": safe_rec.get("classifier_confidence", 0.0),
+                                    "classifier_latency_ms": safe_rec.get("classifier_latency_ms", 0.0),
+                                    "classifier_token_cost": safe_rec.get("classifier_token_cost", 0.0),
+                                    "classifier_accuracy": safe_rec.get("classifier_accuracy", 0.0),
+                                    "classifier_efficiency_score": safe_rec.get("classifier_efficiency_score", 0.0),
+                                    "ticket_id": safe_rec.get("ticket_id"),
+                                    "kb_attached": safe_rec.get("kb_attached", False),
+                                    "result": safe_rec.get("result"),
+                                    "accuracy": safe_rec.get("accuracy", 0.0),
+                                    "groundedness": safe_rec.get("groundedness", 0.0),
+                                    "schema_validity": safe_rec.get("schema_validity", 0.0),
+                                    "latency_ms": safe_rec.get("latency_ms", 0.0),
+                                    "cost_usd": safe_rec.get("cost_usd", 0.0),
+                                    "model_used": safe_rec.get("model_used", ""),
+                                    "json_valid": bool(safe_rec.get("json_valid", False)),
+                                    "schema_valid": bool(safe_rec.get("schema_valid", False)),
+                                    "gold_category": safe_rec.get("gold_category", ""),
+                                    "predicted_category": safe_rec.get("predicted_category", ""),
+                                    "classifier_metadata": safe_rec.get("classifier_metadata", {}),
+                                }
+                            )
+                    except Exception:
+                        if verbose:
+                            print("[Grid] Exception in run_config loop:")
+                            print(traceback.format_exc())
+                            print(
+                                f"[Grid][Types] routing_meta_type={type({}).__name__} "
+                                f"kb_retriever_type={type(kb_retriever).__name__} "
+                                f"ticket_type={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
+                                f"models_type={type(models_loaded).__name__}"
+                            )
                         raise
-                    raise
-            release_local_models(models_loaded)
+
+    release_local_models(models_loaded)
 
     df = pd.DataFrame(aggregate)
     exp_dir = RESULTS_DIR / "experiments"
@@ -403,8 +457,6 @@ def run_full_grid(
         except Exception:
             pass
 
-    release_local_models(models_loaded)
-
     return df
 
 
@@ -416,9 +468,16 @@ def main() -> None:
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
     parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
     parser.add_argument("--slm_subset", type=str, default=None, help="Comma-separated SLM keys to enable")
+    parser.add_argument(
+        "--classifier-modes",
+        type=str,
+        default=None,
+        help="Comma-separated classifier modes to enable (tfidf, encoder, slm_finetuned)",
+    )
     args = parser.parse_args()
 
     slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
+    classifier_modes = [s.strip() for s in args.classifier_modes.split(",")] if args.classifier_modes else None
 
     try:
         if args.verbose:
@@ -438,7 +497,15 @@ def main() -> None:
             print("[Grid] Loading models...")
         _ = load_models(sanity=False, slm_subset=slm_subset, force_llm=args.force_llm)
 
-        df = run_full_grid(tickets=tickets, kb_retriever=kb_loader, limit=args.limit, verbose=args.verbose, force_llm=args.force_llm, slm_subset=slm_subset)
+        df = run_full_grid(
+            tickets=tickets,
+            kb_retriever=kb_loader,
+            limit=args.limit,
+            verbose=args.verbose,
+            force_llm=args.force_llm,
+            slm_subset=slm_subset,
+            classifier_modes=classifier_modes,
+        )
         out_dir = RESULTS_DIR / "experiments"
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "results.csv"

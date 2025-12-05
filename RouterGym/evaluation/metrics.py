@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import json
+import os
 
 import numpy as np
 
@@ -22,7 +23,12 @@ TOKENS_PER_CHAR = 0.25  # rough heuristic
 def _get_embedder():
     global _embedder
     if _embedder is None and SentenceTransformer is not None:
-        _embedder = SentenceTransformer(EMBED_MODEL)
+        if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER") not in {"0", "false", "False"}:
+            os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+        try:
+            _embedder = SentenceTransformer(EMBED_MODEL)
+        except Exception:
+            _embedder = None
     return _embedder
 
 
