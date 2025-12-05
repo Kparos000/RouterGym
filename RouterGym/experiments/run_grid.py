@@ -6,6 +6,7 @@ import argparse
 import csv
 import gc
 import json
+import math
 import traceback
 import time
 from pathlib import Path
@@ -49,6 +50,10 @@ RESULT_COLUMNS: Sequence[str] = (
     "classifier_mode",
     "classifier_label",
     "classifier_confidence",
+    "classifier_latency_ms",
+    "classifier_token_cost",
+    "classifier_accuracy",
+    "classifier_efficiency_score",
     "ticket_id",
     "kb_attached",
     "result",
@@ -57,44 +62,75 @@ RESULT_COLUMNS: Sequence[str] = (
     "schema_validity",
     "latency_ms",
     "cost_usd",
+    "retrieved_context_length",
+    "retrieval_latency_ms",
+    "memory_cost_tokens",
+    "memory_relevance_score",
+    "memory_context_used",
     "model_used",
     "json_valid",
     "schema_valid",
     "gold_category",
     "predicted_category",
+    "classifier_metadata",
 )
 
 
-def _clean_csv_value(value: Any) -> Any:
-    """Sanitize scalar values for flat CSV export."""
+def _format_metadata(value: Any) -> str:
+    """Serialize classifier metadata without commas for CSV highlighting."""
+    if value in (None, "", {}, []):
+        return "{}"
+    if isinstance(value, str):
+        text = value.strip().replace("\n", " ").replace("\r", " ")
+        return text or "{}"
+    if isinstance(value, dict):
+        parts = []
+        for key, item in value.items():
+            key_text = str(key).strip().replace("\n", " ").replace("\r", " ")
+            if isinstance(item, (dict, list)):
+                item_text = json.dumps(item, separators=(",", ":"), ensure_ascii=False)
+            else:
+                item_text = str(item)
+            item_text = item_text.strip().replace(",", ";").replace("\n", " ").replace("\r", " ")
+            parts.append(f"{key_text}:{item_text}")
+        return ";".join(parts) if parts else "{}"
+    text = str(value).strip().replace(",", ";").replace("\n", " ").replace("\r", " ")
+    return text or "{}"
+
+
+def _clean_csv_value(column: str, value: Any) -> Any:
+    """Sanitize individual values for flat CSV export."""
+    if column == "classifier_metadata":
+        return _format_metadata(value)
     if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
         return ""
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
         return value
-    text = str(value).strip()
-    return text.replace(",", ";")
+    text = str(value).strip().replace("\n", " ").replace("\r", " ")
+    return text
 
 
 def _records_to_rows(records: Iterable[Dict[str, Any]]) -> Iterable[List[Any]]:
     """Align records to the canonical column order for CSV output."""
     for record in records:
-        row: List[Any] = []
-        for column in RESULT_COLUMNS:
-            row.append(_clean_csv_value(record.get(column, "")))
-        yield row
+        yield [_clean_csv_value(column, record.get(column, "")) for column in RESULT_COLUMNS]
 
 
-def _write_results_csv(path: Path, records: Iterable[Dict[str, Any]]) -> None:
+def write_results_csv(path: Path, records: Iterable[Dict[str, Any]]) -> None:
     """Write sanitized records to CSV with strict formatting rules."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(RESULT_COLUMNS)
-        for row in _records_to_rows(records):
+        for idx, row in enumerate(_records_to_rows(records), start=1):
             if len(row) != len(RESULT_COLUMNS):
-                raise ValueError("CSV row length mismatch")
+                raise ValueError(
+                    f"CSV row length mismatch at row {idx}: expected {len(RESULT_COLUMNS)} columns"
+                )
             writer.writerow(row)
 
 
@@ -103,6 +139,52 @@ def _results_output_path(ticket_count: int) -> Path:
     if ticket_count <= 50:
         return RESULTS_DIR / "results.csv"
     return RESULTS_DIR / "experiments" / f"results_{ticket_count}tickets.csv"
+
+
+def _build_result_row(
+    router_name: str,
+    memory_mode: str,
+    model_name: str,
+    classifier_mode: str,
+    record: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Project raw run outputs into the canonical 30-column schema."""
+    row = {
+        "router": router_name,
+        "memory": memory_mode,
+        "memory_mode": record.get("memory_mode", memory_mode),
+        "model": model_name,
+        "classifier_mode": record.get("classifier_mode", classifier_mode),
+        "classifier_label": record.get("classifier_label", ""),
+        "classifier_confidence": record.get("classifier_confidence", 0.0),
+        "classifier_latency_ms": record.get("classifier_latency_ms", 0.0),
+        "classifier_token_cost": record.get("classifier_token_cost", 0.0),
+        "classifier_accuracy": record.get("classifier_accuracy", 0.0),
+        "classifier_efficiency_score": record.get("classifier_efficiency_score", 0.0),
+        "ticket_id": record.get("ticket_id"),
+        "kb_attached": bool(record.get("kb_attached", False)),
+        "result": record.get("result", "unknown"),
+        "accuracy": record.get("accuracy", 0.0),
+        "groundedness": record.get("groundedness", 0.0),
+        "schema_validity": record.get("schema_validity", 0.0),
+        "latency_ms": record.get("latency_ms", 0.0),
+        "cost_usd": record.get("cost_usd", 0.0),
+        "retrieved_context_length": record.get("retrieved_context_length", 0),
+        "retrieval_latency_ms": record.get("retrieval_latency_ms", record.get("retrieval_time", 0.0)),
+        "memory_cost_tokens": record.get("memory_cost_tokens", 0),
+        "memory_relevance_score": record.get("memory_relevance_score", 0.0),
+        "memory_context_used": record.get("memory_context", record.get("memory_context_used", "")),
+        "model_used": record.get("model_used", ""),
+        "json_valid": bool(record.get("json_valid", False)),
+        "schema_valid": bool(record.get("schema_valid", False)),
+        "gold_category": record.get("gold_category", ""),
+        "predicted_category": record.get("predicted_category", ""),
+        "classifier_metadata": record.get("classifier_metadata", {}),
+    }
+    # Guarantee the downstream writer sees every expected column.
+    for column in RESULT_COLUMNS:
+        row.setdefault(column, "")
+    return row
 
 
 def _norm_label(label: Any) -> str:
@@ -483,38 +565,13 @@ def run_full_grid(
                         for rec in records:
                             safe_rec = _coerce_record(rec)
                             aggregate.append(
-                                {
-                                    "router": router_name,
-                                    "memory": memory_mode,
-                                    "memory_mode": safe_rec.get("memory_mode", memory_mode),
-                                    "model": model_name,
-                                    "classifier_mode": safe_rec.get("classifier_mode", classifier_mode),
-                                    "classifier_label": safe_rec.get("classifier_label", ""),
-                                    "classifier_confidence": safe_rec.get("classifier_confidence", 0.0),
-                                    "classifier_latency_ms": safe_rec.get("classifier_latency_ms", 0.0),
-                                    "classifier_token_cost": safe_rec.get("classifier_token_cost", 0.0),
-                                    "classifier_accuracy": safe_rec.get("classifier_accuracy", 0.0),
-                                    "classifier_efficiency_score": safe_rec.get("classifier_efficiency_score", 0.0),
-                                    "ticket_id": safe_rec.get("ticket_id"),
-                                    "kb_attached": safe_rec.get("kb_attached", False),
-                                    "result": safe_rec.get("result"),
-                                    "accuracy": safe_rec.get("accuracy", 0.0),
-                                    "groundedness": safe_rec.get("groundedness", 0.0),
-                                    "schema_validity": safe_rec.get("schema_validity", 0.0),
-                                    "latency_ms": safe_rec.get("latency_ms", 0.0),
-                                    "cost_usd": safe_rec.get("cost_usd", 0.0),
-                                    "retrieved_context_length": safe_rec.get("retrieved_context_length", 0),
-                                    "retrieval_latency_ms": safe_rec.get("retrieval_latency_ms", safe_rec.get("retrieval_time", 0.0)),
-                                    "memory_cost_tokens": safe_rec.get("memory_cost_tokens", 0),
-                                    "memory_relevance_score": safe_rec.get("memory_relevance_score", 0.0),
-                                    "memory_context_used": safe_rec.get("memory_context", ""),
-                                    "model_used": safe_rec.get("model_used", ""),
-                                    "json_valid": bool(safe_rec.get("json_valid", False)),
-                                    "schema_valid": bool(safe_rec.get("schema_valid", False)),
-                                    "gold_category": safe_rec.get("gold_category", ""),
-                                    "predicted_category": safe_rec.get("predicted_category", ""),
-                                    "classifier_metadata": safe_rec.get("classifier_metadata", {}),
-                                }
+                                _build_result_row(
+                                    router_name,
+                                    memory_mode,
+                                    model_name,
+                                    classifier_mode,
+                                    safe_rec,
+                                )
                             )
                     except Exception:
                         if verbose:
@@ -532,7 +589,7 @@ def run_full_grid(
 
     df = pd.DataFrame(aggregate)
     output_path = _results_output_path(ticket_count)
-    _write_results_csv(output_path, aggregate)
+    write_results_csv(output_path, aggregate)
 
     if not df.empty:
         try:
