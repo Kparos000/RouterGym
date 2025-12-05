@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import gc
 import json
 import traceback
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import pandas as pd
 
@@ -39,6 +40,81 @@ DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
 MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
+
+RESULT_COLUMNS: Sequence[str] = (
+    "router",
+    "memory",
+    "memory_mode",
+    "model",
+    "classifier_mode",
+    "classifier_label",
+    "classifier_confidence",
+    "classifier_latency_ms",
+    "classifier_token_cost",
+    "classifier_accuracy",
+    "classifier_efficiency_score",
+    "ticket_id",
+    "kb_attached",
+    "result",
+    "accuracy",
+    "groundedness",
+    "schema_validity",
+    "latency_ms",
+    "cost_usd",
+    "retrieved_context_length",
+    "retrieval_latency_ms",
+    "memory_cost_tokens",
+    "memory_relevance_score",
+    "memory_context_used",
+    "model_used",
+    "json_valid",
+    "schema_valid",
+    "gold_category",
+    "predicted_category",
+    "classifier_metadata",
+)
+
+
+def _clean_csv_value(value: Any) -> Any:
+    """Normalize individual values prior to CSV serialization."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (dict, list)):
+        try:
+            return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        except Exception:
+            return str(value).strip()
+    return value
+
+
+def _records_to_rows(records: Iterable[Dict[str, Any]]) -> Iterable[List[Any]]:
+    """Align records to the canonical column order for CSV output."""
+    for record in records:
+        row: List[Any] = []
+        for column in RESULT_COLUMNS:
+            row.append(_clean_csv_value(record.get(column, "")))
+        yield row
+
+
+def _write_results_csv(path: Path, records: Iterable[Dict[str, Any]]) -> None:
+    """Write sanitized records to CSV with strict formatting rules."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(RESULT_COLUMNS)
+        for row in _records_to_rows(records):
+            if len(row) != len(RESULT_COLUMNS):
+                raise ValueError("CSV row length mismatch")
+            writer.writerow(row)
+
+
+def _results_output_path(ticket_count: int) -> Path:
+    """Return the appropriate CSV path based on ticket volume."""
+    if ticket_count <= 50:
+        return RESULTS_DIR / "results.csv"
+    return RESULTS_DIR / "experiments" / f"results_{ticket_count}tickets.csv"
 
 
 def _norm_label(label: Any) -> str:
@@ -366,6 +442,7 @@ def run_full_grid(
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, models, and classifier modes."""
     tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
+    ticket_count = len(tickets)
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
     try:
@@ -466,17 +543,8 @@ def run_full_grid(
     release_local_models(models_loaded)
 
     df = pd.DataFrame(aggregate)
-    exp_dir = RESULTS_DIR / "experiments"
-    exp_dir.mkdir(parents=True, exist_ok=True)
-    n_tickets = df["ticket_id"].nunique()
-
-    # results.csv = latest run (overwritten on each run)
-    # results_{N}tickets.csv = archived snapshot for large runs (N >= 50)
-    csv_path = Path("RouterGym") / "results" / "experiments" / "results.csv"
-    df.to_csv(csv_path, index=False)
-    if n_tickets >= 50:
-        snapshot_path = exp_dir / f"results_{n_tickets}tickets.csv"
-        df.to_csv(snapshot_path, index=False)
+    output_path = _results_output_path(ticket_count)
+    _write_results_csv(output_path, aggregate)
 
     if not df.empty:
         try:
@@ -533,11 +601,8 @@ def main() -> None:
             slm_subset=slm_subset,
             classifier_modes=classifier_modes,
         )
-        out_dir = RESULTS_DIR / "experiments"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / "results.csv"
-        df.to_csv(out_path, index=False)
         if args.verbose:
+            out_path = _results_output_path(len(tickets))
             print(f"[Grid] Results saved to {out_path}")
     except Exception:  # pragma: no cover - CLI error handling
         print("[Grid] Fatal error during grid run:")
