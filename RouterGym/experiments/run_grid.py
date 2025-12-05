@@ -49,10 +49,6 @@ RESULT_COLUMNS: Sequence[str] = (
     "classifier_mode",
     "classifier_label",
     "classifier_confidence",
-    "classifier_latency_ms",
-    "classifier_token_cost",
-    "classifier_accuracy",
-    "classifier_efficiency_score",
     "ticket_id",
     "kb_attached",
     "result",
@@ -61,32 +57,24 @@ RESULT_COLUMNS: Sequence[str] = (
     "schema_validity",
     "latency_ms",
     "cost_usd",
-    "retrieved_context_length",
-    "retrieval_latency_ms",
-    "memory_cost_tokens",
-    "memory_relevance_score",
-    "memory_context_used",
     "model_used",
     "json_valid",
     "schema_valid",
     "gold_category",
     "predicted_category",
-    "classifier_metadata",
 )
 
 
 def _clean_csv_value(value: Any) -> Any:
-    """Normalize individual values prior to CSV serialization."""
+    """Sanitize scalar values for flat CSV export."""
     if value is None:
         return ""
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, (dict, list)):
-        try:
-            return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
-        except Exception:
-            return str(value).strip()
-    return value
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    return text.replace(",", ";")
 
 
 def _records_to_rows(records: Iterable[Dict[str, Any]]) -> Iterable[List[Any]]:
