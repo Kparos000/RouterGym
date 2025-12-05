@@ -1,34 +1,76 @@
-"""Salience-gated RAG memory backend."""
+"""Salience-gated transcript memory backend."""
 
-from typing import List, Tuple
+from __future__ import annotations
 
-from RouterGym.memory.base import MemoryBase
+from collections import Counter
+from typing import Dict, List, Optional, Tuple
+
+from RouterGym.memory.base import MemoryBase, MemoryRetrieval
 
 
 class SalienceGatedMemory(MemoryBase):
-    """Adds simple gating before using salient snippets."""
+    """Ranks transcript snippets by salience before reuse."""
 
-    def __init__(self, top_k: int = 3, max_items: int = 5) -> None:
+    def __init__(self, top_k: int = 3, max_items: int = 5, decay: float = 0.9) -> None:
+        super().__init__()
         self.docs: List[Tuple[str, float]] = []
         self.top_k = top_k
         self.max_items = max_items
+        self.decay = decay
+        self.token_freq: Counter[str] = Counter()
+        self._last_tokens: List[str] = []
+        self.turn = 0
 
-    def _score(self, text: str) -> float:
-        """Simple salience heuristic: length and unique tokens."""
-        tokens = text.split()
-        unique = len(set(tokens))
-        return unique + 0.1 * len(tokens)
+    def load(self, ticket: Dict[str, str]) -> None:
+        super().load(ticket)
 
-    def add(self, text: str) -> None:
-        """Store text with salience score, keep top-N."""
-        score = self._score(text)
-        self.docs.append((text, score))
-        self.docs = sorted(self.docs, key=lambda x: x[1], reverse=True)[: self.max_items]
+    def update(self, text: str, metadata: Optional[Dict[str, str]] = None) -> None:
+        if not text:
+            return
+        self.turn += 1
+        tokens = self._tokenize(text)
+        score = self._score(tokens, text)
+        self.docs.append((text.strip(), score))
+        self.docs = sorted(self.docs, key=lambda item: item[1], reverse=True)[: self.max_items]
+        self.token_freq.update(tokens)
+        self._last_tokens = tokens
 
-    def get_context(self) -> str:
-        """Return top-k salient messages."""
-        top = self.docs[: self.top_k]
-        return "\n".join([msg for msg, _ in top])
+    def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
+        context = self.summarize()
+        scores = [score for _, score in self.docs[: self.top_k]]
+        max_score = max(scores) if scores else 1.0
+        relevance = float(sum(scores) / (len(scores) * max_score)) if scores else 0.0
+        metadata = {
+            "mode": "salience",
+            "top_k": self.top_k,
+            "max_items": self.max_items,
+            "scores": scores,
+            "query": query or "",
+        }
+        return MemoryRetrieval(
+            retrieved_context=context,
+            retrieval_metadata=metadata,
+            retrieval_cost_tokens=self._estimate_tokens(context),
+            relevance_score=relevance,
+        )
+
+    def summarize(self) -> str:
+        top = [msg for msg, _ in self.docs[: self.top_k]]
+        return "\n".join(top)
+
+    def _tokenize(self, text: str) -> List[str]:
+        return [tok.lower() for tok in text.split() if tok.strip()]
+
+    def _score(self, tokens: List[str], text: str) -> float:
+        if not tokens:
+            return 0.0
+        rarity = sum(1.0 / (1.0 + self.token_freq[token]) for token in tokens) / len(tokens)
+        sentence_weight = 1.0 + 0.15 * max(text.count("."), text.count("\n"), 1)
+        overlap = len(set(tokens) & set(self._last_tokens)) / max(len(tokens), 1)
+        continuity = 1.0 + (1.0 - overlap) * 0.5
+        length_weight = min(len(tokens) / 20.0, 2.0)
+        decay_factor = self.decay ** self.turn
+        return (rarity * sentence_weight * continuity + length_weight) * decay_factor
 
 
 __all__ = ["SalienceGatedMemory"]

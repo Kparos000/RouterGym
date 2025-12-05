@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from RouterGym.classifiers import CLASSIFIER_MODES as REGISTERED_MODES, get_classifier_instance
 from RouterGym.classifiers.utils import ClassifierMetadata, ClassifierProtocol, canonical_label
+from RouterGym.memory.base import MemoryRetrieval
 
 CLASSIFIER_MODES = REGISTERED_MODES
 
@@ -22,6 +23,10 @@ class ClassificationSummary:
     accuracy: float
     efficiency: float
     metadata: Dict[str, Any]
+    memory_context_used: str
+    memory_relevance_score: float
+    memory_cost_tokens: int
+    memory_mode: str
 
     def as_dict(self, classifier_mode: str) -> Dict[str, Any]:
         return {
@@ -34,6 +39,10 @@ class ClassificationSummary:
             "classifier_accuracy": self.accuracy,
             "classifier_efficiency_score": self.efficiency,
             "classifier_metadata": self.metadata,
+            "memory_context_used": self.memory_context_used,
+            "memory_relevance_score": self.memory_relevance_score,
+            "memory_cost_tokens": self.memory_cost_tokens,
+            "memory_mode": self.memory_mode,
         }
 
 
@@ -54,7 +63,12 @@ class RouterEngine:
     def metadata(self) -> ClassifierMetadata:
         return self._classifier.metadata
 
-    def classify_ticket(self, ticket: Dict[str, Any]) -> ClassificationSummary:
+    def classify_ticket(
+        self,
+        ticket: Dict[str, Any],
+        memory_result: Optional[MemoryRetrieval] = None,
+        memory_mode: str = "none",
+    ) -> ClassificationSummary:
         if isinstance(ticket, dict):
             text = str(ticket.get("text", ""))
             gold_label = canonical_label(ticket.get("gold_category") or ticket.get("category"))
@@ -71,6 +85,16 @@ class RouterEngine:
         accuracy = 1.0 if gold_label and label == gold_label else 0.0
         efficiency = accuracy / denom
         metadata = self._classifier.metadata.as_dict()
+        memory_context = memory_result.retrieved_context if memory_result else ""
+        memory_relevance = memory_result.relevance_score if memory_result else 0.0
+        memory_cost = memory_result.retrieval_cost_tokens if memory_result else 0
+        metadata.update(
+            {
+                "memory_available": bool(memory_context),
+                "memory_mode": memory_mode,
+                "memory_relevance_score": memory_relevance,
+            }
+        )
         return ClassificationSummary(
             label=label,
             confidence=confidence,
@@ -80,6 +104,10 @@ class RouterEngine:
             accuracy=accuracy,
             efficiency=efficiency,
             metadata=metadata,
+            memory_context_used=memory_context,
+            memory_relevance_score=memory_relevance,
+            memory_cost_tokens=memory_cost,
+            memory_mode=memory_mode,
         )
 
     def set_mode(self, classifier_mode: str) -> None:

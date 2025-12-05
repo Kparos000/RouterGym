@@ -161,10 +161,14 @@ def run_single(
             "ticket_id": None,
             "router": None,
             "memory": memory_mode,
+            "memory_mode": memory_mode,
             "target_model": "unknown",
             "kb_attached": False,
             "routing_meta": {},
             "memory_context": "",
+            "memory_relevance_score": 0.0,
+            "memory_cost_tokens": 0,
+            "memory_retrieval_metadata": {},
             "result": "error",
             "accuracy": 0.0,
             "groundedness": 0.0,
@@ -178,6 +182,8 @@ def run_single(
             "predicted_category": "",
             "routing_time": 0.0,
             "retrieval_time": 0.0,
+            "retrieval_latency_ms": 0.0,
+            "retrieved_context_length": 0,
             "generation_time": 0.0,
             "repair_time": 0.0,
             "metrics_time": 0.0,
@@ -189,12 +195,20 @@ def run_single(
         else:
             base_record["classifier_mode"] = active_mode
         return base_record
-    classifier_summary = router_engine.classify_ticket(ticket) if router_engine else None
+    memory = init_memory(memory_mode)
+    memory.load(ticket)
+    t_retrieve_start = time.perf_counter()
+    retrieval_result = memory.retrieve(ticket.get("text", ""))
+    retrieval_latency_ms = (time.perf_counter() - t_retrieve_start) * 1000
+    memory_context = retrieval_result.retrieved_context
+    memory_relevance = retrieval_result.relevance_score
+    memory_cost_tokens = retrieval_result.retrieval_cost_tokens
+    memory_metadata = retrieval_result.retrieval_metadata
+    classifier_summary = (
+        router_engine.classify_ticket(ticket, retrieval_result, memory_mode) if router_engine else None
+    )
     try:
         t_route_start = time.perf_counter()
-        memory = init_memory(memory_mode)
-        memory.add(ticket.get("text", ""))
-        memory_context = memory.get_context()
         router_kb = kb_retriever if memory_mode in {"rag", "salience"} else None
         routing_meta = router.route(ticket, kb=router_kb, models=models, memory=memory, force_llm=force_llm) if router else {}
         routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
@@ -222,6 +236,10 @@ def run_single(
             "kb_attached": kb_used_in_prompt,
             "routing_meta": routing_meta,
             "memory_context": memory_context,
+            "memory_mode": memory_mode,
+            "memory_relevance_score": memory_relevance,
+            "memory_cost_tokens": memory_cost_tokens,
+            "memory_retrieval_metadata": memory_metadata,
             "result": "success",
             "accuracy": 0.0,
             "groundedness": 0.0,
@@ -235,7 +253,9 @@ def run_single(
             "predicted_category": predicted_category,
             "gold_category": gold_category,
             "routing_time": routing_time,
-            "retrieval_time": 0.0,
+            "retrieval_time": retrieval_latency_ms,
+            "retrieval_latency_ms": retrieval_latency_ms,
+            "retrieved_context_length": len(memory_context),
             "generation_time": generation_time,
             "repair_time": 0.0,
             "metrics_time": 0.0,
@@ -247,6 +267,7 @@ def run_single(
         else:
             record["classifier_mode"] = active_mode
         record["kb_snippets"] = kb_texts if kb_used_in_prompt else []
+        memory.update(final_output.get("final_answer", ""), metadata=routing_meta)
         t_metrics_start = time.perf_counter()
         metric_values = eval_metrics.compute_all_metrics(
             {
@@ -400,6 +421,7 @@ def run_full_grid(
                                 {
                                     "router": router_name,
                                     "memory": memory_mode,
+                                    "memory_mode": safe_rec.get("memory_mode", memory_mode),
                                     "model": model_name,
                                     "classifier_mode": safe_rec.get("classifier_mode", classifier_mode),
                                     "classifier_label": safe_rec.get("classifier_label", ""),
@@ -416,6 +438,11 @@ def run_full_grid(
                                     "schema_validity": safe_rec.get("schema_validity", 0.0),
                                     "latency_ms": safe_rec.get("latency_ms", 0.0),
                                     "cost_usd": safe_rec.get("cost_usd", 0.0),
+                                    "retrieved_context_length": safe_rec.get("retrieved_context_length", 0),
+                                    "retrieval_latency_ms": safe_rec.get("retrieval_latency_ms", safe_rec.get("retrieval_time", 0.0)),
+                                    "memory_cost_tokens": safe_rec.get("memory_cost_tokens", 0),
+                                    "memory_relevance_score": safe_rec.get("memory_relevance_score", 0.0),
+                                    "memory_context_used": safe_rec.get("memory_context", ""),
                                     "model_used": safe_rec.get("model_used", ""),
                                     "json_valid": bool(safe_rec.get("json_valid", False)),
                                     "schema_valid": bool(safe_rec.get("schema_valid", False)),

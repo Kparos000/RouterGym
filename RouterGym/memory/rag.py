@@ -1,11 +1,11 @@
 """RAG memory backend."""
 
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from RouterGym.memory.base import MemoryBase
+from RouterGym.memory.base import MemoryBase, MemoryRetrieval
 from RouterGym.data.policy_kb import kb_loader
 
 try:
@@ -18,6 +18,7 @@ class RAGMemory(MemoryBase):
     """Retrieval-augmented memory using KB retriever."""
 
     def __init__(self, top_k: int = 3, embed_model: str = "all-MiniLM-L6-v2") -> None:
+        super().__init__()
         self.top_k = top_k
         self.embed_model = embed_model
         self.docs: List[str] = []
@@ -25,6 +26,7 @@ class RAGMemory(MemoryBase):
         self.doc_keys, self.doc_texts = self._collect_docs(self.kb)
         self.kb_hash = self._kb_hash_safe()
         self.embedder = self._maybe_load_embedder(embed_model)
+        self._latest_context = ""
         cached = self._load_cached_embeddings()
         if cached is not None:
             self.doc_embeddings = cached
@@ -103,43 +105,88 @@ class RAGMemory(MemoryBase):
             return np.zeros((0, 0), dtype="float32")
         return np.array(self.embedder.encode(texts), dtype="float32")
 
-    def add(self, text: str) -> None:
-        """Store a document."""
+    def load(self, ticket: Dict[str, Any]) -> None:
+        super().load(ticket)
+
+    def update(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        if not text:
+            return
         self.docs.append(text)
+        if len(self.docs) > 100:
+            self.docs = self.docs[-100:]
 
-    def retrieve(self, query: str) -> List[Tuple[str, float]]:
-        """Return top-k KB snippets via cosine similarity."""
+    def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
+        query = query or (self.docs[-1] if self.docs else "")
+        snippets, backend = self._retrieve_snippets(query)
+        context = self._format_snippets(snippets)
+        self._latest_context = context
+        scores = [score for _, score in snippets]
+        relevance = float(sum(scores) / len(scores)) if scores else 0.0
+        metadata = {
+            "mode": "rag",
+            "kb_hash": self.kb_hash,
+            "backend": backend,
+            "top_k": self.top_k,
+            "snippets": [
+                {"text": chunk, "score": score}
+                for chunk, score in snippets
+            ],
+            "query": query,
+        }
+        token_cost = self._estimate_tokens(query) + self._estimate_tokens(context)
+        return MemoryRetrieval(
+            retrieved_context=context,
+            retrieval_metadata=metadata,
+            retrieval_cost_tokens=token_cost,
+            relevance_score=relevance,
+        )
+
+    def summarize(self) -> str:
+        return self._latest_context
+
+    def _retrieve_snippets(self, query: str) -> Tuple[List[Tuple[str, float]], str]:
         if not query:
-            return []
-
-        # Prefer live KB retrieval (allows monkeypatching in tests)
+            return [], "none"
         live = kb_loader.retrieve(query, top_k=self.top_k)
         if live:
-            return [(r.get("chunk") or r.get("text", ""), float(r.get("score", 0.0))) for r in live]
+            return [
+                (r.get("chunk") or r.get("text", ""), float(r.get("score", 0.0)))
+                for r in live
+            ], "kb_retriever"
 
-        if self.embedder is None or self.doc_embeddings.size == 0:
-            return []
+        if self.embedder is not None and self.doc_embeddings.size > 0:
+            query_vec = np.array(self.embedder.encode([query]), dtype="float32")
+            doc_norm = np.linalg.norm(self.doc_embeddings, axis=1, keepdims=True) + 1e-9
+            query_norm = np.linalg.norm(query_vec, axis=1, keepdims=True) + 1e-9
+            sims = (self.doc_embeddings @ query_vec.T) / (doc_norm * query_norm)
+            sims = sims.flatten()
+            top_idx = sims.argsort()[-self.top_k :][::-1]
+            ranked = [(self.doc_texts[idx], float(sims[idx])) for idx in top_idx]
+            return ranked, "embedding"
 
-        query_vec = np.array(self.embedder.encode([query]), dtype="float32")
-        doc_norm = np.linalg.norm(self.doc_embeddings, axis=1, keepdims=True) + 1e-9
-        query_norm = np.linalg.norm(query_vec, axis=1, keepdims=True) + 1e-9
-        sims = (self.doc_embeddings @ query_vec.T) / (doc_norm * query_norm)
-        sims = sims.flatten()
-        top_idx = sims.argsort()[-self.top_k :][::-1]
+        lexical = self._lexical_rank(query)
+        return lexical, "lexical"
+
+    def _lexical_rank(self, query: str) -> List[Tuple[str, float]]:
+        q_tokens = set(query.lower().split())
         ranked: List[Tuple[str, float]] = []
-        for idx in top_idx:
-            ranked.append((self.doc_texts[idx], float(sims[idx])))
-        return ranked
+        for text in self.doc_texts[:500]:
+            tokens = set(text.lower().split())
+            if not tokens:
+                continue
+            overlap = len(tokens & q_tokens) / len(tokens)
+            if overlap > 0:
+                ranked.append((text, overlap))
+        ranked.sort(key=lambda item: item[1], reverse=True)
+        return ranked[: self.top_k]
 
-    def get_context(self) -> str:
-        """Return formatted KB references."""
-        snippets = []
-        query = self.docs[-1] if self.docs else ""
-        for idx, (chunk, _) in enumerate(self.retrieve(query), start=1):
+    def _format_snippets(self, snippets: List[Tuple[str, float]]) -> str:
+        formatted = []
+        for idx, (chunk, score) in enumerate(snippets, start=1):
             if not chunk:
                 continue
-            snippets.append(f"### KB Reference {idx}:\n> {chunk.strip()}")
-        return "\n\n".join(snippets)
+            formatted.append(f"### KB Reference {idx} (score={score:.2f}):\n> {chunk.strip()}")
+        return "\n\n".join(formatted)
 
 
 __all__ = ["RAGMemory"]
