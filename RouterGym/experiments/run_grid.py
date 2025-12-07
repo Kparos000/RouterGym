@@ -22,11 +22,8 @@ from RouterGym.engines.model_registry import load_models
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
-from RouterGym.memory.base import MemoryBase
-from RouterGym.memory.none import NoneMemory
-from RouterGym.memory.transcript import TranscriptMemory
-from RouterGym.memory.rag import RAGMemory
-from RouterGym.memory.salience import SalienceGatedMemory
+from RouterGym.memory.base import MemoryBase, MemoryRetrieval
+from RouterGym.memory import MEMORY_MODES, get_memory_class, resolve_memory_mode
 from RouterGym.routing.base import BaseRouter
 from RouterGym.routing.router_engine import CLASSIFIER_MODES, RouterEngine
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
@@ -39,7 +36,6 @@ DEFAULT_TICKETS_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
 ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
-MEMORY_MODES = ["none", "transcript", "rag", "salience"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 
 RESULT_COLUMNS: Sequence[str] = (
@@ -277,15 +273,11 @@ def init_router(name: str) -> Optional[BaseRouter]:
 
 
 def init_memory(name: str) -> MemoryBase:
-    if name == "none":
-        return NoneMemory()
-    if name == "transcript":
-        return TranscriptMemory()
-    if name == "rag":
-        return RAGMemory()
-    if name == "salience":
-        return SalienceGatedMemory()
-    return NoneMemory()
+    canonical = resolve_memory_mode(name)
+    memory_cls = get_memory_class(canonical)
+    if memory_cls is None:
+        return get_memory_class("none")()  # type: ignore[operator]
+    return memory_cls()
 
 
 def run_single(
@@ -300,6 +292,7 @@ def run_single(
     classifier_mode: str = "tfidf",
 ) -> Dict[str, Any]:
     """Run a single ticket through a router + memory + optional classifier."""
+    memory_mode = resolve_memory_mode(memory_mode)
     start_total = time.perf_counter()
     active_mode = router_engine.classifier_mode if router_engine else classifier_mode
     if not isinstance(ticket, dict):
@@ -343,19 +336,19 @@ def run_single(
         return base_record
     memory = init_memory(memory_mode)
     memory.load(ticket)
-    t_retrieve_start = time.perf_counter()
-    retrieval_result = memory.retrieve(ticket.get("text", ""))
-    retrieval_latency_ms = (time.perf_counter() - t_retrieve_start) * 1000
+    retrieval_result: MemoryRetrieval = memory.retrieve(ticket.get("text", ""))
     memory_context = retrieval_result.retrieved_context
-    memory_relevance = retrieval_result.relevance_score
-    memory_cost_tokens = retrieval_result.retrieval_cost_tokens
+    memory_relevance = retrieval_result.memory_relevance_score
+    memory_cost_tokens = retrieval_result.memory_cost_tokens
     memory_metadata = retrieval_result.retrieval_metadata
+    retrieval_latency_ms = retrieval_result.retrieval_latency_ms
+    retrieved_context_length = retrieval_result.retrieved_context_length
     classifier_summary = (
         router_engine.classify_ticket(ticket, retrieval_result, memory_mode) if router_engine else None
     )
     try:
         t_route_start = time.perf_counter()
-        router_kb = kb_retriever if memory_mode in {"rag", "salience"} else None
+        router_kb = kb_retriever if memory_mode in {"rag_dense", "rag_bm25", "rag_hybrid"} else None
         routing_meta = router.route(ticket, kb=router_kb, models=models, memory=memory, force_llm=force_llm) if router else {}
         routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
         routing_time = (time.perf_counter() - t_route_start) * 1000
@@ -365,7 +358,7 @@ def run_single(
         schema = SchemaContract()
         schema_valid, _ = schema.validate(final_output)
         kb_texts = list(routing_meta.get("kb_snippets", [])) if isinstance(routing_meta, dict) else []
-        kb_used_in_prompt = bool(kb_texts) and memory_mode in {"rag", "salience"}
+        kb_used_in_prompt = bool(kb_texts) and memory_mode in {"rag_dense", "rag_bm25", "rag_hybrid"}
         gold_category = _norm_label(ticket.get("gold_category", ticket.get("category", "")))
         predicted_category = _norm_label(final_output.get("predicted_category", routing_meta.get("predicted_category", "")))
         if predicted_category not in CLASS_LABELS or predicted_category == "unknown":
@@ -401,7 +394,7 @@ def run_single(
             "routing_time": routing_time,
             "retrieval_time": retrieval_latency_ms,
             "retrieval_latency_ms": retrieval_latency_ms,
-            "retrieved_context_length": len(memory_context),
+            "retrieved_context_length": retrieved_context_length or len(memory_context),
             "generation_time": generation_time,
             "repair_time": 0.0,
             "metrics_time": 0.0,
@@ -526,7 +519,12 @@ def run_full_grid(
     aggregate: List[Dict[str, Any]] = []
 
     router_list = routers or ROUTER_NAMES
-    memory_list = memories or MEMORY_MODES
+    raw_memory_list = memories or MEMORY_MODES
+    memory_list = []
+    for mem in raw_memory_list:
+        canonical = resolve_memory_mode(mem)
+        if canonical not in memory_list:
+            memory_list.append(canonical)
     if models:
         model_list = models
     elif slm_subset:

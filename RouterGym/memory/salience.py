@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
@@ -36,6 +37,7 @@ class SalienceGatedMemory(MemoryBase):
         self._last_tokens = tokens
 
     def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
+        t_start = time.perf_counter()
         context = self.summarize()
         scores = [score for _, score in self.docs[: self.top_k]]
         max_score = max(scores) if scores else 1.0
@@ -52,6 +54,8 @@ class SalienceGatedMemory(MemoryBase):
             retrieval_metadata=metadata,
             retrieval_cost_tokens=self._estimate_tokens(context),
             relevance_score=relevance,
+            retrieval_latency_ms=(time.perf_counter() - t_start) * 1000,
+            retrieved_context_length=len(context),
         )
 
     def summarize(self) -> str:

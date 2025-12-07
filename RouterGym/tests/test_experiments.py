@@ -136,7 +136,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
         kb_retriever=FakeKB(),
         limit=3,
         routers=["llm_first"],
-        memories=["rag"],
+        memories=["rag_dense"],
         models=["llm1"],
         verbose=False,
         force_llm=True,
@@ -198,7 +198,7 @@ def test_kb_attached_depends_on_memory(monkeypatch: Any) -> None:
     assert res_none["kb_attached"] is False
     assert res_none["groundedness"] == 0.0
 
-    res_rag = run_grid.run_single(ticket, FakeRouter(), "rag", kb_retriever=None, models=None)
+    res_rag = run_grid.run_single(ticket, FakeRouter(), "rag_dense", kb_retriever=None, models=None)
     assert res_rag["kb_attached"] is True
     assert res_rag["groundedness"] == 0.9
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Dict, List, Optional
 
 from RouterGym.memory.base import MemoryBase, MemoryRetrieval
@@ -27,6 +28,7 @@ class TranscriptMemory(MemoryBase):
             self.messages = self.messages[-self.max_messages :]
 
     def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
+        t_start = time.perf_counter()
         context = self.summarize()
         tail_count = len(self.messages[-self.k :]) if self.k else len(self.messages)
         relevance = min(tail_count / max(self.k or 1, 1), 1.0)
@@ -39,6 +41,8 @@ class TranscriptMemory(MemoryBase):
             },
             retrieval_cost_tokens=self._estimate_tokens(context),
             relevance_score=relevance,
+            retrieval_latency_ms=(time.perf_counter() - t_start) * 1000,
+            retrieved_context_length=len(context),
         )
 
     def summarize(self) -> str:

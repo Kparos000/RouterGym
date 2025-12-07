@@ -1,6 +1,7 @@
 """RAG memory backend."""
 
 import os
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -15,7 +16,7 @@ except Exception:  # pragma: no cover
 
 
 class RAGMemory(MemoryBase):
-    """Retrieval-augmented memory using KB retriever."""
+    """Dense retrieval-augmented memory using KB retriever (rag_dense)."""
 
     def __init__(self, top_k: int = 3, embed_model: str = "all-MiniLM-L6-v2") -> None:
         super().__init__()
@@ -116,22 +117,22 @@ class RAGMemory(MemoryBase):
             self.docs = self.docs[-100:]
 
     def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
+        t_start = time.perf_counter()
         query = query or (self.docs[-1] if self.docs else "")
         snippets, backend = self._retrieve_snippets(query)
         context = self._format_snippets(snippets)
         self._latest_context = context
         scores = [score for _, score in snippets]
-        relevance = float(sum(scores) / len(scores)) if scores else 0.0
+        relevance = float(scores[0]) if scores else 0.0
+        latency_ms = (time.perf_counter() - t_start) * 1000
         metadata = {
-            "mode": "rag",
+            "mode": "rag_dense",
             "kb_hash": self.kb_hash,
             "backend": backend,
             "top_k": self.top_k,
-            "snippets": [
-                {"text": chunk, "score": score}
-                for chunk, score in snippets
-            ],
+            "snippets": [{"text": chunk, "score": score} for chunk, score in snippets],
             "query": query,
+            "retrieval_latency_ms": latency_ms,
         }
         token_cost = self._estimate_tokens(query) + self._estimate_tokens(context)
         return MemoryRetrieval(
@@ -139,6 +140,8 @@ class RAGMemory(MemoryBase):
             retrieval_metadata=metadata,
             retrieval_cost_tokens=token_cost,
             relevance_score=relevance,
+            retrieval_latency_ms=latency_ms,
+            retrieved_context_length=len(context),
         )
 
     def summarize(self) -> str:
@@ -189,4 +192,6 @@ class RAGMemory(MemoryBase):
         return "\n\n".join(formatted)
 
 
-__all__ = ["RAGMemory"]
+DenseRAGMemory = RAGMemory
+
+__all__ = ["RAGMemory", "DenseRAGMemory"]

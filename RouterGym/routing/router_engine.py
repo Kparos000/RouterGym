@@ -27,6 +27,8 @@ class ClassificationSummary:
     memory_relevance_score: float
     memory_cost_tokens: int
     memory_mode: str
+    retrieval_latency_ms: float
+    retrieved_context_length: int
 
     def as_dict(self, classifier_mode: str) -> Dict[str, Any]:
         return {
@@ -43,6 +45,8 @@ class ClassificationSummary:
             "memory_relevance_score": self.memory_relevance_score,
             "memory_cost_tokens": self.memory_cost_tokens,
             "memory_mode": self.memory_mode,
+            "retrieval_latency_ms": self.retrieval_latency_ms,
+            "retrieved_context_length": self.retrieved_context_length,
         }
 
 
@@ -88,11 +92,15 @@ class RouterEngine:
         memory_context = memory_result.retrieved_context if memory_result else ""
         memory_relevance = memory_result.relevance_score if memory_result else 0.0
         memory_cost = memory_result.retrieval_cost_tokens if memory_result else 0
+        memory_latency = memory_result.retrieval_latency_ms if memory_result else 0.0
+        context_length = memory_result.retrieved_context_length if memory_result else 0
         metadata.update(
             {
                 "memory_available": bool(memory_context),
                 "memory_mode": memory_mode,
                 "memory_relevance_score": memory_relevance,
+                "retrieval_latency_ms": memory_latency,
+                "retrieved_context_length": context_length,
             }
         )
         return ClassificationSummary(
@@ -108,6 +116,8 @@ class RouterEngine:
             memory_relevance_score=memory_relevance,
             memory_cost_tokens=memory_cost,
             memory_mode=memory_mode,
+            retrieval_latency_ms=memory_latency,
+            retrieved_context_length=context_length,
         )
 
     def set_mode(self, classifier_mode: str) -> None:

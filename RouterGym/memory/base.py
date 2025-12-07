@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -17,6 +18,22 @@ class MemoryRetrieval:
     retrieval_metadata: Dict[str, Any] = field(default_factory=dict)
     retrieval_cost_tokens: int = 0
     relevance_score: float = 0.0
+    retrieval_latency_ms: float = 0.0
+    retrieved_context_length: int = 0
+
+    def __post_init__(self) -> None:
+        if not self.retrieved_context_length:
+            self.retrieved_context_length = len(self.retrieved_context)
+
+    @property
+    def memory_cost_tokens(self) -> int:
+        """Alias for compatibility."""
+        return self.retrieval_cost_tokens
+
+    @property
+    def memory_relevance_score(self) -> float:
+        """Alias for compatibility."""
+        return self.relevance_score
 
     def as_dict(self) -> Dict[str, Any]:
         """Return a serializable representation."""
@@ -24,7 +41,11 @@ class MemoryRetrieval:
             "retrieved_context": self.retrieved_context,
             "retrieval_metadata": self.retrieval_metadata,
             "retrieval_cost_tokens": self.retrieval_cost_tokens,
+            "memory_cost_tokens": self.retrieval_cost_tokens,
             "relevance_score": self.relevance_score,
+            "memory_relevance_score": self.relevance_score,
+            "retrieval_latency_ms": self.retrieval_latency_ms,
+            "retrieved_context_length": self.retrieved_context_length,
         }
 
 
@@ -45,6 +66,7 @@ class MemoryBase:
 
     def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
         """Retrieve context plus metadata for a query."""
+        t_start = time.perf_counter()
         context = self.summarize()
         metadata = {"mode": self.__class__.__name__.lower(), "query": query or ""}
         return MemoryRetrieval(
@@ -52,6 +74,7 @@ class MemoryBase:
             retrieval_metadata=metadata,
             retrieval_cost_tokens=self._estimate_tokens(context),
             relevance_score=0.0,
+            retrieval_latency_ms=(time.perf_counter() - t_start) * 1000,
         )
 
     def update(self, item: Any, metadata: Optional[Dict[str, Any]] = None) -> None:
