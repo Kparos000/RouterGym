@@ -1,4 +1,10 @@
-"""LLM-first routing policy."""
+"""LLM-first routing policy.
+
+This router serves as the baseline: it always prefers the strongest LLM
+(except for trivial short/obvious tickets) to set an upper bound on
+quality and a lower bound on cost/latency efficiency. It is intentionally
+simple and easy to explain for benchmarking.
+"""
 
 from typing import Any, Dict, Optional
 
@@ -53,6 +59,8 @@ class LLMFirstRouter(BaseRouter):
 
         use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
         chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)
+        router_confidence_score = 0.0
+        router_decision_reason = "llm_first_baseline"
 
         if memory:
             memory.add(text)
@@ -110,4 +118,6 @@ class LLMFirstRouter(BaseRouter):
             "kb_attached": bool(kb_snippets),
             "kb_snippets": kb_snippets,
             "prompt": prompt,
+            "router_confidence_score": router_confidence_score,
+            "router_decision_reason": router_decision_reason,
         }

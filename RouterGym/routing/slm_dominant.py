@@ -1,4 +1,10 @@
-"""SLM-dominant routing policy."""
+"""Heuristic SLM-first routing policy.
+
+This router prefers an SLM by default and only escalates to the LLM when
+simple hand-crafted rules mark the ticket as high-risk or too complex.
+The heuristics are transparent and rely on ticket length, coarse
+category hardness, and (optional) classifier confidence metadata.
+"""
 
 from typing import Any, Dict, Optional
 
@@ -69,10 +75,21 @@ class SLMDominantRouter(BaseRouter):
         )
         prompt = "\n\n".join(prompt_parts)
 
-        confidence = 0.8 if ticket.get("category") else 0.4
+        confidence = float(ticket.get("classifier_confidence", 0.8 if ticket.get("category") else 0.4))
         contract = SchemaContract()
 
-        initial_model = llm if force_llm else slm
+        classifier_label = str(ticket.get("category") or "")
+        escalate, decision_reason, risk_score = should_escalate_heuristic(
+            text,
+            category=classifier_label or _infer_category(text),
+            classifier_confidence=confidence,
+        )
+        if force_llm:
+            escalate = True
+            decision_reason = "escalate: force_llm"
+            risk_score = 1.0
+
+        initial_model = llm if escalate else slm
         raw_output = _call_model(initial_model, prompt) if initial_model else ""
         jc = JSONContract()
         sr = SelfRepair()
@@ -103,6 +120,8 @@ class SLMDominantRouter(BaseRouter):
         steps.append({"stage": "generate", "output": final_output, "confidence": confidence})
         if fallback:
             steps.append({"stage": "fallback_llm", "output": final_output})
+            decision_reason = decision_reason + " + schema_fallback"
+            risk_score = max(risk_score, 0.5)
 
         return {
             "strategy": "slm_dominant",
@@ -116,4 +135,39 @@ class SLMDominantRouter(BaseRouter):
             "kb_attached": bool(kb_snippets),
             "kb_snippets": kb_snippets,
             "prompt": prompt,
+            "router_confidence_score": risk_score,
+            "router_decision_reason": decision_reason,
         }
+HARD_CATEGORIES = {"security", "benefits", "legal", "compliance"}
+LENGTH_THRESHOLD = 512  # characters
+LOW_CONFIDENCE = 0.3
+
+
+def should_escalate_heuristic(
+    text: str,
+    category: str = "",
+    classifier_confidence: Optional[float] = None,
+) -> tuple[bool, str, float]:
+    """Return (escalate?, reason, score) based on simple rules."""
+    normalized_cat = (category or "").strip().lower()
+    is_hard = normalized_cat in HARD_CATEGORIES
+    is_long = len(text) >= LENGTH_THRESHOLD
+    conf = classifier_confidence if classifier_confidence is not None else 0.5
+    low_conf = conf < LOW_CONFIDENCE
+
+    triggers = []
+    if is_long:
+        triggers.append("long_ticket")
+    if is_hard:
+        triggers.append("hard_category")
+    if low_conf:
+        triggers.append("low_confidence")
+
+    escalate = bool(triggers)
+    if escalate:
+        reason = f"escalate: {' + '.join(triggers)}"
+        score = max(0.0, min(1.0, 1.0 - conf))
+    else:
+        reason = "stay_on_slm: heuristic_safe"
+        score = conf
+    return escalate, reason, score
