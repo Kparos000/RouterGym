@@ -223,3 +223,58 @@ def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
     assert df["latency_ms"].max() > 0
     assert df["json_valid"].apply(lambda v: isinstance(v, bool)).all()
     assert df["schema_valid"].apply(lambda v: isinstance(v, bool)).all()
+
+
+def test_dimensions_constants() -> None:
+    assert run_grid.ROUTER_MODES == ["llm_first", "slm_dominant", "hybrid_specialist"]
+    assert run_grid.MEMORY_MODES_CANONICAL == ["none", "transcript", "rag_dense", "rag_bm25", "rag_hybrid"]
+    assert run_grid.CLASSIFIER_MODES == ["tfidf", "encoder", "slm_finetuned"]
+    assert run_grid.MODEL_NAMES == ["slm1", "slm2", "llm1", "llm2"]
+    assert len(set(run_grid.ROUTER_MODES)) == len(run_grid.ROUTER_MODES)
+    assert len(set(run_grid.MEMORY_MODES_CANONICAL)) == len(run_grid.MEMORY_MODES_CANONICAL)
+    assert len(set(run_grid.CLASSIFIER_MODES)) == len(run_grid.CLASSIFIER_MODES)
+    assert len(set(run_grid.MODEL_NAMES)) == len(run_grid.MODEL_NAMES)
+
+
+def test_smoke10_uses_ten_tickets(monkeypatch: Any, tmp_path: Path) -> None:
+    tickets = [{"id": i, "text": f"ticket {i}", "category": "access"} for i in range(1, 15)]
+
+    def fake_load_dataset(limit=None):
+        return tickets
+
+    class FakeKB:
+        def retrieve(self, query: str, top_k: int = 3):
+            return [{"text": "kb"}]
+
+    class FakeRouter:
+        def route(self, ticket: dict, **kwargs: Any):
+            return {
+                "strategy": "llm_first",
+                "target_model": "slm",
+                "model_used": "slm",
+                "final_output": {
+                    "final_answer": "ans",
+                    "reasoning": "r",
+                    "predicted_category": "access",
+                },
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": False,
+                "kb_snippets": [],
+            }
+
+    if hasattr(run_grid.dataset_loader, "load_and_preprocess"):
+        monkeypatch.setattr(run_grid.dataset_loader, "load_and_preprocess", fake_load_dataset)
+    monkeypatch.setattr(run_grid.dataset_loader, "load_dataset", fake_load_dataset)
+    monkeypatch.setattr(run_grid, "load_kb", lambda: FakeKB())
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
+    df = run_grid.run_full_grid(
+        tickets=tickets[:10],
+        kb_retriever=FakeKB(),
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1"],
+        classifier_modes=["tfidf"],
+        verbose=False,
+    )
+    assert len(df) == 10

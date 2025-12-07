@@ -23,9 +23,9 @@ from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
 from RouterGym.memory.base import MemoryBase, MemoryRetrieval
-from RouterGym.memory import MEMORY_MODES, get_memory_class, resolve_memory_mode
+from RouterGym.memory import get_memory_class, resolve_memory_mode
 from RouterGym.routing.base import BaseRouter
-from RouterGym.routing.router_engine import CLASSIFIER_MODES, RouterEngine
+from RouterGym.routing.router_engine import RouterEngine
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
 
@@ -35,8 +35,10 @@ RAW_DIR = RESULTS_DIR / "raw"
 DEFAULT_TICKETS_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
-ROUTER_NAMES = ["llm_first", "slm_dominant", "hybrid_specialist"]
+ROUTER_MODES = ["llm_first", "slm_dominant", "hybrid_specialist"]
+MEMORY_MODES_CANONICAL = ["none", "transcript", "rag_dense", "rag_bm25", "rag_hybrid"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
+CLASSIFIER_MODES = ["tfidf", "encoder", "slm_finetuned"]
 
 RESULT_COLUMNS: Sequence[str] = (
     "router",
@@ -524,10 +526,13 @@ def run_full_grid(
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 
+    streaming_output = ticket_count > 50
+    output_path = _results_output_path(ticket_count)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     aggregate: List[Dict[str, Any]] = []
 
-    router_list = routers or ROUTER_NAMES
-    raw_memory_list = memories or MEMORY_MODES
+    router_list = routers or ROUTER_MODES
+    raw_memory_list = memories or MEMORY_MODES_CANONICAL
     memory_list = []
     for mem in raw_memory_list:
         canonical = resolve_memory_mode(mem)
@@ -541,61 +546,67 @@ def run_full_grid(
         model_list = ["llm1", "llm2"] if force_llm else MODEL_NAMES
     classifier_list = classifier_modes or CLASSIFIER_MODES
 
-    for classifier_mode in classifier_list:
-        engine = RouterEngine(classifier_mode)
-        for router_name in router_list:
-            for memory_mode in memory_list:
-                for model_name in model_list:
-                    if verbose:
-                        print(
-                            f"[Grid] Classifier={classifier_mode} Router={router_name} "
-                            f"Memory={memory_mode} Model={model_name} Tickets={len(tickets)}"
-                        )
-                    try:
-                        records = run_config(
-                            router_name,
-                            memory_mode,
-                            tickets,
-                            kb_retriever,
-                            models_loaded,
-                            force_llm=force_llm,
-                            verbose=verbose,
-                            router_engine=engine,
-                            classifier_mode=classifier_mode,
-                        )
-                        raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}__{classifier_mode}.jsonl"
-                        with raw_path.open("w", encoding="utf-8") as f:
+    with output_path.open("w", encoding="utf-8", newline="") as csv_handle:
+        csv_writer = csv.writer(csv_handle)
+        csv_writer.writerow(RESULT_COLUMNS)
+
+        for classifier_mode in classifier_list:
+            engine = RouterEngine(classifier_mode)
+            for router_name in router_list:
+                for memory_mode in memory_list:
+                    for model_name in model_list:
+                        if verbose:
+                            print(
+                                f"[Grid] Classifier={classifier_mode} Router={router_name} "
+                                f"Memory={memory_mode} Model={model_name} Tickets={len(tickets)}"
+                            )
+                        try:
+                            records = run_config(
+                                router_name,
+                                memory_mode,
+                                tickets,
+                                kb_retriever,
+                                models_loaded,
+                                force_llm=force_llm,
+                                verbose=verbose,
+                                router_engine=engine,
+                                classifier_mode=classifier_mode,
+                            )
+                            raw_path = RAW_DIR / f"{router_name}__{memory_mode}__{model_name}__{classifier_mode}.jsonl"
+                            with raw_path.open("w", encoding="utf-8") as f:
+                                for rec in records:
+                                    safe_rec = _coerce_record(rec)
+                                    f.write(json.dumps(safe_rec) + "\n")
                             for rec in records:
                                 safe_rec = _coerce_record(rec)
-                                f.write(json.dumps(safe_rec) + "\n")
-                        for rec in records:
-                            safe_rec = _coerce_record(rec)
-                            aggregate.append(
-                                _build_result_row(
+                                row_dict = _build_result_row(
                                     router_name,
                                     memory_mode,
                                     model_name,
                                     classifier_mode,
                                     safe_rec,
                                 )
-                            )
-                    except Exception:
-                        if verbose:
-                            print("[Grid] Exception in run_config loop:")
-                            print(traceback.format_exc())
-                            print(
-                                f"[Grid][Types] routing_meta_type={type({}).__name__} "
-                                f"kb_retriever_type={type(kb_retriever).__name__} "
-                                f"ticket_type={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
-                                f"models_type={type(models_loaded).__name__}"
-                            )
-                        raise
+                                csv_writer.writerow([_clean_csv_value(col, row_dict.get(col, "")) for col in RESULT_COLUMNS])
+                                if not streaming_output:
+                                    aggregate.append(row_dict)
+                        except Exception:
+                            if verbose:
+                                print("[Grid] Exception in run_config loop:")
+                                print(traceback.format_exc())
+                                print(
+                                    f"[Grid][Types] routing_meta_type={type({}).__name__} "
+                                    f"kb_retriever_type={type(kb_retriever).__name__} "
+                                    f"ticket_type={type(tickets[0]).__name__ if isinstance(tickets, list) and tickets else 'n/a'} "
+                                    f"models_type={type(models_loaded).__name__}"
+                                )
+                            raise
 
     release_local_models(models_loaded)
 
-    df = pd.DataFrame(aggregate)
-    output_path = _results_output_path(ticket_count)
-    write_results_csv(output_path, aggregate)
+    if streaming_output:
+        df = pd.read_csv(output_path)
+    else:
+        df = pd.DataFrame(aggregate)
 
     if not df.empty:
         try:
@@ -613,23 +624,59 @@ def main() -> None:
     parser.add_argument("--verbose", action="store_true", help="Print progress")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
     parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
-    parser.add_argument("--slm_subset", type=str, default=None, help="Comma-separated SLM keys to enable")
+    parser.add_argument("--slm_subset", type=str, default=None, help=f"Comma-separated SLM keys to enable (default all: {', '.join(MODEL_NAMES)})")
     parser.add_argument(
         "--classifier-modes",
         type=str,
         default=None,
         help="Comma-separated classifier modes to enable (tfidf, encoder, slm_finetuned)",
     )
+    parser.add_argument(
+        "--routers",
+        type=str,
+        default=None,
+        help=f"Comma-separated routers (default: {', '.join(ROUTER_MODES)})",
+    )
+    parser.add_argument(
+        "--memories",
+        type=str,
+        default=None,
+        help=f"Comma-separated memory modes (default: {', '.join(MEMORY_MODES_CANONICAL)})",
+    )
+    parser.add_argument(
+        "--models",
+        type=str,
+        default=None,
+        help=f"Comma-separated models (default: {', '.join(MODEL_NAMES)})",
+    )
+    parser.add_argument(
+        "--smoke-10",
+        action="store_true",
+        dest="smoke10",
+        help="Run a 10-ticket smoke grid (overwrites results.csv; defaults to models=slm1).",
+    )
     args = parser.parse_args()
 
     slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
     classifier_modes = [s.strip() for s in args.classifier_modes.split(",")] if args.classifier_modes else None
+    routers = [s.strip() for s in args.routers.split(",")] if args.routers else None
+    memories = [s.strip() for s in args.memories.split(",")] if args.memories else None
+    models = [s.strip() for s in args.models.split(",")] if args.models else None
 
     try:
         if args.verbose:
             print("[Grid] Loading dataset...")
         tickets_loaded = dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit) if hasattr(dataset_loader, "load_and_preprocess") else dataset_loader.load_dataset(args.limit)
         tickets = _coerce_tickets(tickets_loaded)
+        if args.smoke10:
+            tickets = tickets[:10]
+            if args.verbose:
+                print(
+                    f"[Smoke] Running 10-ticket grid with routers={routers or ROUTER_MODES}, "
+                    f"memories={memories or MEMORY_MODES_CANONICAL}, "
+                    f"classifiers={classifier_modes or CLASSIFIER_MODES}, "
+                    f"models={models or ['slm1']}"
+                )
         if args.verbose:
             print(f"[Grid] Loaded tickets: {len(tickets)}")
 
@@ -651,6 +698,9 @@ def main() -> None:
             force_llm=args.force_llm,
             slm_subset=slm_subset,
             classifier_modes=classifier_modes,
+            routers=routers,
+            memories=memories,
+            models=models if not args.smoke10 else (models or ["slm1"]),
         )
         if args.verbose:
             out_path = _results_output_path(len(tickets))
