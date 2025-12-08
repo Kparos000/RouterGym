@@ -134,8 +134,10 @@ def write_results_csv(path: Path, records: Iterable[Dict[str, Any]]) -> None:
             writer.writerow(row)
 
 
-def _results_output_path(ticket_count: int) -> Path:
-    """Return the appropriate CSV path based on ticket volume."""
+def _results_output_path(ticket_count: int, override: Optional[Path] = None) -> Path:
+    """Return the appropriate CSV path based on ticket volume or explicit override."""
+    if override:
+        return override
     if ticket_count <= 50:
         return RESULTS_DIR / "results.csv"
     return RESULTS_DIR / "experiments" / f"results_{ticket_count}tickets.csv"
@@ -504,6 +506,8 @@ def run_config(
 def run_full_grid(
     tickets: Optional[List[Dict[str, Any]]] = None,
     limit: Optional[int] = None,
+    ticket_start: int = 0,
+    ticket_limit: int = -1,
     routers: Optional[List[str]] = None,
     memories: Optional[List[str]] = None,
     models: Optional[List[str]] = None,
@@ -512,9 +516,13 @@ def run_full_grid(
     force_llm: bool = False,
     slm_subset: Optional[List[str]] = None,
     classifier_modes: Optional[List[str]] = None,
+    output_path: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, models, and classifier modes."""
-    tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
+    all_tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
+    start = max(ticket_start, 0)
+    end = start + ticket_limit if ticket_limit is not None and ticket_limit >= 0 else len(all_tickets)
+    tickets = all_tickets[start:end]
     ticket_count = len(tickets)
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
     models_loaded: Optional[Dict[str, Any]] = None
@@ -527,7 +535,7 @@ def run_full_grid(
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 
     streaming_output = ticket_count > 50
-    output_path = _results_output_path(ticket_count)
+    output_path = _results_output_path(ticket_count, output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     aggregate: List[Dict[str, Any]] = []
 
@@ -621,6 +629,8 @@ def main() -> None:
     """CLI entrypoint for running the grid."""
     parser = argparse.ArgumentParser(description="RouterGym grid runner")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets")
+    parser.add_argument("--ticket-start", type=int, default=0, help="0-based start index into tickets.csv")
+    parser.add_argument("--ticket-limit", type=int, default=-1, help="Max tickets from start; -1 means all remaining")
     parser.add_argument("--verbose", action="store_true", help="Print progress")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
     parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
@@ -655,6 +665,12 @@ def main() -> None:
         dest="smoke10",
         help="Run a 10-ticket smoke grid (overwrites results.csv; defaults to models=slm1).",
     )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Optional explicit CSV output path (overrides size-based default).",
+    )
     args = parser.parse_args()
 
     slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
@@ -662,6 +678,7 @@ def main() -> None:
     routers = [s.strip() for s in args.routers.split(",")] if args.routers else None
     memories = [s.strip() for s in args.memories.split(",")] if args.memories else None
     models = [s.strip() for s in args.models.split(",")] if args.models else None
+    output_path = Path(args.output_path) if args.output_path else None
 
     try:
         if args.verbose:
@@ -694,6 +711,8 @@ def main() -> None:
             tickets=tickets,
             kb_retriever=kb_loader,
             limit=args.limit,
+            ticket_start=args.ticket_start,
+            ticket_limit=args.ticket_limit,
             verbose=args.verbose,
             force_llm=args.force_llm,
             slm_subset=slm_subset,
@@ -701,6 +720,7 @@ def main() -> None:
             routers=routers,
             memories=memories,
             models=models if not args.smoke10 else (models or ["slm1"]),
+            output_path=output_path,
         )
         if args.verbose:
             out_path = _results_output_path(len(tickets))

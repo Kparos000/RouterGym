@@ -278,3 +278,62 @@ def test_smoke10_uses_ten_tickets(monkeypatch: Any, tmp_path: Path) -> None:
         verbose=False,
     )
     assert len(df) == 10
+
+
+def test_ticket_slicing_and_output_path(tmp_path: Path, monkeypatch: Any) -> None:
+    tickets = [{"id": i, "text": f"ticket {i}", "category": "access"} for i in range(1, 8)]
+
+    class FakeRouter:
+        def route(self, ticket: dict, **kwargs: Any):
+            return {
+                "strategy": "llm_first",
+                "target_model": "slm",
+                "model_used": "slm",
+                "final_output": {
+                    "final_answer": "ans",
+                    "reasoning": "r",
+                    "predicted_category": "access",
+                },
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": False,
+                "kb_snippets": [],
+            }
+
+    class FakeKB:
+        def retrieve(self, query: str, top_k: int = 3):
+            return [{"text": "kb"}]
+
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
+    custom_small = tmp_path / "custom_small.csv"
+    df_small = run_grid.run_full_grid(
+        tickets=tickets,
+        kb_retriever=FakeKB(),
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1"],
+        classifier_modes=["tfidf"],
+        ticket_start=2,
+        ticket_limit=3,
+        output_path=custom_small,
+        verbose=False,
+    )
+    assert len(df_small) == 3
+    assert list(df_small["ticket_id"]) == [3, 4, 5]
+    assert custom_small.exists()
+
+    custom_large = tmp_path / "custom_large.csv"
+    df_large = run_grid.run_full_grid(
+        tickets=tickets,
+        kb_retriever=FakeKB(),
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1"],
+        classifier_modes=["tfidf"],
+        ticket_start=0,
+        ticket_limit=-1,
+        output_path=custom_large,
+        verbose=False,
+    )
+    assert len(df_large) == len(tickets)
+    assert custom_large.exists()
