@@ -32,3 +32,8 @@ RouterGym/utils/__pycache__/
 
 # RouterGym result caches (NOT figures/raw)
 RouterGym/results/cache/
+
+# RouterGym experiment outputs (intermediate)
+RouterGym/results/raw/
+RouterGym/results/experiments/
+RouterGym/results/run_metadata.csv
