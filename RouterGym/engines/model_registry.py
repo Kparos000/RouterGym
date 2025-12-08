@@ -1,4 +1,4 @@
-"""Model registry using only remote HF Inference chat endpoints."""
+"""Model registry supporting HF Inference (default) and optional local vLLM."""
 
 from __future__ import annotations
 
@@ -10,6 +10,10 @@ from typing import IO, Any, Callable, Dict, Optional
 
 from huggingface_hub import InferenceClient  # type: ignore
 
+try:
+    from RouterGym.engines.vllm_local import LocalVLLMEngine  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    LocalVLLMEngine = None  # type: ignore
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv as _load_dotenv  # type: ignore
 except Exception:  # pragma: no cover
@@ -132,6 +136,14 @@ def _get_token() -> Optional[str]:
     return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
 
 
+def get_model_backend() -> str:
+    """Return configured model backend (hf_inference or vllm_local)."""
+    backend = os.getenv("ROUTERGYM_MODEL_BACKEND", "").strip().lower()
+    if backend in {"vllm_local"}:
+        return "vllm_local"
+    return "hf_inference"
+
+
 def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]]) -> list[ModelEntry]:
     if subset:
         allowed = set(subset)
@@ -144,7 +156,8 @@ def _build_engine(entry: ModelEntry, token: Optional[str]) -> RemoteInferenceEng
 
 
 def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
-    """Load all models as remote HF Inference engines (no local weights)."""
+    """Load all models using the configured backend (HF Inference or vLLM local)."""
+    backend = get_model_backend()
     token = _get_token()
     models: Dict[str, Any] = {}
     subset = slm_subset or None
@@ -169,12 +182,20 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
     if force_llm and not llm_entries:
         llm_entries = _filter_entries(LLM_MODELS, None)
 
-    if not force_llm:
-        for entry in slm_entries:
+    if backend == "vllm_local":
+        if LocalVLLMEngine is None:
+            raise ImportError("vllm_local backend selected but vllm is not installed.")
+        if not force_llm:
+            for entry in slm_entries:
+                models[entry.name] = LocalVLLMEngine(entry.hf_id)
+        for entry in llm_entries:
+            models[entry.name] = LocalVLLMEngine(entry.hf_id)
+    else:  # hf_inference default
+        if not force_llm:
+            for entry in slm_entries:
+                models[entry.name] = _build_engine(entry, token)
+        for entry in llm_entries:
             models[entry.name] = _build_engine(entry, token)
-
-    for entry in llm_entries:
-        models[entry.name] = _build_engine(entry, token)
 
     return models
 
@@ -182,6 +203,12 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
 def get_repair_model() -> RemoteInferenceEngine:
     """Return the strongest available LLM engine for repair prompts."""
     token = _get_token()
+    backend = get_model_backend()
+    if backend == "vllm_local":
+        if LocalVLLMEngine is None:
+            raise ImportError("vllm_local backend selected but vllm is not installed.")
+        target = LLM_MODELS.get("llm1") or LLM_MODELS.get("llm2")
+        return LocalVLLMEngine(target.hf_id if target else "unknown_llm")  # type: ignore[return-value]
     if "llm1" in LLM_MODELS:
         return _build_engine(LLM_MODELS["llm1"], token)
     return _build_engine(LLM_MODELS["llm2"], token)
@@ -193,4 +220,5 @@ __all__ = [
     "SLM_MODELS",
     "LLM_MODELS",
     "get_repair_model",
+    "get_model_backend",
 ]

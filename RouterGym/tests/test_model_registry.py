@@ -47,6 +47,7 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
         return DummyClient(model=model, token=token, timeout=timeout)
 
     monkeypatch.setattr(model_registry, "InferenceClient", fake_client)
+    monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "hf_inference")
     models = model_registry.load_models(sanity=False)
     assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
     assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
@@ -57,6 +58,7 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
 def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
     """Sanity mode should still produce one SLM and one LLM engine."""
     monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "hf_inference")
     models = model_registry.load_models(sanity=True)
     kinds = {getattr(engine, "kind", "") for engine in models.values()}
     assert "slm" in kinds
