@@ -22,6 +22,7 @@ from RouterGym.classifiers.utils import (
     DEFAULT_LABELS,
     canonical_label,
     normalize_probabilities,
+    apply_lexical_prior,
 )
 
 _PROTOTYPES: Dict[str, str] = {
@@ -135,7 +136,8 @@ class EncoderClassifier(ClassifierProtocol):
                 logits = logits - logits.max()
                 exp = np.exp(logits)
                 probs = exp / exp.sum()
-                return {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
+                centroid_probs = {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
+                return apply_lexical_prior(text, centroid_probs)
             except Exception:
                 print("[EncoderClassifier] Warning: centroid inference failed, falling back to prototypes.")
 
@@ -144,7 +146,8 @@ class EncoderClassifier(ClassifierProtocol):
             label: max(0.0, self._cosine(text_vec, self._prototype_vectors.get(label, [])))
             for label in self.labels
         }
-        return normalize_probabilities(scores, self.labels)
+        base = normalize_probabilities(scores, self.labels)
+        return apply_lexical_prior(text, base)
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)

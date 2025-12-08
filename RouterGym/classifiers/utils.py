@@ -31,6 +31,44 @@ def normalize_probabilities(scores: Dict[str, float], labels: Iterable[str]) -> 
     return {label: projected[label] / total for label in projected}
 
 
+CATEGORY_KEYWORDS: Dict[str, List[str]] = {
+    "access": ["login", "log in", "password", "account", "lockout", "locked", "sso", "sign-in", "sign in"],
+    "hardware": ["laptop", "computer", "pc", "desktop", "printer", "monitor", "screen", "keyboard", "mouse", "device"],
+    "hr support": ["leave", "vacation", "holiday", "benefits", "payroll", "manager", "hr", "human resources"],
+    "purchase": ["purchase", "order", "po", "quote", "invoice", "vendor", "procurement", "buy", "license", "subscription"],
+    "miscellaneous": ["general", "question", "enquiry", "inquiry", "other"],
+}
+
+
+def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.8, beta: float = 0.2) -> Dict[str, float]:
+    """Blend model probabilities with a simple keyword-based prior."""
+    try:
+        lower = (text or "").lower()
+        hits: Dict[str, float] = {}
+        for label, keywords in CATEGORY_KEYWORDS.items():
+            count = 0.0
+            for kw in keywords:
+                if kw and kw in lower:
+                    count += 1.0
+            hits[canonical_label(label)] = count
+
+        total_hits = sum(hits.values())
+        if total_hits <= 0:
+            return probs
+
+        epsilon = 1e-6
+        prior = {lbl: (hits.get(lbl, 0.0) + epsilon) for lbl in probs}
+        prior_total = sum(prior.values()) or 1.0
+        prior = {lbl: val / prior_total for lbl, val in prior.items()}
+
+        blended: Dict[str, float] = {}
+        for lbl in probs:
+            blended[lbl] = max(0.0, alpha * probs.get(lbl, 0.0) + beta * prior.get(lbl, 0.0))
+        return normalize_probabilities(blended, probs.keys())
+    except Exception:
+        return probs
+
+
 @dataclass(slots=True)
 class ClassifierMetadata:
     name: str
@@ -98,5 +136,7 @@ __all__ = [
     "canonical_label",
     "get_classifier",
     "normalize_probabilities",
+    "CATEGORY_KEYWORDS",
+    "apply_lexical_prior",
     "register_classifier",
 ]

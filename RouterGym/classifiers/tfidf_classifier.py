@@ -13,6 +13,7 @@ from RouterGym.classifiers.utils import (
     DEFAULT_LABELS,
     canonical_label,
     normalize_probabilities,
+    apply_lexical_prior,
 )
 
 _DEFAULT_CORPUS: List[Tuple[str, str]] = [
@@ -101,7 +102,8 @@ class TFIDFClassifier(ClassifierProtocol):
             centroid = self._label_vectors.get(label, {})
             dot = sum(vector[token] * centroid.get(token, 0.0) for token in vector)
             scores[label] = max(dot, 0.0)
-        return normalize_probabilities(scores, self.labels)
+        base_probs = normalize_probabilities(scores, self.labels)
+        return apply_lexical_prior(text, base_probs)
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)

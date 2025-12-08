@@ -26,22 +26,18 @@ CLASS_LABELS = [
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
-FEW_SHOT_GUIDE = """
-Examples (respond with ONLY a JSON object):
-{"final_answer": "Please reboot your laptop and reconnect the dock.", "reasoning": "Device docking issue, fits hardware support.", "predicted_category": "hardware"}
-{"final_answer": "I reset your password; try logging in again.", "reasoning": "Password reset request maps to access.", "predicted_category": "access"}
-{"final_answer": "I forwarded this unusual request to general helpdesk.", "reasoning": "No clear match, treat as miscellaneous.", "predicted_category": "miscellaneous"}
-""".strip()
-
-
 def classification_instruction() -> str:
     """Instruction block enforcing JSON contract and allowed labels for classification."""
     return (
-        "You are a support agent AND classifier. "
-        "Return EXACTLY one JSON object with keys: final_answer (string), reasoning (string), predicted_category (string). "
-        f"predicted_category MUST be one of: {LABELS_LIST_TEXT}. "
-        "Choose exactly one label from this list; do NOT invent labels, do NOT output unknown, and do NOT include explanations inside predicted_category. "
-        f"{FEW_SHOT_GUIDE}"
+        "You are a support ticket classifier. Choose EXACTLY ONE label from this fixed set:\n"
+        "- access: login/password/mfa/account issues\n"
+        "- hardware: laptop/printer/monitor/device issues\n"
+        "- hr support: leave/vacation/benefits/payroll questions\n"
+        "- purchase: buying/ordering/licenses/invoices/vendors\n"
+        "- miscellaneous: only if none of the above clearly fits\n\n"
+        "Respond ONLY with JSON in this schema:\n"
+        '{\"label\": \"<one of access|hardware|hr support|purchase|miscellaneous>\", \"rationale\": \"<short why>\"}\n'
+        "Do NOT return multiple labels. Do NOT invent labels. Use 'miscellaneous' only if the ticket truly does not fit access, hardware, hr support, or purchase."
     )
 
 

@@ -10,6 +10,7 @@ from RouterGym.classifiers.utils import (
     DEFAULT_LABELS,
     canonical_label,
     normalize_probabilities,
+    apply_lexical_prior,
 )
 
 _KEYWORDS: Dict[str, List[str]] = {
@@ -61,7 +62,8 @@ class SLMClassifier(ClassifierProtocol):
 
     def predict_proba(self, text: str) -> Dict[str, float]:
         scores = self._score_text(text)
-        return normalize_probabilities(scores, self.labels)
+        base = normalize_probabilities(scores, self.labels)
+        return apply_lexical_prior(text, base)
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)
