@@ -9,6 +9,7 @@ import json
 import math
 import traceback
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
@@ -28,6 +29,7 @@ from RouterGym.routing.base import BaseRouter
 from RouterGym.routing.router_engine import RouterEngine
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
+from RouterGym.engines.model_registry import get_model_backend
 
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
@@ -141,6 +143,34 @@ def _results_output_path(ticket_count: int, override: Optional[Path] = None) -> 
     if ticket_count <= 50:
         return RESULTS_DIR / "results.csv"
     return RESULTS_DIR / "experiments" / f"results_{ticket_count}tickets.csv"
+
+
+def log_run_metadata(metadata: Dict[str, Any], log_path: Optional[Path] = None) -> None:
+    """Append run metadata to CSV; swallow IO errors."""
+    log_file = log_path or (RESULTS_DIR / "run_metadata.csv")
+    try:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        write_header = not log_file.exists()
+        with log_file.open("a", encoding="utf-8", newline="") as handle:
+            writer = csv.writer(handle)
+            header = [
+                "timestamp",
+                "backend",
+                "ticket_start",
+                "ticket_limit",
+                "num_tickets",
+                "routers",
+                "memories",
+                "classifiers",
+                "models",
+                "output_path",
+                "wall_clock_seconds",
+            ]
+            if write_header:
+                writer.writerow(header)
+            writer.writerow([metadata.get(col, "") for col in header])
+    except Exception:
+        print(f"[Metadata] Warning: failed to write run metadata to {log_file}")
 
 
 def _build_result_row(
@@ -519,6 +549,7 @@ def run_full_grid(
     output_path: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Run the full grid over routers, memories, models, and classifier modes."""
+    t_start = time.time()
     all_tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
     start = max(ticket_start, 0)
     end = start + ticket_limit if ticket_limit is not None and ticket_limit >= 0 else len(all_tickets)
@@ -615,6 +646,25 @@ def run_full_grid(
         df = pd.read_csv(output_path)
     else:
         df = pd.DataFrame(aggregate)
+
+    try:
+        log_run_metadata(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "backend": get_model_backend(),
+                "ticket_start": ticket_start,
+                "ticket_limit": ticket_limit,
+                "num_tickets": ticket_count,
+                "routers": "|".join(router_list),
+                "memories": "|".join(memory_list),
+                "classifiers": "|".join(classifier_list),
+                "models": "|".join(model_list),
+                "output_path": str(output_path),
+                "wall_clock_seconds": time.time() - t_start,
+            }
+        )
+    except Exception:
+        print("[Metadata] Warning: failed to log run metadata.")
 
     if not df.empty:
         try:
