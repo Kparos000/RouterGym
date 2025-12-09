@@ -20,17 +20,24 @@ LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
 def classification_instruction() -> str:
     """Instruction block enforcing JSON contract and allowed labels for classification."""
-    return (
-        "You are a support ticket classifier. Choose EXACTLY ONE label from this fixed set:\n"
-        "- access: login/password/account lockouts or MFA problems\n"
-        "- administrative rights: permission changes, admin roles, group membership/entitlements\n"
-        "- hardware: laptop/printer/monitor/device issues\n"
-        "- hr support: leave/vacation/benefits/payroll questions\n"
-        "- purchase: buying/ordering/licenses/invoices/vendors/subscriptions\n"
-        "- miscellaneous: only if none of the above clearly fits\n\n"
-        "Respond ONLY with JSON in this schema:\n"
-        '{\"label\": \"<one of access|administrative rights|hardware|hr support|purchase|miscellaneous>\", \"rationale\": \"<short why>\"}\n'
-        "Do NOT return multiple labels. Do NOT invent labels. Use 'miscellaneous' only if the ticket truly does not fit the other categories."
+    return "\n".join(
+        [
+            "You are a support ticket classifier. Choose EXACTLY ONE label from this fixed set:",
+            '- access: account/login/password/MFA/S S O issues (e.g., "locked out of account", "reset MFA token")',
+            '- administrative rights: permission/role/entitlement changes (e.g., "add to security group", "need admin rights to install")',
+            '- hardware: laptops/printers/monitors/docks/devices (e.g., "screen cracked", "printer jam")',
+            '- hr support: leave/vacation/benefits/payroll/HR questions (e.g., "extend parental leave", "benefits enrollment")',
+            '- purchase: buying/ordering/billing/licenses/subscriptions/invoices (e.g., "raise PO for software", "renew subscription")',
+            "- miscellaneous: only if none of the above clearly fits; if about accounts, permissions, entitlements, or billing, prefer a specific label instead of miscellaneous.",
+            "",
+            "Rules:",
+            "* Return strictly valid JSON with exactly one label and a short rationale.",
+            "* Allowed labels: access, administrative rights, hardware, hr support, purchase, miscellaneous.",
+            "* Do NOT invent labels. Use 'miscellaneous' only when no other label clearly applies.",
+            "",
+            "Respond ONLY with JSON:",
+            '{"label": "<one of access|administrative rights|hardware|hr support|purchase|miscellaneous>", "rationale": "<short why>"}',
+        ]
     )
 
 

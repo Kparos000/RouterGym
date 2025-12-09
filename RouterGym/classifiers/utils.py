@@ -102,7 +102,12 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
 
 
 def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.8, beta: float = 0.2) -> Dict[str, float]:
-    """Blend model probabilities with a simple keyword-based prior."""
+    """Blend model probabilities with a simple keyword-based prior.
+
+    The prior is a gentle nudge, not an override. We intentionally down-weight
+    the 'miscellaneous' prior so it does not become a dumping ground when
+    other labels have reasonable evidence.
+    """
     try:
         lower = (text or "").lower()
         hits: Dict[str, float] = {}
@@ -118,10 +123,12 @@ def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.8, 
             return probs
 
         epsilon = 1e-6
-        prior = {lbl: (hits.get(lbl, 0.0) + epsilon) for lbl in probs}
-        prior_total = sum(prior.values()) or 1.0
-        prior = {lbl: val / prior_total for lbl, val in prior.items()}
-
+        prior_raw = {lbl: (hits.get(lbl, 0.0) + epsilon) for lbl in probs}
+        # Reduce the influence of the miscellaneous prior so it only wins when clearly dominant.
+        if "miscellaneous" in prior_raw:
+            prior_raw["miscellaneous"] *= 0.5
+        prior_total = sum(prior_raw.values()) or 1.0
+        prior = {lbl: val / prior_total for lbl, val in prior_raw.items()}
         blended: Dict[str, float] = {}
         for lbl in probs:
             blended[lbl] = max(0.0, alpha * probs.get(lbl, 0.0) + beta * prior.get(lbl, 0.0))
