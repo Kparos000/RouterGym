@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
@@ -50,6 +51,7 @@ class EncoderClassifier(ClassifierProtocol):
         labels: Optional[Iterable[str]] = None,
         model_name: str = "intfloat/e5-small-v2",
         embedding_dimension: int = 16,
+        use_lexical_prior: bool = True,
     ) -> None:
         self.labels = [canonical_label(lbl) for lbl in (labels or DEFAULT_LABELS)]
         self.metadata = ClassifierMetadata(
@@ -62,6 +64,11 @@ class EncoderClassifier(ClassifierProtocol):
             description="MiniLM/E5-style embedding classifier (centroid-enhanced when available)",
         )
         self.embedding_dimension = embedding_dimension
+        env_flag = os.getenv("ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR", "").lower()
+        if env_flag in {"0", "false"}:
+            self.use_lexical_prior = False
+        else:
+            self.use_lexical_prior = use_lexical_prior
         self._encoder: SentenceTransformer | None = None
         self._centroid_labels: List[str] = []
         self._centroids = None
@@ -137,7 +144,10 @@ class EncoderClassifier(ClassifierProtocol):
                 exp = np.exp(logits)
                 probs = exp / exp.sum()
                 centroid_probs = {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
-                return apply_lexical_prior(text, centroid_probs)
+                if self.use_lexical_prior:
+                    return apply_lexical_prior(text, centroid_probs)
+                # Pure centroid path (no lexical prior)
+                return normalize_probabilities(centroid_probs, self._centroid_labels)
             except Exception:
                 print("[EncoderClassifier] Warning: centroid inference failed, falling back to prototypes.")
 
@@ -147,7 +157,7 @@ class EncoderClassifier(ClassifierProtocol):
             for label in self.labels
         }
         base = normalize_probabilities(scores, self.labels)
-        return apply_lexical_prior(text, base)
+        return apply_lexical_prior(text, base) if self.use_lexical_prior else base
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)

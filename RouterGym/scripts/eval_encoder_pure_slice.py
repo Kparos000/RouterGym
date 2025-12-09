@@ -1,0 +1,92 @@
+"""Evaluate pure encoder-centroid classifier on a ticket slice (diagnostic)."""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+from typing import Dict
+
+import pandas as pd
+
+from RouterGym.classifiers.encoder_classifier import EncoderClassifier
+from RouterGym.classifiers.utils import canonical_label
+
+DATA_PATH = Path("RouterGym/data/tickets/tickets.csv")
+TEXT_COL = "Document"
+LABEL_COL = "Topic_group"
+CANONICALS = ["access", "hardware", "hr support", "purchase", "miscellaneous"]
+
+
+def _load_data(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"Dataset not found at {path}")
+    df = pd.read_csv(path)
+    if TEXT_COL not in df.columns or LABEL_COL not in df.columns:
+        raise ValueError(f"Expected columns '{TEXT_COL}' and '{LABEL_COL}' in {path}")
+    return df[[TEXT_COL, LABEL_COL]].dropna()
+
+
+def _normalize_label(label: str) -> str:
+    lower = canonical_label(label)
+    synonyms = {
+        "hr": "hr support",
+        "hr_support": "hr support",
+        "benefits": "hr support",
+        "purchase order": "purchase",
+        "po": "purchase",
+        "order": "purchase",
+        "hardware": "hardware",
+        "device": "hardware",
+        "login": "access",
+        "access issue": "access",
+    }
+    for key, val in synonyms.items():
+        if key in lower:
+            return val
+    if lower in CANONICALS:
+        return lower
+    return "miscellaneous"
+
+
+def evaluate_slice(ticket_start: int, ticket_limit: int) -> None:
+    os.environ["ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR"] = "0"
+    df = _load_data(DATA_PATH)
+    end = ticket_start + ticket_limit if ticket_limit >= 0 else len(df)
+    slice_df = df.iloc[ticket_start:end]
+    clf = EncoderClassifier(use_lexical_prior=False)
+
+    total_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
+    correct_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
+    correct = 0
+
+    for _, row in slice_df.iterrows():
+        gold = _normalize_label(str(row[LABEL_COL]))
+        pred = canonical_label(clf.predict_label(str(row[TEXT_COL])))
+        if gold not in total_per:
+            gold = "miscellaneous"
+        total_per[gold] += 1
+        if pred == gold:
+            correct_per[gold] += 1
+            correct += 1
+
+    n = len(slice_df)
+    overall = correct / n if n else 0.0
+    print(f"Overall accuracy on slice (N={n}): {overall:.3f}\n")
+    for lbl in CANONICALS:
+        total = total_per.get(lbl, 0)
+        corr = correct_per.get(lbl, 0)
+        acc = corr / total if total else 0.0
+        print(f"{lbl:13s}: {corr}/{total} = {acc:.3f}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Evaluate pure encoder centroids on a ticket slice.")
+    parser.add_argument("--ticket-start", type=int, default=0, help="Start index (0-based) into tickets.csv")
+    parser.add_argument("--ticket-limit", type=int, default=30, help="Max tickets to evaluate (default 30; -1 for all)")
+    args = parser.parse_args()
+    evaluate_slice(args.ticket_start, args.ticket_limit)
+
+
+if __name__ == "__main__":
+    main()
