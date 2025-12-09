@@ -2,6 +2,9 @@
 
 Run:
     python -m RouterGym.scripts.train_encoder_centroids
+
+Uses the canonical 6-label space: access, administrative rights,
+hardware, hr support, purchase, miscellaneous.
 """
 
 from __future__ import annotations
@@ -19,7 +22,8 @@ try:  # pragma: no cover - optional dependency
 except Exception as exc:  # pragma: no cover
     raise ImportError("sentence-transformers is required to train encoder centroids") from exc
 
-CANONICAL_LABELS = ["access", "hardware", "hr support", "purchase", "miscellaneous"]
+from RouterGym.label_space import CANONICAL_LABELS, canonical_label
+
 DEFAULT_MODEL = "intfloat/e5-small-v2"
 CENTROID_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "tickets"
@@ -58,30 +62,6 @@ def _infer_columns(df: pd.DataFrame) -> Tuple[str, str]:
     return text_col, label_col
 
 
-def _normalize_label(label: str) -> str:
-    lower = str(label or "").strip().lower()
-    synonyms: Dict[str, str] = {
-        "hr": "hr support",
-        "hr support": "hr support",
-        "hr_support": "hr support",
-        "purchase": "purchase",
-        "buy": "purchase",
-        "order": "purchase",
-        "hardware": "hardware",
-        "device": "hardware",
-        "laptop": "hardware",
-        "access": "access",
-        "login": "access",
-        "access issue": "access",
-        "misc": "miscellaneous",
-        "miscellaneous": "miscellaneous",
-    }
-    for key, value in synonyms.items():
-        if lower == key or key in lower:
-            return value
-    return "miscellaneous"
-
-
 def _encode_batch(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
     return np.array(
         model.encode(texts, normalize_embeddings=True, batch_size=32, show_progress_bar=True),
@@ -101,7 +81,7 @@ def main() -> None:
     print(f"[Centroids] Using text column '{text_col}' and label column '{label_col}'")
 
     df = df[[text_col, label_col]].dropna()
-    df["label_norm"] = df[label_col].apply(_normalize_label)
+    df["label_norm"] = df[label_col].apply(canonical_label)
     df = df[df["label_norm"].isin(CANONICAL_LABELS)]
     if df.empty:
         raise ValueError("No records after label normalization; check dataset columns.")

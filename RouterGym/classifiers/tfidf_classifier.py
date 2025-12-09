@@ -19,20 +19,20 @@ from RouterGym.classifiers.utils import (
 _DEFAULT_CORPUS: List[Tuple[str, str]] = [
     ("Reset my password immediately", "access"),
     ("Login keeps failing for vpn", "access"),
+    ("Need VPN unlock and MFA reset", "access"),
     ("Please grant admin rights on laptop", "administrative rights"),
     ("Need elevated permissions to install software", "administrative rights"),
+    ("Update security group membership for user", "administrative rights"),
     ("Laptop battery swollen and dock broken", "hardware"),
     ("Printer jams every morning", "hardware"),
+    ("External monitor not detected", "hardware"),
     ("Questions about benefits and payroll", "hr support"),
     ("Need help updating maternity leave", "hr support"),
-    ("Access to internal analytics repo", "internal project"),
-    ("Looking for staging project credentials", "internal project"),
-    ("General inquiry unsure which team", "miscellaneous"),
-    ("Strange request without a category", "miscellaneous"),
     ("Please purchase a new Tableau license", "purchase"),
     ("Need approval to buy new monitor", "purchase"),
-    ("Running out of shared drive space", "storage"),
-    ("Increase OneDrive storage quota", "storage"),
+    ("Renew annual subscription and process invoice", "purchase"),
+    ("General inquiry unsure which team", "miscellaneous"),
+    ("Strange request without a category", "miscellaneous"),
 ]
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")

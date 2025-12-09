@@ -15,13 +15,35 @@ from RouterGym.classifiers.utils import (
 
 _KEYWORDS: Dict[str, List[str]] = {
     "access": ["login", "password", "account", "mfa", "otp", "sso", "lockout"],
-    "administrative rights": ["admin", "administrator", "privilege", "permission", "elevated"],
-    "hardware": ["laptop", "printer", "dock", "monitor", "battery", "device", "keyboard", "mouse"],
+    "administrative rights": [
+        "admin",
+        "administrator",
+        "privilege",
+        "permission",
+        "role",
+        "rights",
+        "entitlement",
+        "group",
+        "security group",
+    ],
+    "hardware": ["laptop", "printer", "dock", "monitor", "battery", "device", "keyboard", "mouse", "screen"],
     "hr support": ["benefit", "leave", "vacation", "payroll", "hr", "human resources"],
-    "internal project": ["internal", "project", "repo", "repository", "staging"],
     "miscellaneous": ["misc", "general", "other"],
-    "purchase": ["purchase", "buy", "order", "invoice", "procure", "bill"],
-    "storage": ["storage", "quota", "space", "drive", "share"],
+    "purchase": [
+        "purchase",
+        "buy",
+        "order",
+        "invoice",
+        "procure",
+        "bill",
+        "subscription",
+        "license",
+        "licence",
+        "renew",
+        "payment",
+        "quote",
+        "po",
+    ],
 }
 
 

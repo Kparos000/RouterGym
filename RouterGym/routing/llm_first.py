@@ -25,14 +25,14 @@ from RouterGym.utils.kb_utils import coerce_kb_hits
 def _infer_category(text: str, default: str = "") -> str:
     lower = text.lower()
     if "vpn" in lower or "network" in lower:
-        return "network"
+        return "access"
     if "password" in lower or "login" in lower or "access" in lower:
         return "access"
     if "hr" in lower or "leave" in lower:
-        return "hr_support"
+        return "hr support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "unknown"
+    return default or "miscellaneous"
 
 
 class LLMFirstRouter(BaseRouter):

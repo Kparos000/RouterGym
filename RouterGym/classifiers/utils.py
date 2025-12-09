@@ -5,15 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Protocol, runtime_checkable
 
-from RouterGym.agents.generator import CLASS_LABELS
+from RouterGym.label_space import CANONICAL_LABELS, canonical_label
 
-DEFAULT_LABELS: List[str] = [label for label in CLASS_LABELS]
+DEFAULT_LABELS: List[str] = [label for label in CANONICAL_LABELS]
 
 
-def canonical_label(label: str | None) -> str:
-    """Normalize labels to lowercase snake case."""
-    text = (label or "").strip().lower()
-    return text or "unknown"
+def canonical_mode(name: str | None) -> str:
+    """Normalize classifier/router mode identifiers without touching label semantics."""
+    return str(name or "").strip().lower() or "unknown"
 
 
 def normalize_probabilities(scores: Dict[str, float], labels: Iterable[str]) -> Dict[str, float]:
@@ -32,10 +31,72 @@ def normalize_probabilities(scores: Dict[str, float], labels: Iterable[str]) -> 
 
 
 CATEGORY_KEYWORDS: Dict[str, List[str]] = {
-    "access": ["login", "log in", "password", "account", "lockout", "locked", "sso", "sign-in", "sign in"],
-    "hardware": ["laptop", "computer", "pc", "desktop", "printer", "monitor", "screen", "keyboard", "mouse", "device"],
-    "hr support": ["leave", "vacation", "holiday", "benefits", "payroll", "manager", "hr", "human resources"],
-    "purchase": ["purchase", "order", "po", "quote", "invoice", "vendor", "procurement", "buy", "license", "subscription"],
+    "access": [
+        "login",
+        "log in",
+        "password",
+        "account",
+        "lockout",
+        "locked",
+        "sso",
+        "sign-in",
+        "sign in",
+        "mfa",
+    ],
+    # Explicitly separate administrative rights from access to strengthen recall on permissions.
+    "administrative rights": [
+        "admin",
+        "administrator",
+        "permission",
+        "role",
+        "rights",
+        "privilege",
+        "entitlement",
+        "group membership",
+        "security group",
+        "access change",
+        "group change",
+    ],
+    "hardware": [
+        "laptop",
+        "computer",
+        "pc",
+        "desktop",
+        "printer",
+        "monitor",
+        "screen",
+        "keyboard",
+        "mouse",
+        "device",
+        "dock",
+    ],
+    "hr support": [
+        "leave",
+        "vacation",
+        "holiday",
+        "benefits",
+        "payroll",
+        "manager",
+        "hr",
+        "human resources",
+    ],
+    "purchase": [
+        "purchase",
+        "buy",
+        "buying",
+        "order",
+        "invoice",
+        "billing",
+        "subscription",
+        "licence",
+        "license",
+        "renewal",
+        "payment",
+        "quote",
+        "po",
+        "procurement",
+        "refund",
+    ],
     "miscellaneous": ["general", "question", "enquiry", "inquiry", "other"],
 }
 
@@ -108,12 +169,12 @@ _CLASSIFIER_REGISTRY: Dict[str, ClassifierFactory] = {}
 
 
 def register_classifier(name: str, factory: ClassifierFactory) -> None:
-    key = canonical_label(name)
+    key = canonical_mode(name)
     _CLASSIFIER_REGISTRY[key] = factory
 
 
 def get_classifier(name: str) -> ClassifierProtocol:
-    key = canonical_label(name)
+    key = canonical_mode(name)
     if key not in _CLASSIFIER_REGISTRY:
         available = ", ".join(sorted(_CLASSIFIER_REGISTRY)) or "none"
         raise ValueError(f"Unknown classifier '{name}'. Available options: {available}")
@@ -134,6 +195,7 @@ __all__ = [
     "ClassifierFactory",
     "available_classifiers",
     "canonical_label",
+    "canonical_mode",
     "get_classifier",
     "normalize_probabilities",
     "CATEGORY_KEYWORDS",

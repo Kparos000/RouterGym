@@ -10,12 +10,12 @@ from typing import Dict
 import pandas as pd
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
-from RouterGym.classifiers.utils import canonical_label
+from RouterGym.label_space import CANONICAL_LABELS, canonical_label
 
 DATA_PATH = Path("RouterGym/data/tickets/tickets.csv")
 TEXT_COL = "Document"
 LABEL_COL = "Topic_group"
-CANONICALS = ["access", "hardware", "hr support", "purchase", "miscellaneous"]
+CANONICALS = CANONICAL_LABELS
 
 
 def _load_data(path: Path) -> pd.DataFrame:
@@ -28,25 +28,7 @@ def _load_data(path: Path) -> pd.DataFrame:
 
 
 def _normalize_label(label: str) -> str:
-    lower = canonical_label(label)
-    synonyms = {
-        "hr": "hr support",
-        "hr_support": "hr support",
-        "benefits": "hr support",
-        "purchase order": "purchase",
-        "po": "purchase",
-        "order": "purchase",
-        "hardware": "hardware",
-        "device": "hardware",
-        "login": "access",
-        "access issue": "access",
-    }
-    for key, val in synonyms.items():
-        if key in lower:
-            return val
-    if lower in CANONICALS:
-        return lower
-    return "miscellaneous"
+    return canonical_label(label)
 
 
 def evaluate_slice(ticket_start: int, ticket_limit: int) -> None:

@@ -30,6 +30,7 @@ from RouterGym.routing.router_engine import RouterEngine
 from RouterGym.agents.generator import CLASS_LABELS, infer_category_from_text, normalize_output
 from RouterGym.contracts.schema_contract import SchemaContract
 from RouterGym.engines.model_registry import get_model_backend
+from RouterGym.label_space import canonical_label
 
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
@@ -222,9 +223,8 @@ def _build_result_row(
 
 
 def _norm_label(label: Any) -> str:
-    """Normalize category labels."""
-    text = str(label or "").strip().lower()
-    return text or "unknown"
+    """Normalize category labels into the canonical label space."""
+    return canonical_label(str(label or ""))
 
 
 def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

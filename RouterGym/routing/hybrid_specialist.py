@@ -33,8 +33,8 @@ def risk_score(
     classifier_confidence: float = 0.5,
 ) -> Tuple[float, str]:
     """Return (risk, reason) for routing decisions."""
-    normalized_cat = (category or "").strip().lower()
-    is_hard = normalized_cat in HARD_CATEGORIES
+    raw_cat = (category or "").strip().lower()
+    is_hard = raw_cat in HARD_CATEGORIES
     is_long = len(text) > 512
     risk = max(0.0, min(1.0, 1.0 - classifier_confidence))
     signals = []
@@ -57,14 +57,14 @@ def risk_score(
 def _infer_category(text: str, default: str = "") -> str:
     lower = text.lower()
     if "vpn" in lower or "network" in lower:
-        return "network"
+        return "access"
     if "password" in lower or "login" in lower or "access" in lower:
         return "access"
     if "hr" in lower or "leave" in lower:
-        return "hr_support"
+        return "hr support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "unknown"
+    return default or "miscellaneous"
 
 
 class HybridSpecialistRouter(BaseRouter):
@@ -74,7 +74,7 @@ class HybridSpecialistRouter(BaseRouter):
         self.category_to_model = {
             "access": "slm",
             "hardware": "slm",
-            "hr_support": "slm",
+            "hr support": "slm",
         }
 
     def route(

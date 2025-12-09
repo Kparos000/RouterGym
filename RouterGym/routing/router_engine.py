@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from RouterGym.classifiers import CLASSIFIER_MODES as REGISTERED_MODES, get_classifier_instance
-from RouterGym.classifiers.utils import ClassifierMetadata, ClassifierProtocol, canonical_label
+from RouterGym.classifiers.utils import ClassifierMetadata, ClassifierProtocol, canonical_label, canonical_mode
 from RouterGym.memory.base import MemoryRetrieval
 
 CLASSIFIER_MODES = REGISTERED_MODES
@@ -54,7 +54,7 @@ class RouterEngine:
     """Coordinates classifier selection and summary generation."""
 
     def __init__(self, classifier_mode: str = "tfidf") -> None:
-        self.classifier_mode = canonical_label(classifier_mode)
+        self.classifier_mode = canonical_mode(classifier_mode)
         self._classifier = self._init_classifier(self.classifier_mode)
 
     def _init_classifier(self, mode: str) -> ClassifierProtocol:
@@ -121,7 +121,7 @@ class RouterEngine:
         )
 
     def set_mode(self, classifier_mode: str) -> None:
-        mode = canonical_label(classifier_mode)
+        mode = canonical_mode(classifier_mode)
         if mode == self.classifier_mode:
             return
         self.classifier_mode = mode

@@ -27,14 +27,12 @@ from RouterGym.classifiers.utils import (
 )
 
 _PROTOTYPES: Dict[str, str] = {
-    "access": "password reset login mfa sso otp locked out",
-    "administrative rights": "admin privilege elevated permission install software",
-    "hardware": "laptop printer dock monitor battery broken",
-    "hr support": "benefits payroll leave hr question",
-    "internal project": "internal repository analytics project access",
+    "access": "password reset login mfa sso otp locked out account",
+    "administrative rights": "admin privilege elevated permission group membership entitlement role change",
+    "hardware": "laptop printer dock monitor battery broken keyboard mouse device",
+    "hr support": "benefits payroll leave hr question vacation",
+    "purchase": "buy purchase order license invoice billing subscription renewal procurement payment quote",
     "miscellaneous": "general inquiry misc other",
-    "purchase": "buy purchase order license invoice",
-    "storage": "shared drive storage quota full",
 }
 
 

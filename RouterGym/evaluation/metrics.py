@@ -7,6 +7,8 @@ import os
 
 import numpy as np
 
+from RouterGym.label_space import canonical_label
+
 try:
     from sentence_transformers import SentenceTransformer
 except Exception:  # pragma: no cover
@@ -113,7 +115,7 @@ def latency(start_time: float, end_time: float) -> float:
 
 
 def _normalize_label(label: str) -> str:
-    return str(label or "").strip().lower() or "unknown"
+    return canonical_label(label)
 
 
 def estimate_tokens(*texts: str) -> int:

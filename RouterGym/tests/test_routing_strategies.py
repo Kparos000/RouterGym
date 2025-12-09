@@ -22,7 +22,7 @@ def test_slm_dominant_stays_on_slm_for_easy_high_conf() -> None:
 
 def test_hybrid_risk_low_stays_slm() -> None:
     text = "simple hr question"
-    risk, reason = risk_score(text, category="hr_support", classifier_confidence=0.95)
+    risk, reason = risk_score(text, category="hr support", classifier_confidence=0.95)
     assert risk <= RISK_LOW
     assert "low" in reason
 

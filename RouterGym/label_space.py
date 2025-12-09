@@ -1,0 +1,98 @@
+"""Canonical label space and normalization utilities."""
+
+from __future__ import annotations
+
+from typing import Dict, List
+
+CANONICAL_LABELS: List[str] = [
+    "access",
+    "administrative rights",
+    "hardware",
+    "hr support",
+    "purchase",
+    "miscellaneous",
+]
+
+CANONICAL_LABEL_SET = set(CANONICAL_LABELS)
+
+# Collapse long-tail labels into the canonical set. We explicitly map
+# legacy labels like "internal project" and "storage" into "miscellaneous"
+# to keep a single, consistent label space across data, prompts, and classifiers.
+LABEL_NORMALIZATION_MAP: Dict[str, str] = {
+    "access": "access",
+    "login": "access",
+    "log in": "access",
+    "password": "access",
+    "account": "access",
+    "mfa": "access",
+    "sso": "access",
+    "otp": "access",
+    "lockout": "access",
+    "administrative rights": "administrative rights",
+    "admin rights": "administrative rights",
+    "admin": "administrative rights",
+    "administrator": "administrative rights",
+    "admin role": "administrative rights",
+    "role change": "administrative rights",
+    "permission": "administrative rights",
+    "permissions": "administrative rights",
+    "privilege": "administrative rights",
+    "entitlement": "administrative rights",
+    "group membership": "administrative rights",
+    "security group": "administrative rights",
+    "hardware": "hardware",
+    "device": "hardware",
+    "laptop": "hardware",
+    "printer": "hardware",
+    "monitor": "hardware",
+    "dock": "hardware",
+    "keyboard": "hardware",
+    "mouse": "hardware",
+    "hr": "hr support",
+    "hr support": "hr support",
+    "hr_support": "hr support",
+    "human resources": "hr support",
+    "benefits": "hr support",
+    "leave": "hr support",
+    "vacation": "hr support",
+    "payroll": "hr support",
+    "purchase": "purchase",
+    "buy": "purchase",
+    "order": "purchase",
+    "invoice": "purchase",
+    "billing": "purchase",
+    "subscription": "purchase",
+    "licence": "purchase",
+    "license": "purchase",
+    "renewal": "purchase",
+    "quote": "purchase",
+    "po": "purchase",
+    "procurement": "purchase",
+    "payment": "purchase",
+    "refund": "purchase",
+    "misc": "miscellaneous",
+    "miscellaneous": "miscellaneous",
+    "general": "miscellaneous",
+    "other": "miscellaneous",
+    "storage": "miscellaneous",
+    "internal project": "miscellaneous",
+    "internal projects": "miscellaneous",
+}
+
+
+def canonical_label(label: str | None) -> str:
+    """Map any free-form label into the canonical 6-label space."""
+    text = (label or "").strip().lower()
+    if not text:
+        return "unknown"
+    if text in LABEL_NORMALIZATION_MAP:
+        return LABEL_NORMALIZATION_MAP[text]
+    if text in CANONICAL_LABEL_SET:
+        return text
+    for key, target in LABEL_NORMALIZATION_MAP.items():
+        if key and key in text:
+            return target
+    return "miscellaneous"
+
+
+__all__ = ["CANONICAL_LABELS", "CANONICAL_LABEL_SET", "LABEL_NORMALIZATION_MAP", "canonical_label"]

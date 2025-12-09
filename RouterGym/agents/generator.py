@@ -9,20 +9,12 @@ from typing import Any, Dict, List, Optional
 from RouterGym.contracts.json_contract import JSONContract
 from RouterGym.contracts.schema_contract import SchemaContract
 from RouterGym.engines.model_registry import get_repair_model
+from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonical_label
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
 
-CLASS_LABELS = [
-    "access",
-    "administrative rights",
-    "hardware",
-    "hr support",
-    "internal project",
-    "miscellaneous",
-    "purchase",
-    "storage",
-]
+CLASS_LABELS = CANONICAL_LABELS
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
@@ -30,14 +22,15 @@ def classification_instruction() -> str:
     """Instruction block enforcing JSON contract and allowed labels for classification."""
     return (
         "You are a support ticket classifier. Choose EXACTLY ONE label from this fixed set:\n"
-        "- access: login/password/mfa/account issues\n"
+        "- access: login/password/account lockouts or MFA problems\n"
+        "- administrative rights: permission changes, admin roles, group membership/entitlements\n"
         "- hardware: laptop/printer/monitor/device issues\n"
         "- hr support: leave/vacation/benefits/payroll questions\n"
-        "- purchase: buying/ordering/licenses/invoices/vendors\n"
+        "- purchase: buying/ordering/licenses/invoices/vendors/subscriptions\n"
         "- miscellaneous: only if none of the above clearly fits\n\n"
         "Respond ONLY with JSON in this schema:\n"
-        '{\"label\": \"<one of access|hardware|hr support|purchase|miscellaneous>\", \"rationale\": \"<short why>\"}\n'
-        "Do NOT return multiple labels. Do NOT invent labels. Use 'miscellaneous' only if the ticket truly does not fit access, hardware, hr support, or purchase."
+        '{\"label\": \"<one of access|administrative rights|hardware|hr support|purchase|miscellaneous>\", \"rationale\": \"<short why>\"}\n'
+        "Do NOT return multiple labels. Do NOT invent labels. Use 'miscellaneous' only if the ticket truly does not fit the other categories."
     )
 
 
@@ -179,15 +172,30 @@ def _normalize_category(raw: str, context: str = "") -> str:
     if contains_any(strong_hardware):
         return "hardware"
 
-    if text in CLASS_LABELS:
+    if text in CANONICAL_LABEL_SET:
         return text
 
     keyword_map = [
-        ({"admin", "administrator", "permission", "privilege", "rights"}, "administrative rights"),
+        (
+            {"admin", "administrator", "permission", "privilege", "rights", "entitlement", "group"},
+            "administrative rights",
+        ),
         ({"hr", "benefit", "leave", "vacation", "payroll"}, "hr support"),
-        ({"project", "repo", "repository", "internal"}, "internal project"),
-        ({"buy", "purchase", "order", "procure", "invoice", "billing"}, "purchase"),
-        ({"storage", "quota", "space", "drive", "share"}, "storage"),
+        (
+            {
+                "buy",
+                "purchase",
+                "order",
+                "procure",
+                "invoice",
+                "billing",
+                "subscription",
+                "license",
+                "quote",
+                "po",
+            },
+            "purchase",
+        ),
     ]
     for keywords, label in keyword_map:
         if any(k in combined for k in keywords):
@@ -196,20 +204,34 @@ def _normalize_category(raw: str, context: str = "") -> str:
     if "misc" in combined or "general" in combined or "other" in combined:
         return "miscellaneous"
     # If no strong match, prefer miscellaneous over unknown to avoid empty labels
-    return "miscellaneous"
+    return canonical_label(text)
 
 
 def infer_category_from_text(text: str) -> str:
     """Heuristic mapping from ticket text to canonical labels."""
     lower = (text or "").lower()
     keyword_map = [
-        ({"login", "password", "account", "access", "credential"}, "access"),
-        ({"admin", "administrator", "permission", "privilege", "rights"}, "administrative rights"),
-        ({"laptop", "printer", "device", "hardware", "dock", "keyboard", "mouse"}, "hardware"),
+        ({"login", "password", "account", "access", "credential", "mfa", "sso"}, "access"),
+        (
+            {
+                "admin",
+                "administrator",
+                "permission",
+                "privilege",
+                "rights",
+                "entitlement",
+                "role",
+                "group",
+                "security group",
+            },
+            "administrative rights",
+        ),
+        ({"laptop", "printer", "device", "hardware", "dock", "keyboard", "mouse", "monitor", "screen"}, "hardware"),
         ({"hr", "benefit", "leave", "vacation", "payroll"}, "hr support"),
-        ({"project", "repo", "repository", "internal"}, "internal project"),
-        ({"buy", "purchase", "order", "procure", "invoice", "billing"}, "purchase"),
-        ({"storage", "quota", "space", "drive", "share"}, "storage"),
+        (
+            {"buy", "purchase", "order", "procure", "invoice", "billing", "subscription", "license", "quote", "po"},
+            "purchase",
+        ),
     ]
     for keywords, label in keyword_map:
         if any(k in lower for k in keywords):

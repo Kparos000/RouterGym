@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
+from RouterGym.label_space import CANONICAL_LABEL_SET, canonical_label
+
 
 class SchemaContract:
     """Validate the minimal required schema for agent outputs."""
@@ -28,6 +30,10 @@ class SchemaContract:
                 continue
             if isinstance(json_obj[field], str) and not json_obj[field].strip():
                 errors.append(f"Field {field} is empty")
+            if field == "predicted_category":
+                normalized = canonical_label(json_obj[field])
+                if normalized not in CANONICAL_LABEL_SET:
+                    errors.append("Field predicted_category is not in the allowed label set")
         return len(errors) == 0, errors
 
 

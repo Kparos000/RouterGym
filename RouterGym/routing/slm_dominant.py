@@ -25,14 +25,14 @@ from RouterGym.utils.kb_utils import coerce_kb_hits
 def _infer_category(text: str, default: str = "") -> str:
     lower = text.lower()
     if "vpn" in lower or "network" in lower:
-        return "network"
+        return "access"
     if "password" in lower or "login" in lower or "access" in lower:
         return "access"
     if "hr" in lower or "leave" in lower:
-        return "hr_support"
+        return "hr support"
     if "printer" in lower or "laptop" in lower or "hardware" in lower:
         return "hardware"
-    return default or "unknown"
+    return default or "miscellaneous"
 
 
 class SLMDominantRouter(BaseRouter):
@@ -149,8 +149,8 @@ def should_escalate_heuristic(
     classifier_confidence: Optional[float] = None,
 ) -> tuple[bool, str, float]:
     """Return (escalate?, reason, score) based on simple rules."""
-    normalized_cat = (category or "").strip().lower()
-    is_hard = normalized_cat in HARD_CATEGORIES
+    raw_category = (category or "").strip().lower()
+    is_hard = raw_category in HARD_CATEGORIES
     is_long = len(text) >= LENGTH_THRESHOLD
     conf = classifier_confidence if classifier_confidence is not None else 0.5
     low_conf = conf < LOW_CONFIDENCE
