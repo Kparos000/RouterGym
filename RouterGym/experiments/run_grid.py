@@ -51,6 +51,7 @@ RESULT_COLUMNS: Sequence[str] = (
     "router_confidence_score",
     "router_decision_reason",
     "classifier_mode",
+    "classifier_backend",
     "classifier_label",
     "classifier_confidence",
     "classifier_latency_ms",
@@ -190,6 +191,7 @@ def _build_result_row(
         "router_confidence_score": record.get("router_confidence_score", 0.0),
         "router_decision_reason": record.get("router_decision_reason", ""),
         "classifier_mode": record.get("classifier_mode", classifier_mode),
+        "classifier_backend": record.get("classifier_backend", record.get("classifier_mode", classifier_mode)),
         "classifier_label": record.get("classifier_label", ""),
         "classifier_confidence": record.get("classifier_confidence", 0.0),
         "classifier_latency_ms": record.get("classifier_latency_ms", 0.0),
@@ -447,6 +449,7 @@ def run_single(
             record.update(classifier_summary.as_dict(active_mode))
         else:
             record["classifier_mode"] = active_mode
+            record["classifier_backend"] = active_mode
         record["kb_snippets"] = kb_texts if kb_used_in_prompt else []
         memory.update(final_output.get("final_answer", ""), metadata=routing_meta)
         t_metrics_start = time.perf_counter()
@@ -590,7 +593,10 @@ def run_full_grid(
         csv_writer.writerow(RESULT_COLUMNS)
 
         for classifier_mode in classifier_list:
-            engine = RouterEngine(classifier_mode)
+            # For experiments, treat encoder mode as pure E5 centroid classifier (no lexical prior)
+            # so we can measure its semantic performance independently of lexical heuristics.
+            encoder_use_lexical_prior = False if classifier_mode == "encoder" else None
+            engine = RouterEngine(classifier_mode, encoder_use_lexical_prior=encoder_use_lexical_prior)
             for router_name in router_list:
                 for memory_mode in memory_list:
                     for model_name in model_list:

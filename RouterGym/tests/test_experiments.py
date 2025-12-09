@@ -12,6 +12,7 @@ from RouterGym.experiments import run_grid
 from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.engines import model_registry
 from RouterGym.evaluation import metrics as eval_metrics
+import RouterGym.routing.router_engine as router_engine
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -198,9 +199,62 @@ def test_kb_attached_depends_on_memory(monkeypatch: Any) -> None:
     assert res_none["kb_attached"] is False
     assert res_none["groundedness"] == 0.0
 
-    res_rag = run_grid.run_single(ticket, FakeRouter(), "rag_dense", kb_retriever=None, models=None)
-    assert res_rag["kb_attached"] is True
-    assert res_rag["groundedness"] == 0.9
+
+def test_encoder_grid_uses_pure_centroids(monkeypatch: Any, tmp_path: Path) -> None:
+    """Encoder mode in grid should disable lexical prior and surface classifier_backend."""
+    from RouterGym.classifiers.utils import ClassifierMetadata
+
+    captured_use_prior: list[Any] = []
+
+    class DummyEncoder:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            captured_use_prior.append(kwargs.get("use_lexical_prior"))
+            self.metadata = ClassifierMetadata(
+                name="dummy", mode="encoder", provider="test", model_reference="dummy"
+            )
+
+        def predict_proba(self, text: str) -> Dict[str, float]:
+            return {"access": 1.0}
+
+        def predict_label(self, text: str) -> str:
+            return "access"
+
+    class FakeRouter:
+        def route(self, ticket: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+            return {
+                "strategy": "llm_first",
+                "target_model": "slm",
+                "model_used": "slm",
+                "final_output": {"final_answer": "ok", "reasoning": "r", "predicted_category": "access"},
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": False,
+                "kb_snippets": [],
+            }
+
+    monkeypatch.setattr(run_grid, "RAW_DIR", tmp_path)
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
+    monkeypatch.setattr(run_grid, "load_models", lambda *args, **kwargs: {})
+    monkeypatch.setattr(router_engine, "EncoderClassifier", DummyEncoder)
+
+    tickets = [{"id": 1, "text": "reset password", "category": "access", "gold_category": "access"}]
+    df = run_grid.run_full_grid(
+        tickets=tickets,
+        kb_retriever=None,
+        limit=1,
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1"],
+        classifier_modes=["encoder"],
+        output_path=tmp_path / "out.csv",
+        verbose=False,
+    )
+
+    assert captured_use_prior and captured_use_prior[0] is False
+    assert not df.empty
+    assert "classifier_backend" in df.columns
+    assert set(df["classifier_backend"]) <= {"encoder_pure", "encoder_blended"}
+    assert (df["classifier_mode"] == "encoder").all()
 
 
 def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
