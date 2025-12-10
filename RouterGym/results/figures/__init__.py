@@ -1,1 +1,0 @@
-"""Figure outputs for RouterGym."""
