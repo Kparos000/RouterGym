@@ -13,6 +13,7 @@ from RouterGym.routing.llm_first import LLMFirstRouter
 from RouterGym.engines import model_registry
 from RouterGym.evaluation import metrics as eval_metrics
 import RouterGym.routing.router_engine as router_engine
+from RouterGym.routing.router_engine import ClassificationSummary
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -255,6 +256,72 @@ def test_encoder_grid_uses_pure_centroids(monkeypatch: Any, tmp_path: Path) -> N
     assert "classifier_backend" in df.columns
     assert set(df["classifier_backend"]) <= {"encoder_pure", "encoder_blended"}
     assert (df["classifier_mode"] == "encoder").all()
+
+
+def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Path) -> None:
+    """predicted_category should mirror classifier_label, preserving llm_category separately."""
+
+    class FakeEngine:
+        def __init__(self, classifier_mode: str = "tfidf", encoder_use_lexical_prior: Any = None) -> None:
+            self.classifier_mode = classifier_mode
+            self.classifier_backend = "fake_backend"
+
+        def classify_ticket(self, *args: Any, **kwargs: Any) -> ClassificationSummary:
+            return ClassificationSummary(
+                label="hardware",
+                confidence=0.9,
+                probabilities={"hardware": 1.0},
+                latency_ms=1.0,
+                token_cost=0.0,
+                accuracy=1.0,
+                efficiency=1.0,
+                metadata={"model_reference": "fake"},
+                memory_context_used="",
+                memory_relevance_score=0.0,
+                memory_cost_tokens=0,
+                memory_mode="none",
+                retrieval_latency_ms=0.0,
+                retrieved_context_length=0,
+                classifier_backend=self.classifier_backend,
+            )
+
+    class FakeRouter:
+        def route(self, ticket: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+            return {
+                "strategy": "llm_first",
+                "target_model": "slm",
+                "model_used": "slm",
+                "final_output": {"final_answer": "ok", "reasoning": "r", "predicted_category": "access"},
+                "json_valid": True,
+                "schema_valid": True,
+                "kb_attached": False,
+                "kb_snippets": [],
+            }
+
+    monkeypatch.setattr(run_grid, "RAW_DIR", tmp_path)
+    monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
+    monkeypatch.setattr(run_grid, "load_models", lambda *args, **kwargs: {})
+    monkeypatch.setattr(run_grid, "RouterEngine", FakeEngine)
+
+    tickets = [{"id": 1, "text": "reset password", "category": "access", "gold_category": "access"}]
+    df = run_grid.run_full_grid(
+        tickets=tickets,
+        kb_retriever=None,
+        limit=1,
+        routers=["llm_first"],
+        memories=["none"],
+        models=["slm1"],
+        classifier_modes=["encoder"],
+        output_path=tmp_path / "out.csv",
+        verbose=False,
+    )
+
+    assert not df.empty
+    row = df.iloc[0]
+    assert row["classifier_label"] == "hardware"
+    assert row["predicted_category"] == "hardware"
+    assert row["llm_category"] == "access"
+    assert row["classifier_backend"] == "fake_backend"
 
 
 def test_full_grid_remote_smoke(monkeypatch: Any) -> None:

@@ -75,6 +75,7 @@ RESULT_COLUMNS: Sequence[str] = (
     "json_valid",
     "schema_valid",
     "gold_category",
+    "llm_category",
     "predicted_category",
     "classifier_metadata",
 )
@@ -215,6 +216,7 @@ def _build_result_row(
         "json_valid": bool(record.get("json_valid", False)),
         "schema_valid": bool(record.get("schema_valid", False)),
         "gold_category": record.get("gold_category", ""),
+        "llm_category": record.get("llm_category", ""),
         "predicted_category": record.get("predicted_category", ""),
         "classifier_metadata": record.get("classifier_metadata", {}),
     }
@@ -361,6 +363,7 @@ def run_single(
             "json_valid": False,
             "schema_valid": False,
             "predicted_category": "",
+            "llm_category": "",
             "routing_time": 0.0,
             "retrieval_time": 0.0,
             "retrieval_latency_ms": 0.0,
@@ -409,6 +412,7 @@ def run_single(
             inferred = infer_category_from_text(ticket.get("text", ""))
             if inferred in CLASS_LABELS and inferred != "miscellaneous":
                 predicted_category = inferred
+        llm_category = predicted_category
         record = {
             "ticket_id": ticket.get("id"),
             "router": routing_meta.get("strategy"),
@@ -434,6 +438,7 @@ def run_single(
             "json_valid": True,
             "schema_valid": schema_valid,
             "predicted_category": predicted_category,
+            "llm_category": llm_category,
             "gold_category": gold_category,
             "routing_time": routing_time,
             "retrieval_time": retrieval_latency_ms,
@@ -450,6 +455,9 @@ def run_single(
         else:
             record["classifier_mode"] = active_mode
             record["classifier_backend"] = active_mode
+        classifier_label = record.get("classifier_label", "")
+        record["llm_category"] = llm_category
+        record["predicted_category"] = classifier_label or llm_category
         record["kb_snippets"] = kb_texts if kb_used_in_prompt else []
         memory.update(final_output.get("final_answer", ""), metadata=routing_meta)
         t_metrics_start = time.perf_counter()
