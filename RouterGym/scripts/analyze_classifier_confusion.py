@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 
 
@@ -107,11 +108,14 @@ def analyze_results(results_path: Path, output_dir: Path | None = None) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
     classifier_modes = _sorted_labels(df["classifier_mode"])
+    overall_stats: Dict[str, Dict[str, float]] = {}
 
     for mode in classifier_modes:
         subset = df[df["classifier_mode"] == mode]
         total_rows = int(len(subset))
         correct_rows = int((subset["gold_category"] == subset["predicted_category"]).sum())
+        overall_acc = correct_rows / total_rows if total_rows > 0 else float("nan")
+        overall_stats[mode] = {"correct": float(correct_rows), "total": float(total_rows), "acc": overall_acc}
 
         confusion = build_confusion_matrix(subset)
         per_class = compute_per_class_accuracy(subset)
@@ -125,6 +129,17 @@ def analyze_results(results_path: Path, output_dir: Path | None = None) -> None:
             per_class_path = output_dir / f"per_class_{mode}.csv"
             confusion.to_csv(confusion_path, index_label="gold_category")
             per_class.to_csv(per_class_path, index_label="gold_category")
+
+    if "encoder" in overall_stats:
+        enc = overall_stats["encoder"]
+        print("\n=== Headline encoder accuracy (E5 classifier head) ===")
+        print(f"{int(enc['correct'])}/{int(enc['total'])} = {enc['acc']:.3f}")
+
+    acc_values = [v["acc"] for v in overall_stats.values() if v.get("total", 0) > 0]
+    if acc_values:
+        global_mean = float(np.mean(acc_values))
+        print("\n=== Global average accuracy across classifier modes ===")
+        print(f"mean_overall_accuracy={global_mean:.3f}")
 
 
 def main() -> None:

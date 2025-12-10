@@ -43,6 +43,9 @@ def test_main_prints_confusion_and_accuracy(monkeypatch: Any, capsys: Any) -> No
     assert "Overall accuracy" in captured
     assert "access" in captured
     assert "hardware" in captured
+    assert "Headline encoder accuracy" in captured
+    assert "Global average accuracy across classifier modes" in captured
+    assert "mean_overall_accuracy=" in captured
 
 
 def test_output_dir_writes_csvs(monkeypatch: Any, tmp_path: Path) -> None:
