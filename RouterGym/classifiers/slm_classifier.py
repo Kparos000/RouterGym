@@ -11,6 +11,7 @@ from RouterGym.classifiers.utils import (
     canonical_label,
     normalize_probabilities,
     apply_lexical_prior,
+    CATEGORY_KEYWORDS,
 )
 
 _KEYWORDS: Dict[str, List[str]] = {
@@ -89,7 +90,28 @@ class SLMClassifier(ClassifierProtocol):
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)
-        return max(probabilities, key=probabilities.__getitem__)
+        label = max(probabilities, key=probabilities.__getitem__)
+        if label == "miscellaneous":
+            # If the model falls back to miscellaneous, check lexical prior for strong concrete evidence.
+            lower = (text or "").lower()
+            prior_hits: Dict[str, float] = {}
+            for lbl, keywords in CATEGORY_KEYWORDS.items():
+                count = 0.0
+                for kw in keywords:
+                    if kw and kw in lower:
+                        count += 1.0
+                prior_hits[canonical_label(lbl)] = count
+            total_hits = sum(prior_hits.values())
+            if total_hits > 0:
+                # Normalize and find strongest non-misc label.
+                miscless = {k: v for k, v in prior_hits.items() if k != "miscellaneous"}
+                if miscless:
+                    top_label = max(miscless, key=lambda k: miscless[k])
+                    top_score = miscless[top_label] / max(total_hits, 1e-9)
+                    if top_score >= 0.75:
+                        label = top_label
+                        self.metadata.description = self.metadata.description + " (misc overridden by lexical prior)"
+        return label
 
 
 __all__ = ["SLMClassifier"]
