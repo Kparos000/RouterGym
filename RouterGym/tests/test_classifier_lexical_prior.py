@@ -51,3 +51,25 @@ def test_classification_instruction_mentions_all_labels_and_misc_rule() -> None:
         assert label in prompt
     assert "miscellaneous" in prompt.lower()
     assert "only" in prompt.lower()
+
+
+def test_hr_support_keywords_dominate_misc() -> None:
+    text = "My payroll and vacation hours are incorrect; HR needs to fix my benefits."
+    adjusted = apply_lexical_prior(text, BASE)
+    assert adjusted["hr support"] > adjusted["miscellaneous"]
+    assert adjusted["hr support"] > adjusted["hardware"]
+
+
+def test_purchase_keywords_dominate_misc() -> None:
+    text = "Need to renew my software subscription and get a new invoice from the vendor."
+    adjusted = apply_lexical_prior(text, BASE)
+    assert adjusted["purchase"] > adjusted["miscellaneous"]
+    assert adjusted["purchase"] > adjusted["access"]
+
+
+def test_generic_text_keeps_misc_relevant() -> None:
+    text = "I have a general question."
+    adjusted = apply_lexical_prior(text, BASE)
+    assert "miscellaneous" in adjusted
+    # Generic text should not strongly favor concrete labels; misc should be competitive.
+    assert adjusted["miscellaneous"] >= 0.15

@@ -103,7 +103,8 @@ class TFIDFClassifier(ClassifierProtocol):
             dot = sum(vector[token] * centroid.get(token, 0.0) for token in vector)
             scores[label] = max(dot, 0.0)
         base_probs = normalize_probabilities(scores, self.labels)
-        return apply_lexical_prior(text, base_probs)
+        # TF-IDF is brittle; lean a bit more on lexical priors to capture obvious cues.
+        return apply_lexical_prior(text, base_probs, alpha=0.6, beta=0.4)
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)

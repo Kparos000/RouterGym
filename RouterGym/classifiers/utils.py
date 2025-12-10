@@ -32,24 +32,36 @@ def normalize_probabilities(scores: Dict[str, float], labels: Iterable[str]) -> 
 
 CATEGORY_KEYWORDS: Dict[str, List[str]] = {
     "access": [
+        "access",
         "login",
         "log in",
+        "sign in",
         "password",
         "account",
         "lockout",
         "locked",
         "sso",
-        "sign-in",
-        "sign in",
         "mfa",
+        "permission",
+        "permissions",
+        "role",
+        "group",
+        "entitlement",
+        "authorization",
+        "authorisation",
     ],
     # Explicitly separate administrative rights from access to strengthen recall on permissions.
     "administrative rights": [
         "admin",
         "administrator",
+        "admin rights",
+        "admin access",
+        "elevated rights",
+        "elevated access",
+        "local admin",
+        "root",
+        "sudo",
         "permission",
-        "role",
-        "rights",
         "privilege",
         "entitlement",
         "group membership",
@@ -69,16 +81,29 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "mouse",
         "device",
         "dock",
+        "docking station",
+        "headset",
+        "phone",
+        "hardware",
     ],
     "hr support": [
-        "leave",
-        "vacation",
-        "holiday",
-        "benefits",
-        "payroll",
-        "manager",
         "hr",
         "human resources",
+        "payroll",
+        "salary",
+        "compensation",
+        "performance review",
+        "onboarding",
+        "offboarding",
+        "benefits",
+        "vacation",
+        "holiday request",
+        "leave request",
+        "leave",
+        "sickness",
+        "maternity",
+        "paternity",
+        "time off",
     ],
     "purchase": [
         "purchase",
@@ -96,12 +121,19 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "po",
         "procurement",
         "refund",
+        "vendor",
+        "supplier",
+        "cost centre",
+        "budget",
+        "bill",
+        "billing",
     ],
-    "miscellaneous": ["general", "question", "enquiry", "inquiry", "other"],
+    # Keep miscellaneous extremely low-signal; it should only win when nothing else fits.
+    "miscellaneous": ["general", "question", "enquiry", "inquiry", "other", "misc", "miscellaneous"],
 }
 
 
-def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.8, beta: float = 0.2) -> Dict[str, float]:
+def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.75, beta: float = 0.25) -> Dict[str, float]:
     """Blend model probabilities with a simple keyword-based prior.
 
     The prior is a gentle nudge, not an override. We intentionally down-weight
