@@ -26,8 +26,6 @@ from RouterGym.classifiers.utils import (
     apply_lexical_prior,
 )
 
-HEAD_PATH = Path(__file__).resolve().parent / "encoder_head.npz"
-
 _PROTOTYPES: Dict[str, str] = {
     "access": "password reset login mfa sso otp locked out account",
     "administrative rights": "admin privilege elevated permission group membership entitlement role change",
@@ -52,7 +50,6 @@ class EncoderClassifier(ClassifierProtocol):
         model_name: str = "intfloat/e5-small-v2",
         embedding_dimension: int = 16,
         use_lexical_prior: bool = True,
-        head_mode: str = "auto",
     ) -> None:
         self.labels = [canonical_label(lbl) for lbl in (labels or DEFAULT_LABELS)]
         self.metadata = ClassifierMetadata(
@@ -73,11 +70,6 @@ class EncoderClassifier(ClassifierProtocol):
         self._encoder: SentenceTransformer | None = None
         self._centroid_labels: List[str] = []
         self._centroids = None
-        self._head_mode_config = head_mode
-        self._head_mode_active = "centroid"
-        self._linear_W: Optional[np.ndarray] = None if np is not None else None
-        self._linear_b: Optional[np.ndarray] = None if np is not None else None
-        self._linear_labels: Optional[List[str]] = None
         if SentenceTransformer is not None:
             try:
                 self._encoder = SentenceTransformer(model_name)  # type: ignore[arg-type]
@@ -88,7 +80,6 @@ class EncoderClassifier(ClassifierProtocol):
             for label, text in _PROTOTYPES.items()
         }
         self._maybe_load_centroids()
-        self._resolve_head_mode()
 
     def _maybe_load_centroids(self) -> None:
         """Load centroid file if available; otherwise stay on prototype path."""
@@ -115,45 +106,6 @@ class EncoderClassifier(ClassifierProtocol):
             self._centroids = None
             self._centroid_labels = []
 
-    def _try_load_linear_head(self) -> None:
-        """Load linear softmax head if present and valid."""
-        if np is None:
-            return
-        path = HEAD_PATH
-        if not path.exists():
-            return
-        try:
-            data = np.load(path, allow_pickle=True)
-            labels = [canonical_label(lbl) for lbl in data["labels"].tolist()]
-            W = np.asarray(data["W"], dtype="float32")
-            b = np.asarray(data["b"], dtype="float32")
-            if W.ndim != 2 or b.ndim != 1 or W.shape[0] != len(labels) or b.shape[0] != len(labels):
-                return
-            if list(self.labels) != labels:
-                # Align classifier labels to the head order.
-                self.labels = labels
-            self._linear_W = W
-            self._linear_b = b
-            self._linear_labels = labels
-            self._head_mode_active = "linear"
-            self.metadata.description += " (linear head)"
-        except Exception:
-            return
-
-    def _resolve_head_mode(self) -> None:
-        """Select active head based on config and file availability."""
-        self._head_mode_active = "centroid"
-        mode = (self._head_mode_config or "centroid").lower()
-        if mode == "centroid":
-            self._head_mode_active = "centroid"
-            return
-        if mode in {"linear", "auto"}:
-            self._try_load_linear_head()
-            if mode == "linear" and self._head_mode_active != "linear":
-                print("[EncoderClassifier] Requested linear head but none loaded; using centroid.")
-        else:
-            print(f"[EncoderClassifier] Unknown head_mode '{mode}', defaulting to centroid.")
-
     def _hash_vector(self, text: str) -> List[float]:
         vector = [0.0] * self.embedding_dimension
         if not text:
@@ -177,52 +129,31 @@ class EncoderClassifier(ClassifierProtocol):
         size = min(len(a), len(b))
         return sum(a[i] * b[i] for i in range(size))
 
-    def _predict_proba_centroid(self, emb_norm: np.ndarray) -> np.ndarray:
-        if self._centroids is None:
-            raise ValueError("Centroids not loaded")
-        sims = emb_norm @ self._centroids.T
-        logits = sims.astype("float64")
-        logits = logits - logits.max()
-        exp = np.exp(logits)
-        probs = exp / exp.sum()
-        return probs
+    def predict_proba(self, text: str) -> Dict[str, float]:
+        if self._centroids is not None and np is not None and self._encoder is not None:
+            try:
+                emb = self._encoder.encode(text or "", normalize_embeddings=True)  # type: ignore[attr-defined]
+                emb_np = np.array(emb, dtype="float32")
+                emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
+                sims = emb_norm @ self._centroids.T
+                logits = sims.astype("float64")
+                logits = logits - logits.max()
+                exp = np.exp(logits)
+                probs = exp / exp.sum()
+                centroid_probs = {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
+                if self.use_lexical_prior:
+                    return apply_lexical_prior(text, centroid_probs)
+                return normalize_probabilities(centroid_probs, self._centroid_labels)
+            except Exception:
+                print("[EncoderClassifier] Warning: centroid inference failed, falling back to prototypes.")
 
-    def _predict_proba_linear(self, emb: np.ndarray) -> Optional[np.ndarray]:
-        if self._linear_W is None or self._linear_b is None:
-            return None
-        logits = self._linear_W @ emb + self._linear_b
-        logits = logits - float(logits.max())
-        exp = np.exp(logits, dtype="float64")
-        probs = exp / float(exp.sum())
-        return probs
-
-    def _predict_with_embedding(self, emb_vec: List[float]) -> Dict[str, float]:
-        if np is None:
-            base = {label: max(0.0, self._cosine(emb_vec, self._prototype_vectors.get(label, []))) for label in self.labels}
-            return normalize_probabilities(base, self.labels)
-        emb_np = np.array(emb_vec, dtype="float32")
-        norm = np.linalg.norm(emb_np) + 1e-9
-        emb_norm = emb_np / norm
-        if self._head_mode_active == "linear":
-            linear_probs = self._predict_proba_linear(emb_np)
-            if linear_probs is not None:
-                return {lbl: float(linear_probs[idx]) for idx, lbl in enumerate(self.labels)}
-        if self._centroids is not None:
-            centroid_probs = self._predict_proba_centroid(emb_norm)
-            return {lbl: float(centroid_probs[idx]) for idx, lbl in enumerate(self._centroid_labels or self.labels)}
-        # Prototype fallback
+        text_vec = self._encode_text(text or "")
         scores = {
-            label: max(0.0, self._cosine(emb_vec, self._prototype_vectors.get(label, [])))
+            label: max(0.0, self._cosine(text_vec, self._prototype_vectors.get(label, [])))
             for label in self.labels
         }
-        return normalize_probabilities(scores, self.labels)
-
-    def predict_proba(self, text: str) -> Dict[str, float]:
-        text_vec = self._encode_text(text or "")
-        base_probs = self._predict_with_embedding(text_vec)
-        if self.use_lexical_prior:
-            return apply_lexical_prior(text, base_probs)
-        return base_probs
+        base = normalize_probabilities(scores, self.labels)
+        return apply_lexical_prior(text, base) if self.use_lexical_prior else base
 
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)

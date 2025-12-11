@@ -31,12 +31,12 @@ def _normalize_label(label: str) -> str:
     return canonical_label(label)
 
 
-def evaluate_slice(ticket_start: int, ticket_limit: int, head_mode: str = "centroid") -> None:
+def evaluate_slice(ticket_start: int, ticket_limit: int) -> None:
     os.environ["ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR"] = "0"
     df = _load_data(DATA_PATH)
     end = ticket_start + ticket_limit if ticket_limit >= 0 else len(df)
     slice_df = df.iloc[ticket_start:end]
-    clf = EncoderClassifier(use_lexical_prior=False, head_mode=head_mode)
+    clf = EncoderClassifier(use_lexical_prior=False)
 
     total_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
     correct_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
@@ -66,15 +66,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate encoder classifier on a ticket slice.")
     parser.add_argument("--ticket-start", type=int, default=0, help="Start index (0-based) into tickets.csv")
     parser.add_argument("--ticket-limit", type=int, default=30, help="Max tickets to evaluate (default 30; -1 for all)")
-    parser.add_argument(
-        "--head-mode",
-        type=str,
-        default="centroid",
-        choices=["centroid", "linear", "auto"],
-        help="Encoder head mode: centroid, linear, or auto.",
-    )
     args = parser.parse_args()
-    evaluate_slice(args.ticket_start, args.ticket_limit, head_mode=args.head_mode)
+    evaluate_slice(args.ticket_start, args.ticket_limit)
 
 
 if __name__ == "__main__":
