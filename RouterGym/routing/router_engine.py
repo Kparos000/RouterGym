@@ -65,13 +65,11 @@ class RouterEngine:
     def _init_classifier(self, mode: str) -> ClassifierProtocol:
         normalized = canonical_mode(mode)
         if normalized == "encoder":
-            kwargs: Dict[str, Any] = {}
-            backend_label = "encoder_blended"
+            kwargs: Dict[str, Any] = {"head_mode": "auto"}
             if self.encoder_use_lexical_prior is not None:
                 kwargs["use_lexical_prior"] = self.encoder_use_lexical_prior
-                backend_label = "encoder_pure" if self.encoder_use_lexical_prior is False else "encoder_blended"
             classifier = EncoderClassifier(**kwargs)
-            self.classifier_backend = backend_label
+            self.classifier_backend = getattr(classifier, "backend_name", "encoder")
         elif normalized in {"slm_finetuned", "slm_classifier"}:
             classifier = get_classifier_instance(normalized)
             self.classifier_backend = "slm_classifier"

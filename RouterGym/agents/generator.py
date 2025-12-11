@@ -19,27 +19,33 @@ CLASS_LABELS = CANONICAL_LABELS
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
 def classification_instruction() -> str:
-    """Instruction block enforcing JSON contract and allowed labels for classification."""
+    """High-quality instruction prompt for ticket classification with hard boundaries and examples."""
     return "\n".join(
         [
-            "You are a support ticket classifier. Choose EXACTLY ONE label from this fixed set:",
-            '- access: account/login/password/MFA/S S O issues (e.g., "locked out of account", "reset MFA token")',
-            '- administrative rights: permission/role/entitlement changes (e.g., "add to security group", "need admin rights to install")',
-            '- hardware: laptops/printers/monitors/docks/devices (e.g., "screen cracked", "printer jam")',
-            '- hr support: leave/vacation/benefits/payroll/HR questions (e.g., "extend parental leave", "benefits enrollment")',
-            "- hr support covers HR/people issues: payroll, salary/compensation, benefits, vacation/leave, onboarding/offboarding, contracts, performance reviews.",
-            '- purchase: buying/ordering/billing/licenses/subscriptions/invoices (e.g., "raise PO for software", "renew subscription", "pay invoice")',
-            "- purchase covers requests to buy, renew, or pay for something: licenses, subscriptions, hardware purchases, invoices, billing problems, vendor interactions.",
-            "- Example that is NOT miscellaneous: \"laptop request\" -> hardware; \"permission change\" -> administrative rights.",
-            "- miscellaneous: ONLY use when the ticket clearly does not fit any other label, even after re-reading. If about accounts, permissions, entitlements, billing, hardware, or HR, prefer that specific label.",
+            "You are an expert IT support triage assistant.",
             "",
-            "Rules:",
-            "* Return strictly valid JSON with exactly one label and a short rationale.",
-            "* Allowed labels: access, administrative rights, hardware, hr support, purchase, miscellaneous.",
-            "* Do NOT invent labels. Use 'miscellaneous' only when no other label clearly applies.",
+            "Classify a single IT support ticket into EXACTLY ONE category:",
+            "- access: login failures, password resets, MFA/SSO/VPN access issues, permission denied for portals.",
+            "- administrative rights: requests for elevated/admin privileges to install or configure software, group or role changes granting admin powers.",
+            "- hardware: physical device or peripheral issues (laptop, monitor, keyboard, mouse, docking station, printer).",
+            "- hr support: payroll/benefits/leave/onboarding/offboarding/employment status/HR portal content questions.",
+            "- purchase: requests to buy/order/procure/renew/pay for hardware, software, licenses, subscriptions, invoices, vendor spend.",
+            "- miscellaneous: genuinely unclear, mixed, or off-topic IT questions. Only use 'miscellaneous' if none of the above clearly apply.",
             "",
-            "Respond ONLY with JSON:",
-            '{"label": "<one of access|administrative rights|hardware|hr support|purchase|miscellaneous>", "rationale": "<short why>"}',
+            "Hard boundary examples (resolve ambiguity):",
+            '- "Need access to HR portal" -> access (NOT hr support; portal access issue).',
+            '- "Need admin rights to install HR payroll tool" -> administrative rights (NOT hr support).',
+            '- "Question about benefits enrollment" -> hr support (NOT access).',
+            '- "Need to order new monitors for the team" -> purchase (NOT hardware; it is a buying request).',
+            "",
+            "Think step-by-step before answering:",
+            "1) Restate the main request briefly.",
+            "2) Identify strong cues (order/buy/purchase, access/login/password, admin/rights, benefits/payroll/leave, device names).",
+            "3) Pick the SINGLE best category that matches the primary intent.",
+            "4) Only use 'miscellaneous' if no other label reasonably fits after re-reading.",
+            "",
+            "Respond with STRICT JSON only:",
+            '{"reasoning": "<short explanation>", "category": "<one of: access, administrative rights, hardware, hr support, purchase, miscellaneous>"}',
         ]
     )
 
@@ -49,12 +55,12 @@ def _call_model(model: Any, prompt: str) -> str:
     output = None
     if hasattr(model, "generate"):
         try:
-            output = model.generate(prompt, max_new_tokens=256, temperature=0.2)
+            output = model.generate(prompt, max_new_tokens=256, temperature=0.0, top_p=1.0)
         except TypeError:
             output = model.generate(prompt)  # type: ignore[call-arg]
     elif callable(model):
         try:
-            output = model(prompt, max_new_tokens=256, temperature=0.2)
+            output = model(prompt, max_new_tokens=256, temperature=0.0, top_p=1.0)
         except TypeError:
             output = model(prompt)
     else:

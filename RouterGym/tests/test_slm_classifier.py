@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from RouterGym.agents import generator
 from RouterGym.classifiers.slm_classifier import SLMClassifier
 
 
@@ -34,3 +35,51 @@ def test_misc_stays_when_prior_is_weak(monkeypatch: Any) -> None:
     text = "General inquiry with no clear signal"
     label = clf.predict_label(text)
     assert label == "miscellaneous"
+
+
+def test_hr_keywords_override_misc(monkeypatch: Any) -> None:
+    """Strong HR cues should override a misc guess."""
+    clf = SLMClassifier()
+
+    def fake_predict_proba(text: str) -> Dict[str, float]:
+        return {label: (1.0 if label == "miscellaneous" else 0.0) for label in clf.labels}
+
+    monkeypatch.setattr(clf, "predict_proba", fake_predict_proba)
+
+    text = "My payroll and benefits need correction and HR must fix it."
+    label = clf.predict_label(text)
+    assert label == "hr support"
+
+
+def test_classification_prompt_contains_labels() -> None:
+    prompt = generator.classification_instruction()
+    for label in ["access", "administrative rights", "hardware", "hr support", "purchase", "miscellaneous"]:
+        assert label in prompt
+    assert "strict json" in prompt.lower()
+    assert "only use 'miscellaneous'" in prompt.lower()
+
+
+def test_model_retry_and_parsing(monkeypatch: Any) -> None:
+    calls: list[str] = []
+
+    def fake_call_model(model: Any, prompt: str) -> str:
+        calls.append(prompt)
+        if len(calls) == 1:
+            return "not json"
+        return '{"category": "purchase", "reasoning": "buy hardware"}'
+
+    monkeypatch.setattr(generator, "_call_model", fake_call_model)
+    clf = SLMClassifier(model="dummy-model")
+    label = clf.predict_label("Need to buy new monitors and pay invoice")
+    assert label == "purchase"
+    assert len(calls) >= 2
+
+
+def test_model_misc_overridden_by_prior(monkeypatch: Any) -> None:
+    def fake_call_model(model: Any, prompt: str) -> str:
+        return '{"category": "miscellaneous", "reasoning": "unsure"}'
+
+    monkeypatch.setattr(generator, "_call_model", fake_call_model)
+    clf = SLMClassifier(model="dummy-model")
+    label = clf.predict_label("renew software subscription and vendor invoice payment")
+    assert label == "purchase"

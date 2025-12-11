@@ -90,12 +90,17 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "hr",
         "human resources",
         "payroll",
+        "paycheck",
         "salary",
         "compensation",
+        "bonus",
+        "wage",
         "performance review",
+        "performance management",
         "onboarding",
         "offboarding",
         "benefits",
+        "benefit enrollment",
         "vacation",
         "holiday request",
         "leave request",
@@ -104,6 +109,18 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "maternity",
         "paternity",
         "time off",
+        "pto",
+        "timesheet",
+        "attendance",
+        "hr portal",
+        "hr system",
+        "workday",
+        "sap hr",
+        "contract",
+        "employment status",
+        "probation",
+        "promotion",
+        "appraisal",
     ],
     "purchase": [
         "purchase",
@@ -112,6 +129,7 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "order",
         "invoice",
         "billing",
+        "bill",
         "subscription",
         "licence",
         "license",
@@ -125,8 +143,11 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "supplier",
         "cost centre",
         "budget",
-        "bill",
-        "billing",
+        "statement",
+        "receipt",
+        "pricing",
+        "hardware purchase",
+        "software purchase",
     ],
     # Keep miscellaneous extremely low-signal; it should only win when nothing else fits.
     "miscellaneous": ["general", "question", "enquiry", "inquiry", "other", "misc", "miscellaneous"],
@@ -148,7 +169,8 @@ def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.75,
             for kw in keywords:
                 if kw and kw in lower:
                     count += 1.0
-            hits[canonical_label(label)] = count
+            weight = 1.3 if canonical_label(label) == "hr support" else 1.2 if canonical_label(label) == "purchase" else 1.0
+            hits[canonical_label(label)] = count * weight
 
         total_hits = sum(hits.values())
         if total_hits <= 0:

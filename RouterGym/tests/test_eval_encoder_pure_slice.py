@@ -40,7 +40,7 @@ def test_eval_encoder_pure_slice_outputs(tmp_path: Path, monkeypatch: Any, capsy
     monkeypatch.setattr(pd, "read_csv", fake_read_csv)
     monkeypatch.setattr(eval_script, "_load_data", lambda path: data)
 
-    eval_script.evaluate_slice(0, 3)
+    eval_script.evaluate_slice(0, 3, "centroid")
     captured = capsys.readouterr().out
     assert "Overall accuracy on slice" in captured
     assert "purchase" in captured and "hardware" in captured and "access" in captured

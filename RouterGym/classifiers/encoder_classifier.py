@@ -21,10 +21,11 @@ from RouterGym.classifiers.utils import (
     ClassifierMetadata,
     ClassifierProtocol,
     DEFAULT_LABELS,
+    apply_lexical_prior,
     canonical_label,
     normalize_probabilities,
-    apply_lexical_prior,
 )
+from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 
 _PROTOTYPES: Dict[str, str] = {
     "access": "password reset login mfa sso otp locked out account",
@@ -34,6 +35,8 @@ _PROTOTYPES: Dict[str, str] = {
     "purchase": "buy purchase order license invoice billing subscription renewal procurement payment quote",
     "miscellaneous": "general inquiry misc other",
 }
+
+CALIBRATED_HEAD_PATH = Path(__file__).resolve().parent / "encoder_calibrated_head.npz"
 
 
 def _normalize(vector: List[float]) -> List[float]:
@@ -50,6 +53,7 @@ class EncoderClassifier(ClassifierProtocol):
         model_name: str = "intfloat/e5-small-v2",
         embedding_dimension: int = 16,
         use_lexical_prior: bool = True,
+        head_mode: str = "auto",
     ) -> None:
         self.labels = [canonical_label(lbl) for lbl in (labels or DEFAULT_LABELS)]
         self.metadata = ClassifierMetadata(
@@ -70,6 +74,15 @@ class EncoderClassifier(ClassifierProtocol):
         self._encoder: SentenceTransformer | None = None
         self._centroid_labels: List[str] = []
         self._centroids = None
+        self._head_mode_config = head_mode
+        self._head_mode_active = "centroid"
+        self._backend_name = "encoder_centroid"
+        self._calib_W: Optional[np.ndarray] = None if np is not None else None
+        self._calib_b: Optional[np.ndarray] = None if np is not None else None
+        self._calib_mean: Optional[np.ndarray] = None if np is not None else None
+        self._calib_std: Optional[np.ndarray] = None if np is not None else None
+        self._calib_feature_dim: Optional[int] = None
+        self._tfidf_classifier: Optional[TFIDFClassifier] = None
         if SentenceTransformer is not None:
             try:
                 self._encoder = SentenceTransformer(model_name)  # type: ignore[arg-type]
@@ -80,6 +93,7 @@ class EncoderClassifier(ClassifierProtocol):
             for label, text in _PROTOTYPES.items()
         }
         self._maybe_load_centroids()
+        self._resolve_head_mode()
 
     def _maybe_load_centroids(self) -> None:
         """Load centroid file if available; otherwise stay on prototype path."""
@@ -106,6 +120,64 @@ class EncoderClassifier(ClassifierProtocol):
             self._centroids = None
             self._centroid_labels = []
 
+    def _try_load_calibrated_head(self) -> None:
+        """Load calibrated logistic head if present and valid."""
+        if np is None:
+            return
+        path = CALIBRATED_HEAD_PATH
+        if not path.exists():
+            return
+        try:
+            data = np.load(path, allow_pickle=True)
+            labels = [canonical_label(lbl) for lbl in data["labels"].tolist()]
+            W = np.asarray(data["W"], dtype="float32")
+            b = np.asarray(data["b"], dtype="float32")
+            mean = np.asarray(data.get("feature_mean", np.zeros(W.shape[1], dtype="float32")), dtype="float32")
+            std = np.asarray(data.get("feature_std", np.ones(W.shape[1], dtype="float32")), dtype="float32")
+            feature_dim = W.shape[1] if W.ndim == 2 else 0
+            # Calibrated head may be trained on sims+priors (2x labels) or sims+priors+tfidf (3x labels)
+            expected_dims = {len(labels) * 2, len(labels) * 3}
+            if (
+                W.ndim != 2
+                or b.ndim != 1
+                or W.shape[0] != len(labels)
+                or b.shape[0] != len(labels)
+                or feature_dim not in expected_dims
+            ):
+                return
+            if list(self.labels) != labels:
+                return
+            self._calib_W = W
+            self._calib_b = b
+            self._calib_mean = mean
+            self._calib_std = std
+            self._calib_feature_dim = feature_dim
+            try:
+                self._tfidf_classifier = TFIDFClassifier(labels=self.labels)
+            except Exception:
+                print("[EncoderClassifier] Warning: failed to initialize TF-IDF classifier for calibrated head; continuing without TF-IDF features.")
+                self._tfidf_classifier = None
+            self._head_mode_active = "calibrated"
+            self._backend_name = "encoder_calibrated"
+            self.metadata.description += " (calibrated head)"
+        except Exception:
+            return
+
+    def _resolve_head_mode(self) -> None:
+        """Select active head based on config and file availability."""
+        self._head_mode_active = "centroid"
+        mode = (self._head_mode_config or "centroid").lower()
+        if mode == "centroid":
+            return
+        if mode in {"calibrated", "auto"}:
+            self._try_load_calibrated_head()
+            if mode == "calibrated" and self._head_mode_active != "calibrated":
+                print("[EncoderClassifier] Requested calibrated head but none loaded; using centroid.")
+        else:
+            print(f"[EncoderClassifier] Unknown head_mode '{mode}', defaulting to centroid.")
+        if self._head_mode_active != "calibrated":
+            self._backend_name = "encoder_centroid"
+
     def _hash_vector(self, text: str) -> List[float]:
         vector = [0.0] * self.embedding_dimension
         if not text:
@@ -129,11 +201,57 @@ class EncoderClassifier(ClassifierProtocol):
         size = min(len(a), len(b))
         return sum(a[i] * b[i] for i in range(size))
 
+    def _compute_prior_vector(self, text: str) -> Dict[str, float]:
+        base = {label: 1.0 / max(len(self.labels), 1) for label in self.labels}
+        return apply_lexical_prior(text, base, alpha=0.0, beta=1.0)
+
+    def _compute_calibrated_features(self, text: str, emb_np: np.ndarray) -> Optional[np.ndarray]:
+        if self._centroids is None or np is None:
+            return None
+        emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
+        sims = emb_norm @ self._centroids.T  # shape (num_labels,)
+        priors_dict = self._compute_prior_vector(text)
+        priors = np.array([priors_dict.get(lbl, 0.0) for lbl in self.labels], dtype="float32")
+        parts = [sims.astype("float32"), priors]
+        expected = self._calib_feature_dim or (len(self.labels) * 2)
+        if self._tfidf_classifier is not None and expected == len(self.labels) * 3:
+            try:
+                tfidf_probs_dict = self._tfidf_classifier.predict_proba(text)
+                tfidf_probs = np.array(
+                    [tfidf_probs_dict.get(lbl, 0.0) for lbl in self.labels],
+                    dtype="float32",
+                )
+                parts.append(tfidf_probs)
+            except Exception:
+                print("[EncoderClassifier] Warning: TF-IDF features unavailable; using sims+priors only.")
+        features = np.concatenate(parts, axis=0)
+        if features.shape[0] != expected:
+            return None
+        return features
+
+    @property
+    def backend_name(self) -> str:
+        """Expose which backend is active for debugging/analytics."""
+        return self._backend_name
+
     def predict_proba(self, text: str) -> Dict[str, float]:
         if self._centroids is not None and np is not None and self._encoder is not None:
             try:
                 emb = self._encoder.encode(text or "", normalize_embeddings=True)  # type: ignore[attr-defined]
                 emb_np = np.array(emb, dtype="float32")
+                if self._head_mode_active == "calibrated" and self._calib_W is not None and self._calib_b is not None:
+                    feats = self._compute_calibrated_features(text, emb_np)
+                    if feats is not None:
+                        mean = self._calib_mean if self._calib_mean is not None else np.zeros_like(feats)
+                        std = self._calib_std if self._calib_std is not None else np.ones_like(feats)
+                        std_safe = np.where(std > 1e-6, std, 1.0)
+                        feats_std = (feats - mean) / std_safe
+                        logits = self._calib_W @ feats_std + self._calib_b
+                        logits = logits - float(logits.max())
+                        exp = np.exp(logits, dtype="float64")
+                        probs = exp / float(exp.sum())
+                        return {lbl: float(probs[idx]) for idx, lbl in enumerate(self.labels)}
+
                 emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
                 sims = emb_norm @ self._centroids.T
                 logits = sims.astype("float64")

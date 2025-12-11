@@ -201,18 +201,16 @@ def test_kb_attached_depends_on_memory(monkeypatch: Any) -> None:
     assert res_none["groundedness"] == 0.0
 
 
-def test_encoder_grid_uses_pure_centroids(monkeypatch: Any, tmp_path: Path) -> None:
-    """Encoder mode in grid should disable lexical prior and surface classifier_backend."""
+def test_encoder_grid_uses_calibrated_backend(monkeypatch: Any, tmp_path: Path) -> None:
+    """Encoder mode in grid should surface calibrated backend when available."""
     from RouterGym.classifiers.utils import ClassifierMetadata
-
-    captured_use_prior: list[Any] = []
 
     class DummyEncoder:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            captured_use_prior.append(kwargs.get("use_lexical_prior"))
             self.metadata = ClassifierMetadata(
                 name="dummy", mode="encoder", provider="test", model_reference="dummy"
             )
+            self.backend_name = "encoder_calibrated"
 
         def predict_proba(self, text: str) -> Dict[str, float]:
             return {"access": 1.0}
@@ -251,10 +249,9 @@ def test_encoder_grid_uses_pure_centroids(monkeypatch: Any, tmp_path: Path) -> N
         verbose=False,
     )
 
-    assert captured_use_prior and captured_use_prior[0] is False
     assert not df.empty
     assert "classifier_backend" in df.columns
-    assert set(df["classifier_backend"]) <= {"encoder_pure", "encoder_blended"}
+    assert set(df["classifier_backend"]) <= {"encoder_calibrated"}
     assert (df["classifier_mode"] == "encoder").all()
 
 

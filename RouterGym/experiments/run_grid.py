@@ -601,9 +601,7 @@ def run_full_grid(
         csv_writer.writerow(RESULT_COLUMNS)
 
         for classifier_mode in classifier_list:
-            # For experiments, treat encoder mode as pure E5 centroid classifier (no lexical prior)
-            # so we can measure its semantic performance independently of lexical heuristics.
-            encoder_use_lexical_prior = False if classifier_mode == "encoder" else None
+            encoder_use_lexical_prior = None
             engine = RouterEngine(classifier_mode, encoder_use_lexical_prior=encoder_use_lexical_prior)
             for router_name in router_list:
                 for memory_mode in memory_list:
