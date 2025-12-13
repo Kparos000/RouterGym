@@ -120,13 +120,23 @@ class EncoderClassifier(ClassifierProtocol):
             self._centroids = None
             self._centroid_labels = []
 
-    def _try_load_calibrated_head(self) -> None:
-        """Load calibrated logistic head if present and valid."""
+    def _try_load_calibrated_head(self, allow_fallback: bool) -> bool:
+        """Load calibrated logistic head; optionally allow fallback to centroid if missing or invalid."""
         if np is None:
-            return
+            if allow_fallback:
+                print("[EncoderClassifier] Warning: numpy unavailable; falling back to centroids.")
+                return False
+            raise RuntimeError(
+                "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+            )
         path = CALIBRATED_HEAD_PATH
         if not path.exists():
-            return
+            if allow_fallback:
+                print("[EncoderClassifier] Warning: calibrated head file missing; falling back to centroids.")
+                return False
+            raise RuntimeError(
+                "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+            )
         try:
             data = np.load(path, allow_pickle=True)
             labels = [canonical_label(lbl) for lbl in data["labels"].tolist()]
@@ -135,7 +145,6 @@ class EncoderClassifier(ClassifierProtocol):
             mean = np.asarray(data.get("feature_mean", np.zeros(W.shape[1], dtype="float32")), dtype="float32")
             std = np.asarray(data.get("feature_std", np.ones(W.shape[1], dtype="float32")), dtype="float32")
             feature_dim = W.shape[1] if W.ndim == 2 else 0
-            # Calibrated head may be trained on sims+priors (2x labels) or sims+priors+tfidf (3x labels)
             expected_dims = {len(labels) * 2, len(labels) * 3}
             if (
                 W.ndim != 2
@@ -144,9 +153,19 @@ class EncoderClassifier(ClassifierProtocol):
                 or b.shape[0] != len(labels)
                 or feature_dim not in expected_dims
             ):
-                return
+                if allow_fallback:
+                    print("[EncoderClassifier] Warning: calibrated head incompatible; falling back to centroids.")
+                    return False
+                raise RuntimeError(
+                    "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                )
             if list(self.labels) != labels:
-                return
+                if allow_fallback:
+                    print("[EncoderClassifier] Warning: calibrated head labels mismatch; falling back to centroids.")
+                    return False
+                raise RuntimeError(
+                    "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                )
             self._calib_W = W
             self._calib_b = b
             self._calib_mean = mean
@@ -160,19 +179,28 @@ class EncoderClassifier(ClassifierProtocol):
             self._head_mode_active = "calibrated"
             self._backend_name = "encoder_calibrated"
             self.metadata.description += " (calibrated head)"
+            return True
         except Exception:
-            return
+            if allow_fallback:
+                print("[EncoderClassifier] Warning: calibrated head load failed; falling back to centroids.")
+                return False
+            raise RuntimeError(
+                "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+            )
 
     def _resolve_head_mode(self) -> None:
         """Select active head based on config and file availability."""
         self._head_mode_active = "centroid"
+        allow_fallback = os.getenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "") == "1"
         mode = (self._head_mode_config or "centroid").lower()
         if mode == "centroid":
             return
         if mode in {"calibrated", "auto"}:
-            self._try_load_calibrated_head()
-            if mode == "calibrated" and self._head_mode_active != "calibrated":
-                print("[EncoderClassifier] Requested calibrated head but none loaded; using centroid.")
+            success = self._try_load_calibrated_head(allow_fallback=allow_fallback)
+            if not success and not allow_fallback:
+                raise RuntimeError(
+                    "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                )
         else:
             print(f"[EncoderClassifier] Unknown head_mode '{mode}', defaulting to centroid.")
         if self._head_mode_active != "calibrated":

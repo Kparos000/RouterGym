@@ -13,7 +13,8 @@ CENTROID_FILE = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_c
 
 
 @pytest.mark.skipif(not CENTROID_FILE.exists(), reason="encoder centroids not trained yet")
-def test_centroid_probabilities_valid() -> None:
+def test_centroid_probabilities_valid(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     clf = EncoderClassifier()
     probs = clf.predict_proba("purchase order for monitors")
     total = sum(probs.values())
@@ -22,7 +23,8 @@ def test_centroid_probabilities_valid() -> None:
 
 
 @pytest.mark.skipif(not CENTROID_FILE.exists(), reason="encoder centroids not trained yet")
-def test_centroid_prefers_relevant_label() -> None:
+def test_centroid_prefers_relevant_label(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     clf = EncoderClassifier()
     probs = clf.predict_proba("purchase order for monitors")
     assert probs.get("purchase", 0.0) >= probs.get("access", 0.0)

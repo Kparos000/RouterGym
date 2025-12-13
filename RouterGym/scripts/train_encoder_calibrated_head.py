@@ -26,6 +26,7 @@ DEFAULT_TEXT_COL = "Document"
 DEFAULT_LABEL_COL = "Topic_group"
 CENTROID_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
+HEAD_VERSION = "1.0"
 
 
 def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
@@ -135,6 +136,10 @@ def train_head(
     )
     clf.fit(X_train_std, y_train)
 
+    feature_dim = X_train_feat.shape[1]
+    train_preds = clf.predict(X_train_std)
+    train_acc = float((train_preds == y_train).mean())
+
     val_preds = clf.predict(X_val_std)
     val_acc = float((val_preds == y_val).mean())
     print(f"[CalibratedHead] Validation accuracy: {val_acc:.3f}")
@@ -151,8 +156,14 @@ def train_head(
         b=clf.intercept_.astype("float32"),
         feature_mean=mean.astype("float32"),
         feature_std=std.astype("float32"),
+        feature_dim=np.array(feature_dim, dtype="int64"),
+        version=np.array(HEAD_VERSION),
     )
-    print(f"[CalibratedHead] Saved calibrated head to {HEAD_OUT_PATH} with val_accuracy={val_acc:.3f}")
+    print(
+        f"[CalibratedHead] Saved calibrated head to {HEAD_OUT_PATH} "
+        f"(feature_dim={feature_dim}, version={HEAD_VERSION}) with "
+        f"train_accuracy={train_acc:.3f} val_accuracy={val_acc:.3f}"
+    )
 
 
 def main() -> None:

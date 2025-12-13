@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
+import pytest
 
 from RouterGym.classifiers import encoder_classifier as enc
 
@@ -41,6 +42,7 @@ def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> N
 
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
     classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
     classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
@@ -57,6 +59,7 @@ def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
     labels = ["access", "administrative rights"]
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
     classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="centroid", embedding_dimension=2)
     assert classifier._head_mode_active == "centroid"
@@ -75,3 +78,33 @@ def test_compute_class_weights_upweights_hr(monkeypatch: Any) -> None:
     weights = trainer._compute_class_weights(y_named)
     assert weights["hr support"] > weights["access"]
     assert weights["hr support"] > weights.get("miscellaneous", 0.0)
+
+
+def test_auto_mode_raises_without_calibrated_head(monkeypatch: Any, tmp_path: Path) -> None:
+    labels = ["access", "administrative rights"]
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+    with pytest.raises(RuntimeError):
+        enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+
+
+def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path) -> None:
+    labels = ["access", "administrative rights"]
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+    assert classifier._backend_name == "encoder_centroid"
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+
+
+def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path) -> None:
+    labels = ["access", "administrative rights"]
+    head_path = tmp_path / "encoder_calibrated_head.npz"
+    _build_fake_head(head_path, labels)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+    assert classifier._backend_name == "encoder_calibrated"

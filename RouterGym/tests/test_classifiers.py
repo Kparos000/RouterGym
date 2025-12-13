@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 
+import os
+
 from RouterGym.agents.generator import CLASS_LABELS
 from RouterGym.agents.slm_classify import SLMClassifierAgent
 from RouterGym.classifiers import CLASSIFIER_MODES, get_classifier_instance
@@ -18,6 +20,8 @@ def test_classifier_modes_match_expected_order() -> None:
 
 
 def test_each_classifier_returns_normalized_distribution() -> None:
+    original = os.environ.get("ROUTERGYM_ALLOW_ENCODER_FALLBACK")
+    os.environ["ROUTERGYM_ALLOW_ENCODER_FALLBACK"] = "1"
     for mode in CLASSIFIER_MODES:
         classifier = get_classifier_instance(mode)
         probabilities = classifier.predict_proba(SAMPLE_TEXT)
@@ -26,6 +30,10 @@ def test_each_classifier_returns_normalized_distribution() -> None:
         assert math.isclose(total, 1.0, rel_tol=1e-3, abs_tol=1e-3)
         predicted = classifier.predict_label(SAMPLE_TEXT)
         assert predicted in probabilities
+    if original is None:
+        os.environ.pop("ROUTERGYM_ALLOW_ENCODER_FALLBACK", None)
+    else:
+        os.environ["ROUTERGYM_ALLOW_ENCODER_FALLBACK"] = original
 
 
 def test_router_engine_emits_metrics_payload() -> None:

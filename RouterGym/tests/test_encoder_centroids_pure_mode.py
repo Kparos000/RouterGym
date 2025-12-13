@@ -11,6 +11,7 @@ from RouterGym.classifiers import utils as utils_mod
 def test_pure_mode_skips_lexical(monkeypatch: pytest.MonkeyPatch) -> None:
     # Force lexical prior to raise if called
     monkeypatch.setattr(utils_mod, "apply_lexical_prior", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("lexical called")))
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     clf = EncoderClassifier(use_lexical_prior=False)
     probs = clf.predict_proba("generic text with no centroids")
     assert abs(sum(probs.values()) - 1.0) < 1e-6

@@ -105,6 +105,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
         {"id": 2, "text": "password reset", "category": "access"},
         {"id": 3, "text": "printer problem", "category": "hardware"},
     ]
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
 
     class FakeKB:
         def retrieve(self, query: str, top_k: int = 3):
@@ -152,6 +153,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
 
 def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
     """Grid should not crash if routers or KB return unexpected types."""
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     class FakeKB:
         def retrieve(self, query: str, top_k: int = 3):
             return ["snippet"]  # not a dict
@@ -323,6 +325,7 @@ def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Pa
 
 def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
     """Smoke test: remote-only models and grid run with limit=1."""
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
 
     # Ensure load_models can initialize without network
     monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
