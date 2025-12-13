@@ -37,3 +37,9 @@ RouterGym/results/cache/
 RouterGym/results/raw/
 RouterGym/results/experiments/
 RouterGym/results/run_metadata.csv
+
+# RouterGym results
+RouterGym/results/experiments/*.csv
+RouterGym/results/run_metadata.csv
+RouterGym/results/train_metadata.csv
+RouterGym/results/results.csv

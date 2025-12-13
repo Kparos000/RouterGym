@@ -1,0 +1,456 @@
+RouterGym
++---.coverage
++---.coveragerc
++---.env
++---.env.example
++---.gitignore
++---.gitignore.bak
++---project_structure.txt
++---pyproject.toml
++---pytest.ini
++---README.md
++---RouterGym
+|   +---.env.template
+|   +---.github
+|   |   +---workflows
+|   |       +---ci.yml
+|   +---__init__.py
+|   +---agents
+|   |   +---__init__.py
+|   |   +---generator.py
+|   |   +---llm_fallback.py
+|   |   +---model_interface.py
+|   |   +---slm_classify.py
+|   |   +---slm_draft.py
+|   |   +---slm_snippet.py
+|   +---classification
+|   +---classifiers
+|   |   +---__init__.py
+|   |   +---encoder_centroids.npz
+|   |   +---encoder_classifier.py
+|   |   +---slm_classifier.py
+|   |   +---tfidf_classifier.py
+|   |   +---utils.py
+|   +---contracts
+|   |   +---__init__.py
+|   |   +---json_contract.py
+|   |   +---schema_contract.py
+|   +---data
+|   |   +---__init__.py
+|   |   +---kb_loader.py
+|   |   +---policy_kb
+|   |   |   +---__init__.py
+|   |   |   +---access
+|   |   |   |   +---Access Request Flow (New-Modify-Remove).md
+|   |   |   |   +---Account Lockout Troubleshooting.md
+|   |   |   |   +---Email Access & Configuration.md
+|   |   |   |   +---Expired Account Handling.md
+|   |   |   |   +---Mailbox Quota and Full Mailbox Issues.md
+|   |   |   |   +---Password Reset Procedure.md
+|   |   |   |   +---Remote Access RDP Troubleshooting.md
+|   |   |   |   +---Shared Folder Access Guide.md
+|   |   |   |   +---SSO Login Problems.md
+|   |   |   |   +---Two-Factor Authentication Guide.md
+|   |   |   |   +---User Permissions Overview.md
+|   |   |   |   +---VPN Access Troubleshooting.md
+|   |   |   +---admin_rights
+|   |   |   |   +---Administrative Rights Request Flow.md
+|   |   |   |   +---Local Admin Rights Policy.md
+|   |   |   |   +---Privileged Account Usage Guidelines.md
+|   |   |   |   +---Security Review Requirements for Admin Access.md
+|   |   |   +---hardware
+|   |   |   |   +---Device Not Booting.md
+|   |   |   |   +---Hardware Asset Tagging and Tracking.md
+|   |   |   |   +---Hardware Replacement Process.md
+|   |   |   |   +---Laptop Power and Battery Diagnostics.md
+|   |   |   |   +---Monitor Display Issues.md
+|   |   |   |   +---Network Connectivity Troubleshooting.md
+|   |   |   |   +---Operating System Reinstallation Workflow.md
+|   |   |   |   +---Peripheral Device Issues.md
+|   |   |   |   +---Printer Setup and Common Errors.md
+|   |   |   |   +---USB Device Not Recognized.md
+|   |   |   |   +---Warranty and Repair Escalation.md
+|   |   |   |   +---Workstation Performance Problems.md
+|   |   |   +---hr_support
+|   |   |   |   +---Employee Offboarding IT Checklist.md
+|   |   |   |   +---HR Portal Troubleshooting.md
+|   |   |   |   +---HR System Access Guide.md
+|   |   |   |   +---New Employee Onboarding IT Checklist.md
+|   |   |   |   +---Submitting Leave Requests.md
+|   |   |   |   +---Updating Personal or Role Information.md
+|   |   |   +---internal_project
+|   |   |   |   +---IT Support for Internal Projects.md
+|   |   |   |   +---Project IT Resource Requirements.md
+|   |   |   |   +---Role Changes and Project Assignments.md
+|   |   |   |   +---System Deployment Checklist.md
+|   |   |   +---kb_loader.py
+|   |   |   +---miscellaneous
+|   |   |   |   +---Email Formatting and Signature Problems.md
+|   |   |   |   +---General Troubleshooting Guide.md
+|   |   |   |   +---Report Generation and Template Issues.md
+|   |   |   |   +---Software Installation Guide.md
+|   |   |   |   +---Unsupported Issues and Escalation Matrix.md
+|   |   |   +---purchase
+|   |   |   |   +---IT Equipment Procurement Policy.md
+|   |   |   |   +---Purchase Order Workflow.md
+|   |   |   |   +---Requesting New Hardware.md
+|   |   |   |   +---Vendor Quotation and Approval Steps.md
+|   |   |   +---storage
+|   |   |       +---Backup and Restore Guidelines.md
+|   |   |       +---File Permissions Management.md
+|   |   |       +---OneDrive and SharePoint Troubleshooting.md
+|   |   |       +---Shared Drive Access Procedure.md
+|   |   |       +---Storage Quota Management.md
+|   |   +---tickets
+|   |       +---__init__.py
+|   |       +---dataset_loader.py
+|   |       +---tickets.csv
+|   +---engines
+|   |   +---__init__.py
+|   |   +---model_registry.py
+|   |   +---vllm_local.py
+|   +---evaluation
+|   |   +---__init__.py
+|   |   +---analyzer.py
+|   |   +---metrics.py
+|   |   +---stats.py
+|   +---experiments
+|   |   +---__init__.py
+|   |   +---config.yaml
+|   |   +---run_grid.py
+|   +---label_space.py
+|   +---memory
+|   |   +---__init__.py
+|   |   +---base.py
+|   |   +---bm25.py
+|   |   +---hybrid.py
+|   |   +---none.py
+|   |   +---rag.py
+|   |   +---salience.py
+|   |   +---transcript.py
+|   +---plots
+|   |   +---publication_plots.py
+|   +---prompts
+|   |   +---templates.yaml
+|   +---README.md
+|   +---requirements.txt
+|   +---results
+|   |   +---cache
+|   |   |   +---kb_embeddings.pkl
+|   |   +---experiments
+|   |   |   +---results.csv
+|   |   +---figures
+|   |   |   +---accuracy_vs_cost.png
+|   |   |   +---grid_heatmap.png
+|   |   |   +---groundedness_distribution.png
+|   |   |   +---latency_histogram.png
+|   |   |   +---latency_vs_cost.png
+|   |   |   +---memory_comparison.png
+|   |   |   +---model_comparison.png
+|   |   |   +---router_comparison.png
+|   |   |   +---router_conversion.png
+|   |   |   +---schema_validity.png
+|   |   +---plots
+|   |   |   +---run_200tickets
+|   |   |       +---confusion_matrix_categories.png
+|   |   |       +---groundedness_by_memory.png
+|   |   |       +---latency_vs_cost_by_router_memory.png
+|   |   |       +---router_conversion_cost.png
+|   |   |       +---summary_by_memory.csv
+|   |   |       +---summary_by_model_used.csv
+|   |   |       +---summary_by_router.csv
+|   |   +---raw
+|   |   |   +---hybrid_specialist__none__llm1.jsonl
+|   |   |   +---hybrid_specialist__none__llm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__none__llm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__none__llm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__none__llm2.jsonl
+|   |   |   +---hybrid_specialist__none__llm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__none__llm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__none__llm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__none__slm1.jsonl
+|   |   |   +---hybrid_specialist__none__slm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__none__slm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__none__slm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__none__slm2.jsonl
+|   |   |   +---hybrid_specialist__none__slm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__none__slm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__none__slm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag__llm1.jsonl
+|   |   |   +---hybrid_specialist__rag__llm2.jsonl
+|   |   |   +---hybrid_specialist__rag__slm1.jsonl
+|   |   |   +---hybrid_specialist__rag__slm2.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__llm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_bm25__slm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__llm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_dense__slm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__llm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__rag_hybrid__slm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__salience__llm1.jsonl
+|   |   |   +---hybrid_specialist__salience__llm2.jsonl
+|   |   |   +---hybrid_specialist__salience__slm1.jsonl
+|   |   |   +---hybrid_specialist__salience__slm2.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm1.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm2.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__transcript__llm2__tfidf.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm1.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm1__encoder.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm1__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm1__tfidf.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm2.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm2__encoder.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm2__slm_finetuned.jsonl
+|   |   |   +---hybrid_specialist__transcript__slm2__tfidf.jsonl
+|   |   |   +---llm_first__none__llm1.jsonl
+|   |   |   +---llm_first__none__llm1__encoder.jsonl
+|   |   |   +---llm_first__none__llm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__none__llm1__tfidf.jsonl
+|   |   |   +---llm_first__none__llm2.jsonl
+|   |   |   +---llm_first__none__llm2__encoder.jsonl
+|   |   |   +---llm_first__none__llm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__none__llm2__tfidf.jsonl
+|   |   |   +---llm_first__none__slm1.jsonl
+|   |   |   +---llm_first__none__slm1__encoder.jsonl
+|   |   |   +---llm_first__none__slm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__none__slm1__tfidf.jsonl
+|   |   |   +---llm_first__none__slm2.jsonl
+|   |   |   +---llm_first__none__slm2__encoder.jsonl
+|   |   |   +---llm_first__none__slm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__none__slm2__tfidf.jsonl
+|   |   |   +---llm_first__rag__llm1.jsonl
+|   |   |   +---llm_first__rag__llm2.jsonl
+|   |   |   +---llm_first__rag__slm1.jsonl
+|   |   |   +---llm_first__rag__slm2.jsonl
+|   |   |   +---llm_first__rag_bm25__llm1__encoder.jsonl
+|   |   |   +---llm_first__rag_bm25__llm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_bm25__llm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_bm25__llm2__encoder.jsonl
+|   |   |   +---llm_first__rag_bm25__llm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_bm25__llm2__tfidf.jsonl
+|   |   |   +---llm_first__rag_bm25__slm1__encoder.jsonl
+|   |   |   +---llm_first__rag_bm25__slm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_bm25__slm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_bm25__slm2__encoder.jsonl
+|   |   |   +---llm_first__rag_bm25__slm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_bm25__slm2__tfidf.jsonl
+|   |   |   +---llm_first__rag_dense__llm1__encoder.jsonl
+|   |   |   +---llm_first__rag_dense__llm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_dense__llm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_dense__llm2__encoder.jsonl
+|   |   |   +---llm_first__rag_dense__llm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_dense__llm2__tfidf.jsonl
+|   |   |   +---llm_first__rag_dense__slm1__encoder.jsonl
+|   |   |   +---llm_first__rag_dense__slm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_dense__slm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_dense__slm2__encoder.jsonl
+|   |   |   +---llm_first__rag_dense__slm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_dense__slm2__tfidf.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm1__encoder.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm2__encoder.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_hybrid__llm2__tfidf.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm1__encoder.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm1__tfidf.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm2__encoder.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__rag_hybrid__slm2__tfidf.jsonl
+|   |   |   +---llm_first__salience__llm1.jsonl
+|   |   |   +---llm_first__salience__llm2.jsonl
+|   |   |   +---llm_first__salience__slm1.jsonl
+|   |   |   +---llm_first__salience__slm2.jsonl
+|   |   |   +---llm_first__transcript__llm1.jsonl
+|   |   |   +---llm_first__transcript__llm1__encoder.jsonl
+|   |   |   +---llm_first__transcript__llm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__transcript__llm1__tfidf.jsonl
+|   |   |   +---llm_first__transcript__llm2.jsonl
+|   |   |   +---llm_first__transcript__llm2__encoder.jsonl
+|   |   |   +---llm_first__transcript__llm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__transcript__llm2__tfidf.jsonl
+|   |   |   +---llm_first__transcript__slm1.jsonl
+|   |   |   +---llm_first__transcript__slm1__encoder.jsonl
+|   |   |   +---llm_first__transcript__slm1__slm_finetuned.jsonl
+|   |   |   +---llm_first__transcript__slm1__tfidf.jsonl
+|   |   |   +---llm_first__transcript__slm2.jsonl
+|   |   |   +---llm_first__transcript__slm2__encoder.jsonl
+|   |   |   +---llm_first__transcript__slm2__slm_finetuned.jsonl
+|   |   |   +---llm_first__transcript__slm2__tfidf.jsonl
+|   |   |   +---slm_dominant__none__llm1.jsonl
+|   |   |   +---slm_dominant__none__llm1__encoder.jsonl
+|   |   |   +---slm_dominant__none__llm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__none__llm1__tfidf.jsonl
+|   |   |   +---slm_dominant__none__llm2.jsonl
+|   |   |   +---slm_dominant__none__llm2__encoder.jsonl
+|   |   |   +---slm_dominant__none__llm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__none__llm2__tfidf.jsonl
+|   |   |   +---slm_dominant__none__slm1.jsonl
+|   |   |   +---slm_dominant__none__slm1__encoder.jsonl
+|   |   |   +---slm_dominant__none__slm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__none__slm1__tfidf.jsonl
+|   |   |   +---slm_dominant__none__slm2.jsonl
+|   |   |   +---slm_dominant__none__slm2__encoder.jsonl
+|   |   |   +---slm_dominant__none__slm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__none__slm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag__llm1.jsonl
+|   |   |   +---slm_dominant__rag__llm2.jsonl
+|   |   |   +---slm_dominant__rag__slm1.jsonl
+|   |   |   +---slm_dominant__rag__slm2.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_bm25__llm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_bm25__slm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_dense__llm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_dense__slm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__llm2__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm1__encoder.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm1__tfidf.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm2__encoder.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__rag_hybrid__slm2__tfidf.jsonl
+|   |   |   +---slm_dominant__salience__llm1.jsonl
+|   |   |   +---slm_dominant__salience__llm2.jsonl
+|   |   |   +---slm_dominant__salience__slm1.jsonl
+|   |   |   +---slm_dominant__salience__slm2.jsonl
+|   |   |   +---slm_dominant__transcript__llm1.jsonl
+|   |   |   +---slm_dominant__transcript__llm1__encoder.jsonl
+|   |   |   +---slm_dominant__transcript__llm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__transcript__llm1__tfidf.jsonl
+|   |   |   +---slm_dominant__transcript__llm2.jsonl
+|   |   |   +---slm_dominant__transcript__llm2__encoder.jsonl
+|   |   |   +---slm_dominant__transcript__llm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__transcript__llm2__tfidf.jsonl
+|   |   |   +---slm_dominant__transcript__slm1.jsonl
+|   |   |   +---slm_dominant__transcript__slm1__encoder.jsonl
+|   |   |   +---slm_dominant__transcript__slm1__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__transcript__slm1__tfidf.jsonl
+|   |   |   +---slm_dominant__transcript__slm2.jsonl
+|   |   |   +---slm_dominant__transcript__slm2__encoder.jsonl
+|   |   |   +---slm_dominant__transcript__slm2__slm_finetuned.jsonl
+|   |   |   +---slm_dominant__transcript__slm2__tfidf.jsonl
+|   |   +---results.csv
+|   |   +---run_metadata.csv
+|   +---routing
+|   |   +---__init__.py
+|   |   +---base.py
+|   |   +---hybrid_specialist.py
+|   |   +---llm_first.py
+|   |   +---router_engine.py
+|   |   +---slm_dominant.py
+|   +---scripts
+|   |   +---analyze_classifier_confidence.py
+|   |   +---analyze_classifier_confusion.py
+|   |   +---analyze_embedding_centroids.py
+|   |   +---analyze_memory_quality.py
+|   |   +---analyze_model_performance.py
+|   |   +---analyze_prompt_compliance.py
+|   |   +---analyze_router_effectiveness.py
+|   |   +---eval_encoder_pure_slice.py
+|   |   +---merge_results_chunks.py
+|   |   +---normalize_results_csv.py
+|   |   +---train_encoder_calibrated_head.py
+|   |   +---train_encoder_centroids.py
+|   +---tests
+|   |   +---test_analyze_classifier_confidence.py
+|   |   +---test_analyze_classifier_confusion.py
+|   |   +---test_analyze_embedding_centroids.py
+|   |   +---test_analyze_memory_quality.py
+|   |   +---test_analyze_model_performance.py
+|   |   +---test_analyze_prompt_compliance.py
+|   |   +---test_analyze_router_effectiveness.py
+|   |   +---test_classifier_lexical_prior.py
+|   |   +---test_classifiers.py
+|   |   +---test_contracts.py
+|   |   +---test_dataset_loader.py
+|   |   +---test_encoder_calibrated_head.py
+|   |   +---test_encoder_centroids_classifier.py
+|   |   +---test_encoder_centroids_pure_mode.py
+|   |   +---test_eval.py
+|   |   +---test_eval_encoder_pure_slice.py
+|   |   +---test_experiments.py
+|   |   +---test_generator.py
+|   |   +---test_kb_loader.py
+|   |   +---test_memory.py
+|   |   +---test_memory_suite.py
+|   |   +---test_merge_results_chunks.py
+|   |   +---test_model_backend_switch.py
+|   |   +---test_model_registry.py
+|   |   +---test_routing.py
+|   |   +---test_routing_strategies.py
+|   |   +---test_run_metadata.py
+|   |   +---test_slm_classifier.py
+|   |   +---test_tfidf_classifier.py
+|   +---utils
+|       +---config.py
+|       +---kb_utils.py
+|       +---logger.py
+|       +---ticket.py
++---run_experiments.py
++---scripts
+|   +---__init__.py
+|   +---generate_project_structure.py
++---setup.ps1
++---setup.sh
++---tools
+    +---run_ci_local.ps1
+    +---run_ci_local.sh
