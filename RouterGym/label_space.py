@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, List
 
 CANONICAL_LABELS: List[str] = [
@@ -48,6 +49,9 @@ LABEL_NORMALIZATION_MAP: Dict[str, str] = {
     "dock": "hardware",
     "keyboard": "hardware",
     "mouse": "hardware",
+    "vpn": "access",
+    "network": "miscellaneous",
+    "software": "miscellaneous",
     "hr": "hr support",
     "hr support": "hr support",
     "hr_support": "hr support",
@@ -79,12 +83,15 @@ LABEL_NORMALIZATION_MAP: Dict[str, str] = {
     "internal projects": "miscellaneous",
 }
 
+logger = logging.getLogger(__name__)
+
 
 def canonical_label(label: str | None) -> str:
     """Map any free-form label into the canonical 6-label space."""
     text = (label or "").strip().lower()
     if not text:
-        return "unknown"
+        logger.warning("Empty label encountered; mapping to 'miscellaneous'.")
+        return "miscellaneous"
     if text in LABEL_NORMALIZATION_MAP:
         return LABEL_NORMALIZATION_MAP[text]
     if text in CANONICAL_LABEL_SET:
@@ -92,7 +99,13 @@ def canonical_label(label: str | None) -> str:
     for key, target in LABEL_NORMALIZATION_MAP.items():
         if key and key in text:
             return target
+    logger.warning("Unexpected label '%s'; mapping to 'miscellaneous'. Extend LABEL_NORMALIZATION_MAP if needed.", text)
     return "miscellaneous"
+
+
+def canonicalize_label(label: str | None) -> str:
+    """Public normalization helper to ensure labels land in CANONICAL_LABELS."""
+    return canonical_label(label)
 
 
 __all__ = ["CANONICAL_LABELS", "CANONICAL_LABEL_SET", "LABEL_NORMALIZATION_MAP", "canonical_label"]

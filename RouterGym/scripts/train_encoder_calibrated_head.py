@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
+import logging
 
 import numpy as np
 import pandas as pd
@@ -14,7 +15,7 @@ from sklearn.utils.class_weight import compute_class_weight
 
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
-from RouterGym.label_space import CANONICAL_LABELS, canonical_label
+from RouterGym.label_space import CANONICAL_LABELS, canonical_label, canonicalize_label
 
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -27,6 +28,7 @@ DEFAULT_LABEL_COL = "Topic_group"
 CENTROID_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
 HEAD_VERSION = "1.0"
+log = logging.getLogger(__name__)
 
 
 def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
@@ -35,7 +37,7 @@ def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
         raise ValueError(f"Expected columns '{text_col}' and '{label_col}' in {path}")
     df = df[[text_col, label_col]].dropna()
     df[text_col] = df[text_col].astype(str)
-    df[label_col] = df[label_col].apply(canonical_label)
+    df[label_col] = df[label_col].apply(canonicalize_label)
     df = df[df[label_col].isin(CANONICAL_LABELS)]
     return df.reset_index(drop=True)
 
@@ -73,6 +75,10 @@ def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
 
 def _compute_class_weights(y_labels: np.ndarray) -> Dict[str, float]:
     """Compute balanced class weights and upweight minority labels like hr support."""
+    unique_y = np.unique(y_labels)
+    unexpected = set(unique_y) - set(CANONICAL_LABELS)
+    if unexpected:
+        raise RuntimeError(f"Unexpected labels in y_labels: {sorted(unexpected)}")
     base_weights = compute_class_weight(class_weight="balanced", classes=np.array(CANONICAL_LABELS), y=y_labels)
     weights: Dict[str, float] = {label: float(weight) for label, weight in zip(CANONICAL_LABELS, base_weights)}
     # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
@@ -91,6 +97,14 @@ def train_head(
     C: float,
 ) -> None:
     df = _load_dataset(ticket_path, text_col, label_col)
+    unique_labels = sorted(df[label_col].unique())
+    unexpected = sorted(set(unique_labels) - set(CANONICAL_LABELS))
+    if unexpected:
+        raise RuntimeError(
+            f"Unexpected labels in dataset: {unexpected}. Extend RouterGym/label_space.py mappings to canonical labels."
+        )
+    counts = df[label_col].value_counts().to_dict()
+    print(f"[CalibratedHead] Label distribution: {counts}")
     label_to_idx = {lbl: idx for idx, lbl in enumerate(CANONICAL_LABELS)}
     y = df[label_col].map(label_to_idx).to_numpy(dtype="int64")
     texts = df[text_col].tolist()

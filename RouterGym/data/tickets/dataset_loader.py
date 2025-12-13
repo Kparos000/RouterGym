@@ -7,7 +7,7 @@ from typing import Optional
 
 import pandas as pd
 
-from RouterGym.label_space import canonical_label
+from RouterGym.label_space import CANONICAL_LABELS, canonicalize_label
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "tickets.csv"
 
@@ -28,7 +28,13 @@ def load_dataset(n: Optional[int] = 5) -> pd.DataFrame:
     df = df[df["text"].astype(str).str.strip() != ""]
     df = df[df["label"].astype(str).str.strip() != ""]
     # Normalize labels into the canonical 6-label space.
-    df["label"] = df["label"].apply(canonical_label)
+    df["label"] = df["label"].apply(canonicalize_label)
+    unexpected = set(df["label"].unique()) - set(CANONICAL_LABELS)
+    if unexpected:
+        raise RuntimeError(
+            f"Unexpected labels after normalization: {sorted(unexpected)}. "
+            "Update label_space.canonicalize_label mappings."
+        )
     df = df.reset_index(drop=True)
     if n is not None:
         df = df.head(n)

@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 
 from RouterGym.classifiers import encoder_classifier as enc
+from RouterGym.label_space import CANONICAL_LABELS
+from RouterGym.scripts import train_encoder_calibrated_head as trainer
 
 
 class DummyEncoder:
@@ -66,9 +68,6 @@ def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
 
 
 def test_compute_class_weights_upweights_hr(monkeypatch: Any) -> None:
-    from RouterGym.scripts import train_encoder_calibrated_head as trainer
-    import numpy as np
-
     # Simulate imbalanced labels where hr support is rare.
     y_labels = np.array([0, 0, 0, 1, 2, 3, 3, 4, 5, 5, 5], dtype=int)
     # Map indices to canonical labels
@@ -78,6 +77,12 @@ def test_compute_class_weights_upweights_hr(monkeypatch: Any) -> None:
     weights = trainer._compute_class_weights(y_named)
     assert weights["hr support"] > weights["access"]
     assert weights["hr support"] > weights.get("miscellaneous", 0.0)
+
+
+def test_compute_class_weights_raises_on_unexpected_label() -> None:
+    y_bad = np.array(list(CANONICAL_LABELS) + ["bad_label"], dtype=object)
+    with pytest.raises(RuntimeError):
+        trainer._compute_class_weights(y_bad)
 
 
 def test_auto_mode_raises_without_calibrated_head(monkeypatch: Any, tmp_path: Path) -> None:
