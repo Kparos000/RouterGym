@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 import logging
 
 import numpy as np
@@ -12,6 +12,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import f1_score
 
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
@@ -35,6 +36,8 @@ DEFAULT_LABEL_COL = "Topic_group"
 CENTROID_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
 HEAD_VERSION = "1.0"
+C_GRID = [0.5, 1.0, 2.0]
+WEIGHT_MODES = ["balanced", "balanced_plus_boosts"]
 log = logging.getLogger(__name__)
 
 
@@ -80,7 +83,7 @@ def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
     return np.array(model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True), dtype="float32")
 
 
-def _compute_class_weights(y_labels: np.ndarray) -> Dict[str, float]:
+def _compute_class_weights(y_labels: np.ndarray, weight_mode: str = "balanced_plus_boosts") -> Dict[str, float]:
     """Compute balanced class weights from canonical string labels."""
     # Accept either canonical strings or integer IDs and normalize to strings for validation.
     normalized_labels_list: List[str] = []
@@ -105,17 +108,42 @@ def _compute_class_weights(y_labels: np.ndarray) -> Dict[str, float]:
     normalized_labels = np.array(normalized_labels_list, dtype=object)
 
     unique_y = np.unique(normalized_labels)
-    base_weights = compute_class_weight(
-        class_weight="balanced", classes=unique_y, y=normalized_labels
-    )
+    base_weights = compute_class_weight(class_weight="balanced", classes=unique_y, y=normalized_labels)
     weights: Dict[str, float] = {label: float(weight) for label, weight in zip(unique_y, base_weights)}
     # Ensure every canonical label is present; default unseen classes to weight 1.0
     weights = {label: weights.get(label, 1.0) for label in CANONICAL_LABELS}
-    # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
-    weights["hr support"] = weights.get("hr support", 1.0) * 1.3
-    weights["purchase"] = weights.get("purchase", 1.0) * 1.1
-    weights["administrative rights"] = weights.get("administrative rights", 1.0) * 1.1
+
+    if weight_mode == "balanced_plus_boosts":
+        # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
+        weights["hr support"] = weights.get("hr support", 1.0) * 1.3
+        weights["purchase"] = weights.get("purchase", 1.0) * 1.1
+        weights["administrative rights"] = weights.get("administrative rights", 1.0) * 1.1
+    elif weight_mode == "balanced":
+        pass
+    else:
+        raise ValueError(f"Unknown weight_mode: {weight_mode}")
     return weights
+
+
+def _select_best_config(
+    candidates: List[Dict[str, Any]],
+    weight_mode_order: List[str] = WEIGHT_MODES,
+) -> Dict[str, Any]:
+    """Select the best candidate by val_acc, then macro_f1, then tie-breaker on C/weight order."""
+
+    def weight_mode_rank(mode: str) -> int:
+        return weight_mode_order.index(mode) if mode in weight_mode_order else len(weight_mode_order)
+
+    candidates_sorted = sorted(
+        candidates,
+        key=lambda c: (
+            -c["val_acc"],
+            -c["macro_f1"],
+            weight_mode_rank(c["weight_mode"]),
+            c["C"],
+        ),
+    )
+    return candidates_sorted[0]
 
 
 def train_head(
@@ -124,7 +152,7 @@ def train_head(
     label_col: str,
     val_fraction: float,
     seed: int,
-    C: float,
+    C: float | None,
 ) -> None:
     df = _load_dataset(ticket_path, text_col, label_col)
     unique_labels = sorted(df[label_col].unique())
@@ -169,24 +197,64 @@ def train_head(
     X_train_std = (X_train_feat - mean) / std
     X_val_std = (X_val_feat - mean) / std
 
-    class_weights_label = _compute_class_weights(y_train_labels)
-    class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
-    clf = LogisticRegression(
-        multi_class="multinomial",
-        solver="lbfgs",
-        max_iter=1000,
-        # Slightly upweight HR and other minority classes to raise recall without overpowering the majority.
-        class_weight=class_weights,
-        C=C,
+    candidates: List[Dict[str, Any]] = []
+    if C is not None:
+        sweep_C = [C]
+        sweep_weight_modes = ["balanced_plus_boosts"]
+    else:
+        sweep_C = C_GRID
+        sweep_weight_modes = WEIGHT_MODES
+
+    for c_value in sweep_C:
+        for weight_mode in sweep_weight_modes:
+            class_weights_label = _compute_class_weights(y_train_labels, weight_mode=weight_mode)
+            class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
+            clf = LogisticRegression(
+                multi_class="multinomial",
+                solver="lbfgs",
+                max_iter=1000,
+                class_weight=class_weights,
+                C=c_value,
+            )
+            clf.fit(X_train_std, y_train_ids)
+
+            train_preds = clf.predict(X_train_std)
+            val_preds = clf.predict(X_val_std)
+            val_acc = float((val_preds == y_val_ids).mean())
+            macro_f1 = float(f1_score(y_val_ids, val_preds, average="macro"))
+            train_acc = float((train_preds == y_train_ids).mean())
+            candidates.append(
+                {
+                    "C": c_value,
+                    "weight_mode": weight_mode,
+                    "clf": clf,
+                    "class_weights_label": class_weights_label,
+                    "train_acc": train_acc,
+                    "val_acc": val_acc,
+                    "macro_f1": macro_f1,
+                    "val_preds": val_preds,
+                }
+            )
+
+    print("[CalibratedHead] Hyperparameter sweep results:")
+    print("C\tweight_mode\t\tval_acc\tmacro_F1")
+    for cand in candidates:
+        print(
+            f"{cand['C']:.2f}\t{cand['weight_mode']:<20s}\t{cand['val_acc']:.3f}\t{cand['macro_f1']:.3f}"
+        )
+
+    best = _select_best_config(candidates)
+    print(
+        f"[CalibratedHead] Selected config: C={best['C']}, weight_mode={best['weight_mode']} "
+        f"(val_acc={best['val_acc']:.3f}, macro_F1={best['macro_f1']:.3f})"
     )
-    clf.fit(X_train_std, y_train_ids)
+
+    best_clf: LogisticRegression = best["clf"]
+    val_preds = best["val_preds"]
+    train_acc = best["train_acc"]
+    val_acc = best["val_acc"]
 
     feature_dim = X_train_feat.shape[1]
-    train_preds = clf.predict(X_train_std)
-    train_acc = float((train_preds == y_train_ids).mean())
-
-    val_preds = clf.predict(X_val_std)
-    val_acc = float((val_preds == y_val_ids).mean())
     print(f"[CalibratedHead] Validation accuracy: {val_acc:.3f}")
     for idx, lbl in enumerate(CANONICAL_LABELS):
         mask = y_val_ids == idx
@@ -197,12 +265,14 @@ def train_head(
     np.savez(
         HEAD_OUT_PATH,
         labels=np.array(CANONICAL_LABELS, dtype=object),
-        W=clf.coef_.astype("float32"),
-        b=clf.intercept_.astype("float32"),
+        W=best_clf.coef_.astype("float32"),
+        b=best_clf.intercept_.astype("float32"),
         feature_mean=mean.astype("float32"),
         feature_std=std.astype("float32"),
         feature_dim=np.array(feature_dim, dtype="int64"),
         version=np.array(HEAD_VERSION),
+        C=np.array(best["C"]),
+        weight_mode=np.array(best["weight_mode"]),
     )
     print(
         f"[CalibratedHead] Saved calibrated head to {HEAD_OUT_PATH} "
@@ -218,7 +288,7 @@ def main() -> None:
     parser.add_argument("--label-column", type=str, default=DEFAULT_LABEL_COL, help="Label column name.")
     parser.add_argument("--val-fraction", type=float, default=0.2, help="Validation fraction.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
-    parser.add_argument("--C", type=float, default=0.5, help="Inverse regularization strength for LogisticRegression.")
+    parser.add_argument("--C", type=float, default=None, help="Inverse regularization strength for LogisticRegression.")
     args = parser.parse_args()
 
     train_head(

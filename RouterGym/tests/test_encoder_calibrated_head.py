@@ -91,6 +91,18 @@ def test_compute_class_weights_accepts_object_ints() -> None:
     assert set(weights.keys()) == set(trainer.CANONICAL_LABELS)
 
 
+def test_compute_class_weights_modes() -> None:
+    y_labels = np.array(
+        ["access", "access", "hardware", "hr support", "purchase", "administrative rights"],
+        dtype=object,
+    )
+    balanced = trainer._compute_class_weights(y_labels, weight_mode="balanced")
+    boosted = trainer._compute_class_weights(y_labels, weight_mode="balanced_plus_boosts")
+    # Boosted should give higher weight to hr support and administrative rights compared to balanced.
+    assert boosted["hr support"] > balanced["hr support"]
+    assert boosted["administrative rights"] > balanced["administrative rights"]
+
+
 def test_compute_class_weights_raises_on_unexpected_label() -> None:
     y_bad = np.array(list(CANONICAL_LABELS) + ["bad_label"], dtype=object)
     with pytest.raises(RuntimeError):
@@ -125,3 +137,15 @@ def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
     assert classifier._backend_name == "encoder_calibrated"
+
+
+def test_select_best_config_tiebreaker() -> None:
+    candidates = [
+        {"C": 1.0, "weight_mode": "balanced", "val_acc": 0.7, "macro_f1": 0.6},
+        {"C": 0.5, "weight_mode": "balanced_plus_boosts", "val_acc": 0.7, "macro_f1": 0.65},
+        {"C": 2.0, "weight_mode": "balanced_plus_boosts", "val_acc": 0.68, "macro_f1": 0.7},
+    ]
+    best = trainer._select_best_config(candidates, weight_mode_order=trainer.WEIGHT_MODES)
+    # Should pick higher macro_f1 among equal val_acc (0.65 vs 0.6), i.e., second candidate.
+    assert best["C"] == 0.5
+    assert best["weight_mode"] == "balanced_plus_boosts"
