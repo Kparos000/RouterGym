@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
@@ -19,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -35,14 +38,24 @@ jobs:
           python -m pip install -e .
           python -m pip install ruff mypy pytest pytest-cov
 
-      - name: Black
+      - name: Ruff lint
         run: ruff check .
 
       - name: Mypy
         run: mypy RouterGym
 
       - name: Pytest with coverage
-        run: pytest --cov=RouterGym --cov-report=xml RouterGym/tests
+        run: |
+          pytest \
+            --cov=RouterGym \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=80 \
+            RouterGym/tests
+
+      - name: Smoke test encoder slice (no network)
+        run: |
+          python -m RouterGym.scripts.eval_encoder_pure_slice --ticket-limit 1 --head-mode centroid
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
