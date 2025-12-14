@@ -1,10 +1,10 @@
-"""Train a calibrated logistic head on top of encoder centroids + lexical priors."""
+"""Train a calibrated logistic head on top of encoder embeddings + lexical priors + TF-IDF scores."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 import logging
 
 import numpy as np
@@ -33,7 +33,6 @@ except Exception as exc:  # pragma: no cover
 DEFAULT_TICKET_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_TEXT_COL = "Document"
 DEFAULT_LABEL_COL = "Topic_group"
-CENTROID_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
 HEAD_VERSION = "1.0"
 C_GRID = [0.5, 1.0, 2.0]
@@ -52,31 +51,19 @@ def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def _load_centroids() -> Tuple[np.ndarray, List[str]]:
-    data = np.load(CENTROID_PATH, allow_pickle=True)
-    labels = [canonical_label(lbl) for lbl in data["labels"].tolist()]
-    cents = np.array(data["centroids"], dtype="float32")
-    if cents.ndim != 2 or cents.shape[0] != len(labels):
-        raise ValueError("Invalid centroid file")
-    norms = np.linalg.norm(cents, axis=1, keepdims=True) + 1e-9
-    return (cents / norms), labels
-
-
 def _compute_features(
     emb: np.ndarray,
-    centroids: np.ndarray,
     labels: List[str],
     text: str,
     tfidf_clf: TFIDFClassifier,
 ) -> np.ndarray:
     emb_norm = emb / (np.linalg.norm(emb) + 1e-9)
-    sims = emb_norm @ centroids.T  # (num_labels,)
     base = {label: 1.0 / max(len(labels), 1) for label in labels}
     priors = apply_lexical_prior(text, base, alpha=0.0, beta=1.0)
     priors_vec = np.array([priors.get(lbl, 0.0) for lbl in labels], dtype="float32")
     tfidf_probs_dict = tfidf_clf.predict_proba(text)
     tfidf_vec = np.array([tfidf_probs_dict.get(lbl, 0.0) for lbl in labels], dtype="float32")
-    return np.concatenate([sims.astype("float32"), priors_vec, tfidf_vec], axis=0)
+    return np.concatenate([emb_norm.astype("float32"), priors_vec, tfidf_vec], axis=0)
 
 
 def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
@@ -170,10 +157,6 @@ def train_head(
         texts, y_ids, y_labels, test_size=val_fraction, random_state=seed, stratify=y_ids
     )
 
-    centroids, cent_labels = _load_centroids()
-    if cent_labels != CANONICAL_LABELS:
-        raise ValueError("Centroid labels do not match canonical labels")
-
     tfidf_clf = TFIDFClassifier(labels=CANONICAL_LABELS)
 
     model = SentenceTransformer("intfloat/e5-small-v2")
@@ -182,13 +165,13 @@ def train_head(
 
     X_train_feat = np.stack(
         [
-            _compute_features(emb, centroids, CANONICAL_LABELS, txt, tfidf_clf)
+            _compute_features(emb, CANONICAL_LABELS, txt, tfidf_clf)
             for emb, txt in zip(emb_train, X_train_texts)
         ],
         axis=0,
     )
     X_val_feat = np.stack(
-        [_compute_features(emb, centroids, CANONICAL_LABELS, txt, tfidf_clf) for emb, txt in zip(emb_val, X_val_texts)],
+        [_compute_features(emb, CANONICAL_LABELS, txt, tfidf_clf) for emb, txt in zip(emb_val, X_val_texts)],
         axis=0,
     )
 

@@ -144,14 +144,14 @@ class EncoderClassifier(ClassifierProtocol):
             b = np.asarray(data["b"], dtype="float32")
             mean = np.asarray(data.get("feature_mean", np.zeros(W.shape[1], dtype="float32")), dtype="float32")
             std = np.asarray(data.get("feature_std", np.ones(W.shape[1], dtype="float32")), dtype="float32")
-            feature_dim = W.shape[1] if W.ndim == 2 else 0
-            expected_dims = {len(labels) * 2, len(labels) * 3}
+            feature_dim = int(data.get("feature_dim", W.shape[1] if W.ndim == 2 else 0))
             if (
                 W.ndim != 2
                 or b.ndim != 1
                 or W.shape[0] != len(labels)
                 or b.shape[0] != len(labels)
-                or feature_dim not in expected_dims
+                or feature_dim <= 0
+                or feature_dim != W.shape[1]
             ):
                 if allow_fallback:
                     print("[EncoderClassifier] Warning: calibrated head incompatible; falling back to centroids.")
@@ -234,27 +234,20 @@ class EncoderClassifier(ClassifierProtocol):
         return apply_lexical_prior(text, base, alpha=0.0, beta=1.0)
 
     def _compute_calibrated_features(self, text: str, emb_np: np.ndarray) -> Optional[np.ndarray]:
-        if self._centroids is None or np is None:
+        if np is None:
             return None
         emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
-        sims = emb_norm @ self._centroids.T  # shape (num_labels,)
         priors_dict = self._compute_prior_vector(text)
         priors = np.array([priors_dict.get(lbl, 0.0) for lbl in self.labels], dtype="float32")
-        parts = [sims.astype("float32"), priors]
-        expected = self._calib_feature_dim or (len(self.labels) * 2)
-        if self._tfidf_classifier is not None and expected == len(self.labels) * 3:
-            try:
-                tfidf_probs_dict = self._tfidf_classifier.predict_proba(text)
-                tfidf_probs = np.array(
-                    [tfidf_probs_dict.get(lbl, 0.0) for lbl in self.labels],
-                    dtype="float32",
-                )
-                parts.append(tfidf_probs)
-            except Exception:
-                print("[EncoderClassifier] Warning: TF-IDF features unavailable; using sims+priors only.")
-        features = np.concatenate(parts, axis=0)
-        if features.shape[0] != expected:
+        if self._tfidf_classifier is None:
             return None
+        tfidf_probs_dict = self._tfidf_classifier.predict_proba(text)
+        tfidf_probs = np.array([tfidf_probs_dict.get(lbl, 0.0) for lbl in self.labels], dtype="float32")
+        features = np.concatenate([emb_norm.astype("float32"), priors, tfidf_probs], axis=0)
+        if self._calib_feature_dim is not None and features.shape[0] != self._calib_feature_dim:
+            raise RuntimeError(
+                f"Calibrated head feature length mismatch: built {features.shape[0]}, expected {self._calib_feature_dim}"
+            )
         return features
 
     @property
@@ -263,7 +256,7 @@ class EncoderClassifier(ClassifierProtocol):
         return self._backend_name
 
     def predict_proba(self, text: str) -> Dict[str, float]:
-        if self._centroids is not None and np is not None and self._encoder is not None:
+        if np is not None and self._encoder is not None:
             try:
                 emb = self._encoder.encode(text or "", normalize_embeddings=True)  # type: ignore[attr-defined]
                 emb_np = np.array(emb, dtype="float32")
@@ -280,18 +273,19 @@ class EncoderClassifier(ClassifierProtocol):
                         probs = exp / float(exp.sum())
                         return {lbl: float(probs[idx]) for idx, lbl in enumerate(self.labels)}
 
-                emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
-                sims = emb_norm @ self._centroids.T
-                logits = sims.astype("float64")
-                logits = logits - logits.max()
-                exp = np.exp(logits)
-                probs = exp / exp.sum()
-                centroid_probs = {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
-                if self.use_lexical_prior:
-                    return apply_lexical_prior(text, centroid_probs)
-                return normalize_probabilities(centroid_probs, self._centroid_labels)
+                if self._centroids is not None and self._centroid_labels:
+                    emb_norm = emb_np / (np.linalg.norm(emb_np) + 1e-9)
+                    sims = emb_norm @ self._centroids.T
+                    logits = sims.astype("float64")
+                    logits = logits - logits.max()
+                    exp = np.exp(logits)
+                    probs = exp / exp.sum()
+                    centroid_probs = {lbl: float(probs[idx]) for idx, lbl in enumerate(self._centroid_labels)}
+                    if self.use_lexical_prior:
+                        return apply_lexical_prior(text, centroid_probs)
+                    return normalize_probabilities(centroid_probs, self._centroid_labels)
             except Exception:
-                print("[EncoderClassifier] Warning: centroid inference failed, falling back to prototypes.")
+                print("[EncoderClassifier] Warning: centroid or calibrated inference failed, falling back to prototypes.")
 
         text_vec = self._encode_text(text or "")
         scores = {

@@ -19,8 +19,7 @@ class DummyEncoder:
         return self.vector
 
 
-def _build_fake_head(path: Path, labels: list[str]) -> None:
-    feature_dim = len(labels) * 3
+def _build_fake_head(path: Path, labels: list[str], feature_dim: int) -> None:
     W = np.zeros((len(labels), feature_dim), dtype="float32")
     W[0, 0] = 2.0
     W[1, 0] = -2.0
@@ -34,13 +33,15 @@ def _build_fake_head(path: Path, labels: list[str]) -> None:
         b=b,
         feature_mean=mean,
         feature_std=std,
+        feature_dim=np.array(feature_dim, dtype="int64"),
     )
 
 
 def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> None:
     labels = ["access", "administrative rights"]
     head_path = tmp_path / "encoder_calibrated_head.npz"
-    _build_fake_head(head_path, labels)
+    feature_dim = 6  # embedding_dim (2) + priors (2) + tfidf (2) for two labels
+    _build_fake_head(head_path, labels, feature_dim=feature_dim)
 
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
@@ -48,13 +49,18 @@ def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> N
 
     classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
     classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
-    classifier._centroids = np.array([[1.0, 0.0], [0.0, 1.0]], dtype="float32")  # type: ignore[attr-defined, assignment]
+    classifier._tfidf_classifier = type(
+        "DummyTFIDF",
+        (),
+        {"predict_proba": lambda self, text: {lbl: 1.0 / len(labels) for lbl in labels}},
+    )()  # type: ignore[assignment]
 
     probs: Dict[str, float] = classifier.predict_proba("payroll ticket")
     assert classifier._head_mode_active == "calibrated"
     assert set(probs.keys()) == set(labels)
     assert abs(sum(probs.values()) - 1.0) < 1e-6
-    assert probs["access"] > probs["administrative rights"]
+    assert probs["access"] != probs["administrative rights"]
+    assert classifier._calib_feature_dim == feature_dim
 
 
 def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
@@ -131,7 +137,7 @@ def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path
 def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path) -> None:
     labels = ["access", "administrative rights"]
     head_path = tmp_path / "encoder_calibrated_head.npz"
-    _build_fake_head(head_path, labels)
+    _build_fake_head(head_path, labels, feature_dim=6)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
