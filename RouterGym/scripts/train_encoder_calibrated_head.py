@@ -18,6 +18,7 @@ from RouterGym.classifiers.utils import apply_lexical_prior
 from RouterGym.label_space import (
     CANONICAL_LABELS,
     ID_TO_LABEL,
+    LABEL_NORMALIZATION_MAP,
     LABEL_TO_ID,
     canonical_label,
     canonicalize_label,
@@ -82,26 +83,34 @@ def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
 def _compute_class_weights(y_labels: np.ndarray) -> Dict[str, float]:
     """Compute balanced class weights from canonical string labels."""
     # Accept either canonical strings or integer IDs and normalize to strings for validation.
-    if y_labels.dtype.kind in {"i", "u"}:
-        normalized_labels_list: List[str] = []
-        for idx in y_labels:
-            idx_int = int(idx)
+    normalized_labels_list: List[str] = []
+    unexpected_raw: List[str] = []
+    for lbl in y_labels:
+        # Handle numeric labels even when dtype=object.
+        if isinstance(lbl, (int, np.integer)):
+            idx_int = int(lbl)
             if idx_int not in ID_TO_LABEL:
                 raise RuntimeError(f"Unexpected label id {idx_int} in y_labels")
             normalized_labels_list.append(ID_TO_LABEL[idx_int])
-        normalized_labels = np.array(normalized_labels_list, dtype=object)
-    else:
-        normalized_labels = np.array([str(lbl).strip().lower() for lbl in y_labels], dtype=object)
+        else:
+            raw = str(lbl).strip().lower()
+            norm = canonical_label(raw)
+            if raw not in CANONICAL_LABELS and raw not in LABEL_NORMALIZATION_MAP:
+                # Surface truly unknown labels instead of silently mapping to misc.
+                unexpected_raw.append(raw)
+            normalized_labels_list.append(norm)
+
+    if unexpected_raw:
+        raise RuntimeError(f"Unexpected labels in y_labels: {sorted(set(unexpected_raw))}")
+    normalized_labels = np.array(normalized_labels_list, dtype=object)
 
     unique_y = np.unique(normalized_labels)
-    unexpected = set(unique_y) - set(CANONICAL_LABELS)
-    if unexpected:
-        raise RuntimeError(f"Unexpected labels in y_labels: {sorted(unexpected)}")
-
     base_weights = compute_class_weight(
-        class_weight="balanced", classes=np.array(CANONICAL_LABELS), y=normalized_labels
+        class_weight="balanced", classes=unique_y, y=normalized_labels
     )
-    weights: Dict[str, float] = {label: float(weight) for label, weight in zip(CANONICAL_LABELS, base_weights)}
+    weights: Dict[str, float] = {label: float(weight) for label, weight in zip(unique_y, base_weights)}
+    # Ensure every canonical label is present; default unseen classes to weight 1.0
+    weights = {label: weights.get(label, 1.0) for label in CANONICAL_LABELS}
     # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
     weights["hr support"] = weights.get("hr support", 1.0) * 1.3
     weights["purchase"] = weights.get("purchase", 1.0) * 1.1

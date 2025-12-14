@@ -85,6 +85,12 @@ def test_compute_class_weights_accepts_int_ids() -> None:
     assert set(weights.keys()) == set(trainer.CANONICAL_LABELS)
 
 
+def test_compute_class_weights_accepts_object_ints() -> None:
+    y_ids_obj = np.array([0, 1, 2], dtype=object)
+    weights = trainer._compute_class_weights(y_ids_obj)
+    assert set(weights.keys()) == set(trainer.CANONICAL_LABELS)
+
+
 def test_compute_class_weights_raises_on_unexpected_label() -> None:
     y_bad = np.array(list(CANONICAL_LABELS) + ["bad_label"], dtype=object)
     with pytest.raises(RuntimeError):
