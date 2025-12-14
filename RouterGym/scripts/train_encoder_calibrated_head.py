@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 import logging
 
 import numpy as np
@@ -49,6 +49,15 @@ def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
     df[label_col] = df[label_col].apply(canonicalize_label)
     df = df[df[label_col].isin(CANONICAL_LABELS)]
     return df.reset_index(drop=True)
+
+
+def _train_val_split(
+    texts: List[str],
+    labels: np.ndarray,
+    val_fraction: float,
+    seed: int,
+) -> Tuple[List[str], List[str], np.ndarray, np.ndarray]:
+    return train_test_split(texts, labels, test_size=val_fraction, random_state=seed, stratify=labels)
 
 
 def _compute_features(
