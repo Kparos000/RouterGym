@@ -79,6 +79,12 @@ def test_compute_class_weights_upweights_hr(monkeypatch: Any) -> None:
     assert weights["hr support"] > weights.get("miscellaneous", 0.0)
 
 
+def test_compute_class_weights_accepts_int_ids() -> None:
+    y_ids = np.array([0, 1, 1, 2, 3, 4, 5], dtype=int)
+    weights = trainer._compute_class_weights(y_ids)
+    assert set(weights.keys()) == set(trainer.CANONICAL_LABELS)
+
+
 def test_compute_class_weights_raises_on_unexpected_label() -> None:
     y_bad = np.array(list(CANONICAL_LABELS) + ["bad_label"], dtype=object)
     with pytest.raises(RuntimeError):

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 
-from RouterGym.contracts.json_contract import JSONContract
-from RouterGym.contracts.schema_contract import SchemaContract
+import pytest
+
+from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
+from RouterGym.contracts.schema_contract import AgentOutputSchema, SchemaContract
 from RouterGym.agents.generator import SelfRepair
 
 
@@ -46,3 +48,53 @@ def test_self_repair_fills_schema() -> None:
     repaired = repair.repair(model, "prompt", "not json", sc)
     assert sc.validate(repaired)[0]
     assert repaired["predicted_category"]
+
+
+def _build_agent_output_payload() -> dict:
+    return {
+        "original_query": "laptop is broken",
+        "rewritten_query": "laptop is broken",
+        "category": "hardware",
+        "classifier_backend": "encoder_calibrated",
+        "classifier_confidence": 0.9,
+        "router_name": "slm_dominant",
+        "model_used": "slm1",
+        "context_mode": "none",
+        "resolution_steps": [],
+        "reasoning": "dummy",
+        "escalation": {
+            "agent_escalation": False,
+            "human_escalation": False,
+            "reasons": [],
+        },
+    }
+
+
+def test_agent_output_schema_happy_path() -> None:
+    payload = _build_agent_output_payload()
+    schema = AgentOutputSchema()
+    ok, errors = schema.validate(dict(payload))
+    assert ok and not errors
+    validated = validate_agent_output(payload)
+    assert validated["category"] == "hardware"
+    assert validated["context_mode"] == "none"
+
+
+def test_agent_output_schema_missing_field() -> None:
+    payload = _build_agent_output_payload()
+    payload.pop("classifier_backend")
+    schema = AgentOutputSchema()
+    ok, errors = schema.validate(payload)
+    assert not ok
+    with pytest.raises(ValueError):
+        validate_agent_output(payload)
+
+
+def test_agent_output_schema_invalid_category() -> None:
+    payload = _build_agent_output_payload()
+    payload["category"] = "invalid"
+    schema = AgentOutputSchema()
+    ok, errors = schema.validate(dict(payload))
+    assert not ok
+    with pytest.raises(ValueError):
+        validate_agent_output(payload)

@@ -15,7 +15,13 @@ from sklearn.utils.class_weight import compute_class_weight
 
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
-from RouterGym.label_space import CANONICAL_LABELS, canonical_label, canonicalize_label
+from RouterGym.label_space import (
+    CANONICAL_LABELS,
+    ID_TO_LABEL,
+    LABEL_TO_ID,
+    canonical_label,
+    canonicalize_label,
+)
 
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -74,12 +80,27 @@ def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
 
 
 def _compute_class_weights(y_labels: np.ndarray) -> Dict[str, float]:
-    """Compute balanced class weights and upweight minority labels like hr support."""
-    unique_y = np.unique(y_labels)
+    """Compute balanced class weights from canonical string labels."""
+    # Accept either canonical strings or integer IDs and normalize to strings for validation.
+    if y_labels.dtype.kind in {"i", "u"}:
+        normalized_labels_list: List[str] = []
+        for idx in y_labels:
+            idx_int = int(idx)
+            if idx_int not in ID_TO_LABEL:
+                raise RuntimeError(f"Unexpected label id {idx_int} in y_labels")
+            normalized_labels_list.append(ID_TO_LABEL[idx_int])
+        normalized_labels = np.array(normalized_labels_list, dtype=object)
+    else:
+        normalized_labels = np.array([str(lbl).strip().lower() for lbl in y_labels], dtype=object)
+
+    unique_y = np.unique(normalized_labels)
     unexpected = set(unique_y) - set(CANONICAL_LABELS)
     if unexpected:
         raise RuntimeError(f"Unexpected labels in y_labels: {sorted(unexpected)}")
-    base_weights = compute_class_weight(class_weight="balanced", classes=np.array(CANONICAL_LABELS), y=y_labels)
+
+    base_weights = compute_class_weight(
+        class_weight="balanced", classes=np.array(CANONICAL_LABELS), y=normalized_labels
+    )
     weights: Dict[str, float] = {label: float(weight) for label, weight in zip(CANONICAL_LABELS, base_weights)}
     # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
     weights["hr support"] = weights.get("hr support", 1.0) * 1.3
@@ -105,11 +126,11 @@ def train_head(
         )
     counts = df[label_col].value_counts().to_dict()
     print(f"[CalibratedHead] Label distribution: {counts}")
-    label_to_idx = {lbl: idx for idx, lbl in enumerate(CANONICAL_LABELS)}
-    y = df[label_col].map(label_to_idx).to_numpy(dtype="int64")
+    y_labels = df[label_col].to_numpy(dtype=object)
+    y_ids = df[label_col].map(LABEL_TO_ID).to_numpy(dtype="int64")
     texts = df[text_col].tolist()
-    X_train_texts, X_val_texts, y_train, y_val = train_test_split(
-        texts, y, test_size=val_fraction, random_state=seed, stratify=y
+    X_train_texts, X_val_texts, y_train_ids, y_val_ids, y_train_labels, y_val_labels = train_test_split(
+        texts, y_ids, y_labels, test_size=val_fraction, random_state=seed, stratify=y_ids
     )
 
     centroids, cent_labels = _load_centroids()
@@ -139,7 +160,8 @@ def train_head(
     X_train_std = (X_train_feat - mean) / std
     X_val_std = (X_val_feat - mean) / std
 
-    class_weights = _compute_class_weights(y_train)
+    class_weights_label = _compute_class_weights(y_train_labels)
+    class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
     clf = LogisticRegression(
         multi_class="multinomial",
         solver="lbfgs",
@@ -148,18 +170,18 @@ def train_head(
         class_weight=class_weights,
         C=C,
     )
-    clf.fit(X_train_std, y_train)
+    clf.fit(X_train_std, y_train_ids)
 
     feature_dim = X_train_feat.shape[1]
     train_preds = clf.predict(X_train_std)
-    train_acc = float((train_preds == y_train).mean())
+    train_acc = float((train_preds == y_train_ids).mean())
 
     val_preds = clf.predict(X_val_std)
-    val_acc = float((val_preds == y_val).mean())
+    val_acc = float((val_preds == y_val_ids).mean())
     print(f"[CalibratedHead] Validation accuracy: {val_acc:.3f}")
     for idx, lbl in enumerate(CANONICAL_LABELS):
-        mask = y_val == idx
-        acc = float((val_preds[mask] == y_val[mask]).mean()) if mask.any() else 0.0
+        mask = y_val_ids == idx
+        acc = float((val_preds[mask] == y_val_ids[mask]).mean()) if mask.any() else 0.0
         print(f"  {lbl:20s}: {acc:.3f}")
 
     HEAD_OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

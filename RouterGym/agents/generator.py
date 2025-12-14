@@ -6,7 +6,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
-from RouterGym.contracts.json_contract import JSONContract
+from RouterGym.classifiers.encoder_classifier import EncoderClassifier
+from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
 from RouterGym.contracts.schema_contract import SchemaContract
 from RouterGym.engines.model_registry import get_repair_model
 from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonical_label
@@ -351,3 +352,46 @@ class ResponseGenerator:
         raw_output = _call_model(self.model_interface, prompt)
         repaired = self.self_repair.repair(self.model_interface, prompt, raw_output, self.contract)
         return repaired
+
+
+def run_ticket_pipeline(
+    ticket_text: str,
+    router_name: str = "slm_dominant",
+    context_mode: str = "none",
+) -> Dict[str, Any]:
+    """Minimal pipeline skeleton: encode -> classify via calibrated encoder -> assemble AgentOutput payload."""
+    classifier = EncoderClassifier(head_mode="auto", use_lexical_prior=True)
+    probabilities = classifier.predict_proba(ticket_text)
+    category = max(probabilities, key=probabilities.__getitem__)
+    classifier_confidence = float(probabilities.get(category, 0.0))
+
+    if router_name == "llm_first":
+        model_used = "llm1"
+    elif router_name == "hybrid_specialist":
+        model_used = "slm1"
+    else:
+        model_used = "slm1"
+
+    reasoning = (
+        f"Classified as {category} with confidence {classifier_confidence:.3f} using {classifier.backend_name}. "
+        f"Router '{router_name}' selected model '{model_used}'. Resolution steps not yet generated in this skeleton."
+    )
+
+    payload: Dict[str, Any] = {
+        "original_query": ticket_text,
+        "rewritten_query": ticket_text,
+        "category": category,
+        "classifier_backend": classifier.backend_name,
+        "classifier_confidence": classifier_confidence,
+        "router_name": router_name,
+        "model_used": model_used,
+        "context_mode": context_mode,
+        "resolution_steps": [],
+        "reasoning": reasoning,
+        "escalation": {
+            "agent_escalation": False,
+            "human_escalation": False,
+            "reasons": [],
+        },
+    }
+    return validate_agent_output(payload)

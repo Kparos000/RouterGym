@@ -15,6 +15,8 @@ CANONICAL_LABELS: List[str] = [
 ]
 
 CANONICAL_LABEL_SET = set(CANONICAL_LABELS)
+LABEL_TO_ID: Dict[str, int] = {label: idx for idx, label in enumerate(CANONICAL_LABELS)}
+ID_TO_LABEL: Dict[int, str] = {idx: label for label, idx in LABEL_TO_ID.items()}
 
 # Collapse long-tail labels into the canonical set. We explicitly map
 # legacy labels like "internal project" and "storage" into "miscellaneous"
@@ -108,4 +110,12 @@ def canonicalize_label(label: str | None) -> str:
     return canonical_label(label)
 
 
-__all__ = ["CANONICAL_LABELS", "CANONICAL_LABEL_SET", "LABEL_NORMALIZATION_MAP", "canonical_label"]
+__all__ = [
+    "CANONICAL_LABELS",
+    "CANONICAL_LABEL_SET",
+    "LABEL_NORMALIZATION_MAP",
+    "LABEL_TO_ID",
+    "ID_TO_LABEL",
+    "canonical_label",
+    "canonicalize_label",
+]

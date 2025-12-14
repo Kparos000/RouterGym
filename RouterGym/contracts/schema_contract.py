@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Tuple
 
 from RouterGym.label_space import CANONICAL_LABEL_SET, canonical_label
 
+ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_hybrid", "transcript"}
+
 
 class SchemaContract:
     """Validate the minimal required schema for agent outputs."""
@@ -37,4 +39,85 @@ class SchemaContract:
         return len(errors) == 0, errors
 
 
-__all__ = ["SchemaContract"]
+class AgentOutputSchema:
+    """Validate structured AgentOutput payloads for a single ticket."""
+
+    required_string_fields = {
+        "original_query",
+        "rewritten_query",
+        "category",
+        "classifier_backend",
+        "router_name",
+        "model_used",
+        "context_mode",
+        "reasoning",
+    }
+
+    def validate(self, json_obj: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        errors: List[str] = []
+        if not isinstance(json_obj, dict):
+            return False, ["Output is not a JSON object"]
+
+        for field in self.required_string_fields:
+            if field not in json_obj:
+                errors.append(f"Missing field: {field}")
+                continue
+            value = json_obj[field]
+            if not isinstance(value, str):
+                errors.append(f"Field {field} must be a string")
+                continue
+            if not value.strip():
+                errors.append(f"Field {field} is empty")
+
+        if "category" in json_obj:
+            raw_category = str(json_obj["category"]).strip().lower()
+            if raw_category not in CANONICAL_LABEL_SET:
+                errors.append("Field category is not in the allowed label set")
+            else:
+                json_obj["category"] = canonical_label(raw_category)
+
+        if "classifier_confidence" not in json_obj:
+            errors.append("Missing field: classifier_confidence")
+        else:
+            conf = json_obj["classifier_confidence"]
+            if not isinstance(conf, (int, float)):
+                errors.append("classifier_confidence must be a number")
+            elif not (0.0 <= float(conf) <= 1.0):
+                errors.append("classifier_confidence must be between 0 and 1")
+
+        if "context_mode" in json_obj and isinstance(json_obj.get("context_mode"), str):
+            if json_obj["context_mode"] not in ALLOWED_CONTEXT_MODES:
+                errors.append(f"context_mode must be one of {sorted(ALLOWED_CONTEXT_MODES)}")
+
+        if "resolution_steps" not in json_obj:
+            errors.append("Missing field: resolution_steps")
+        else:
+            steps = json_obj["resolution_steps"]
+            if not isinstance(steps, list):
+                errors.append("resolution_steps must be a list")
+            elif not all(isinstance(s, str) for s in steps):
+                errors.append("resolution_steps must contain strings")
+
+        if "escalation" not in json_obj:
+            errors.append("Missing field: escalation")
+        else:
+            esc = json_obj["escalation"]
+            if not isinstance(esc, dict):
+                errors.append("escalation must be an object")
+            else:
+                for key in ("agent_escalation", "human_escalation"):
+                    if key not in esc:
+                        errors.append(f"escalation missing field: {key}")
+                    elif not isinstance(esc[key], bool):
+                        errors.append(f"escalation field {key} must be a bool")
+                if "reasons" not in esc:
+                    errors.append("escalation missing field: reasons")
+                elif not isinstance(esc["reasons"], list) or not all(
+                    isinstance(r, str) for r in esc["reasons"]
+                ):
+                    errors.append("escalation.reasons must be a list of strings")
+
+        return len(errors) == 0, errors
+
+
+__all__ = ["SchemaContract", "AgentOutputSchema", "ALLOWED_CONTEXT_MODES"]

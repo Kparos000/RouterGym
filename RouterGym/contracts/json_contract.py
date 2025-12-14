@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Tuple
+from typing import Any, Dict, Mapping, Tuple
+
+from RouterGym.contracts.schema_contract import AgentOutputSchema
 
 
 class JSONContract:
@@ -20,4 +22,14 @@ class JSONContract:
         return True, parsed
 
 
-__all__ = ["JSONContract"]
+def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
+    """Validate an AgentOutput payload and return a normalized copy or raise ValueError."""
+    schema = AgentOutputSchema()
+    data = dict(payload)
+    ok, errors = schema.validate(data)
+    if not ok:
+        raise ValueError(f"AgentOutput validation failed: {errors}")
+    return data
+
+
+__all__ = ["JSONContract", "validate_agent_output"]

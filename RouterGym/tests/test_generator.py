@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from RouterGym.agents import generator as gen
+from RouterGym.label_space import CANONICAL_LABELS
 
 
 def test_build_prompt_includes_kb() -> None:
@@ -72,3 +73,32 @@ def test_repair_uses_llm(monkeypatch):
     repair = gen.SelfRepair(max_retries=1)
     _ = repair.repair(model, "prompt", "invalid", contract)
     assert called.get("used")
+
+
+class DummyEncoderClassifier:
+    def __init__(self, *args, **kwargs):
+        self.backend_name = "encoder_calibrated"
+
+    def predict_proba(self, text: str):
+        return {
+            CANONICAL_LABELS[0]: 0.1,
+            CANONICAL_LABELS[1]: 0.1,
+            CANONICAL_LABELS[2]: 0.7,
+            CANONICAL_LABELS[3]: 0.05,
+            CANONICAL_LABELS[4]: 0.03,
+            CANONICAL_LABELS[5]: 0.02,
+        }
+
+
+def test_run_ticket_pipeline(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+    result = gen.run_ticket_pipeline("simple hardware test ticket text")
+    assert result["original_query"] == "simple hardware test ticket text"
+    assert result["rewritten_query"] == "simple hardware test ticket text"
+    assert result["category"] in CANONICAL_LABELS
+    assert result["classifier_backend"] == "encoder_calibrated"
+    assert result["context_mode"] == "none"
+    assert isinstance(result["resolution_steps"], list)
+    assert result["resolution_steps"] == []
+    assert isinstance(result["escalation"]["agent_escalation"], bool)
+    assert isinstance(result["escalation"]["human_escalation"], bool)
