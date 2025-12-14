@@ -30,6 +30,12 @@ RESULTS_PATH = Path("RouterGym/results/analysis/encoder_confidence_curve.csv")
 
 
 def _load_calibrated_head(path: Path) -> Dict[str, np.ndarray]:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Calibrated head not found at {path}. "
+            "Train it first with `python -m RouterGym.scripts.train_encoder_calibrated_head` "
+            "or pass --head-path pointing to the generated encoder_calibrated_head.npz."
+        )
     data = np.load(path, allow_pickle=True)
     required = ["labels", "W", "b", "feature_mean", "feature_std", "feature_dim"]
     for key in required:
