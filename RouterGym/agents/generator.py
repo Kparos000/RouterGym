@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from typing import Any, Dict, List, Optional
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
@@ -361,7 +362,9 @@ def run_ticket_pipeline(
 ) -> Dict[str, Any]:
     """Minimal pipeline skeleton: encode -> classify via calibrated encoder -> assemble AgentOutput payload."""
     classifier = EncoderClassifier(head_mode="auto", use_lexical_prior=True)
+    start = time.perf_counter()
     probabilities = classifier.predict_proba(ticket_text)
+    latency_ms = (time.perf_counter() - start) * 1000.0
     category = max(probabilities, key=probabilities.__getitem__)
     classifier_confidence = float(probabilities.get(category, 0.0))
 
@@ -392,6 +395,13 @@ def run_ticket_pipeline(
             "agent_escalation": False,
             "human_escalation": False,
             "reasons": [],
+        },
+        "metrics": {
+            "latency_ms": float(latency_ms),
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "cost_usd": None,
         },
     }
     return validate_agent_output(payload)

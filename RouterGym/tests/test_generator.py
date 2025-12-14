@@ -102,3 +102,8 @@ def test_run_ticket_pipeline(monkeypatch):
     assert result["resolution_steps"] == []
     assert isinstance(result["escalation"]["agent_escalation"], bool)
     assert isinstance(result["escalation"]["human_escalation"], bool)
+    assert isinstance(result["metrics"], dict)
+    assert "latency_ms" in result["metrics"]
+    assert isinstance(result["metrics"]["latency_ms"], float)
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "cost_usd"):
+        assert key in result["metrics"]

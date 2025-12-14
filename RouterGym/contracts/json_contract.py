@@ -26,6 +26,14 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
     """Validate an AgentOutput payload and return a normalized copy or raise ValueError."""
     schema = AgentOutputSchema()
     data = dict(payload)
+    if "metrics" not in data:
+        data["metrics"] = {
+            "latency_ms": None,
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "cost_usd": None,
+        }
     ok, errors = schema.validate(data)
     if not ok:
         raise ValueError(f"AgentOutput validation failed: {errors}")

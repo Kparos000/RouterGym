@@ -67,6 +67,13 @@ def _build_agent_output_payload() -> dict:
             "human_escalation": False,
             "reasons": [],
         },
+        "metrics": {
+            "latency_ms": 1.0,
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "cost_usd": None,
+        },
     }
 
 
@@ -96,5 +103,12 @@ def test_agent_output_schema_invalid_category() -> None:
     schema = AgentOutputSchema()
     ok, errors = schema.validate(dict(payload))
     assert not ok
+    with pytest.raises(ValueError):
+        validate_agent_output(payload)
+
+
+def test_agent_output_schema_invalid_metrics_type() -> None:
+    payload = _build_agent_output_payload()
+    payload["metrics"]["cost_usd"] = "bad"  # type: ignore[index]
     with pytest.raises(ValueError):
         validate_agent_output(payload)

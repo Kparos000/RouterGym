@@ -7,6 +7,13 @@ from typing import Any, Dict, List, Tuple
 from RouterGym.label_space import CANONICAL_LABEL_SET, canonical_label
 
 ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_hybrid", "transcript"}
+_METRIC_FIELDS = {
+    "latency_ms": (float, int, type(None)),
+    "prompt_tokens": (int, type(None)),
+    "completion_tokens": (int, type(None)),
+    "total_tokens": (int, type(None)),
+    "cost_usd": (float, int, type(None)),
+}
 
 
 class SchemaContract:
@@ -116,6 +123,20 @@ class AgentOutputSchema:
                     isinstance(r, str) for r in esc["reasons"]
                 ):
                     errors.append("escalation.reasons must be a list of strings")
+
+        if "metrics" not in json_obj:
+            errors.append("Missing field: metrics")
+        else:
+            metrics = json_obj["metrics"]
+            if not isinstance(metrics, dict):
+                errors.append("metrics must be an object")
+            else:
+                for field, allowed_types in _METRIC_FIELDS.items():
+                    if field not in metrics:
+                        errors.append(f"metrics missing field: {field}")
+                        continue
+                    if not isinstance(metrics[field], allowed_types):
+                        errors.append(f"metrics field {field} has wrong type")
 
         return len(errors) == 0, errors
 
