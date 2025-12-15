@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Sequence
 import numpy as np
 import pandas as pd
 
+from RouterGym.classifiers.paths import HEAD_PATH
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.label_space import CANONICAL_LABELS, LABEL_TO_ID, canonicalize_label
 from RouterGym.scripts.train_encoder_calibrated_head import (
@@ -30,9 +31,10 @@ RESULTS_PATH = Path("RouterGym/results/analysis/encoder_confidence_curve.csv")
 
 
 def _load_calibrated_head(path: Path) -> Dict[str, Any]:
+    resolved = path.resolve()
     if not path.exists():
         raise FileNotFoundError(
-            f"Calibrated head not found at {path}. "
+            f"Calibrated head not found at {resolved}. "
             "Train it first with `python -m RouterGym.scripts.train_encoder_calibrated_head` "
             "or pass --head-path pointing to the generated encoder_calibrated_head.npz."
         )
@@ -179,7 +181,7 @@ def main() -> None:
     parser.add_argument("--label-column", type=str, default="Topic_group", help="Label column name.")
     parser.add_argument("--val-fraction", type=float, default=0.2, help="Validation fraction (must match training).")
     parser.add_argument("--seed", type=int, default=42, help="Random seed (must match training).")
-    parser.add_argument("--head-path", type=Path, default=Path("RouterGym/classifiers/encoder_calibrated_head.npz"))
+    parser.add_argument("--head-path", type=Path, default=HEAD_PATH)
     parser.add_argument(
         "--output-path",
         type=Path,
@@ -193,7 +195,7 @@ def main() -> None:
         label_col=args.label_column,
         val_fraction=args.val_fraction,
         seed=args.seed,
-        head_path=args.head_path,
+        head_path=args.head_path.resolve(),
         output_path=args.output_path,
     )
 

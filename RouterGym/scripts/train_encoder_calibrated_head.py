@@ -14,6 +14,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import f1_score
 from sklearn.neural_network import MLPClassifier
 
+from RouterGym.classifiers.paths import HEAD_PATH
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
 from RouterGym.label_space import (
@@ -33,7 +34,7 @@ except Exception as exc:  # pragma: no cover
 DEFAULT_TICKET_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_TEXT_COL = "Document"
 DEFAULT_LABEL_COL = "Topic_group"
-HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
+HEAD_OUT_PATH = HEAD_PATH
 HEAD_VERSION = "1.0"
 C_GRID = [0.5, 1.0, 2.0]
 ALPHA_GRID = [1e-4, 3e-4, 1e-3]

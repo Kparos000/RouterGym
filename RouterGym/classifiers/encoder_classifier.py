@@ -26,6 +26,7 @@ from RouterGym.classifiers.utils import (
     normalize_probabilities,
 )
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
+from RouterGym.classifiers.paths import HEAD_PATH
 
 _PROTOTYPES: Dict[str, str] = {
     "access": "password reset login mfa sso otp locked out account",
@@ -36,7 +37,7 @@ _PROTOTYPES: Dict[str, str] = {
     "miscellaneous": "general inquiry misc other",
 }
 
-CALIBRATED_HEAD_PATH = Path(__file__).resolve().parent / "encoder_calibrated_head.npz"
+CALIBRATED_HEAD_PATH = HEAD_PATH
 
 
 def _normalize(vector: List[float]) -> List[float]:

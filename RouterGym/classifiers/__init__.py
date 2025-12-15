@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
+from RouterGym.classifiers.paths import HEAD_PATH
 from RouterGym.classifiers.slm_classifier import SLMClassifier
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import (
@@ -34,4 +35,5 @@ __all__ = [
     "SLMClassifier",
     "TFIDFClassifier",
     "get_classifier_instance",
+    "HEAD_PATH",
 ]
