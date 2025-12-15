@@ -98,6 +98,11 @@ def test_run_ticket_pipeline(monkeypatch):
     assert result["category"] in CANONICAL_LABELS
     assert result["classifier_backend"] == "encoder_calibrated"
     assert result["context_mode"] == "none"
+    assert "classification" in result
+    cls = result["classification"]
+    assert cls["label"] in CANONICAL_LABELS
+    assert isinstance(cls["confidence"], float)
+    assert cls["confidence_bucket"] in {"high", "medium", "low"}
     assert isinstance(result["resolution_steps"], list)
     assert result["resolution_steps"] == []
     assert isinstance(result["escalation"]["agent_escalation"], bool)

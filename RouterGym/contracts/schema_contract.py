@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 from RouterGym.label_space import CANONICAL_LABEL_SET, canonical_label
 
 ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_hybrid", "transcript"}
+ALLOWED_CONFIDENCE_BUCKETS = {"high", "medium", "low"}
 _METRIC_FIELDS = {
     "latency_ms": (float, int, type(None)),
     "prompt_tokens": (int, type(None)),
@@ -96,6 +97,29 @@ class AgentOutputSchema:
             if json_obj["context_mode"] not in ALLOWED_CONTEXT_MODES:
                 errors.append(f"context_mode must be one of {sorted(ALLOWED_CONTEXT_MODES)}")
 
+        if "classification" not in json_obj:
+            errors.append("Missing field: classification")
+        else:
+            cls = json_obj["classification"]
+            if not isinstance(cls, dict):
+                errors.append("classification must be an object")
+            else:
+                if "label" not in cls or not isinstance(cls.get("label"), str):
+                    errors.append("classification.label must be a string")
+                if "confidence" not in cls or not isinstance(cls.get("confidence"), (int, float)):
+                    errors.append("classification.confidence must be a number")
+                else:
+                    conf_val = float(cls["confidence"])
+                    if not (0.0 <= conf_val <= 1.0):
+                        errors.append("classification.confidence must be between 0 and 1")
+                if "confidence_bucket" not in cls or not isinstance(cls.get("confidence_bucket"), str):
+                    errors.append("classification.confidence_bucket must be a string")
+                else:
+                    if cls["confidence_bucket"] not in ALLOWED_CONFIDENCE_BUCKETS:
+                        errors.append(
+                            f"classification.confidence_bucket must be one of {sorted(ALLOWED_CONFIDENCE_BUCKETS)}"
+                        )
+
         if "resolution_steps" not in json_obj:
             errors.append("Missing field: resolution_steps")
         else:
@@ -141,4 +165,4 @@ class AgentOutputSchema:
         return len(errors) == 0, errors
 
 
-__all__ = ["SchemaContract", "AgentOutputSchema", "ALLOWED_CONTEXT_MODES"]
+__all__ = ["SchemaContract", "AgentOutputSchema", "ALLOWED_CONTEXT_MODES", "ALLOWED_CONFIDENCE_BUCKETS"]

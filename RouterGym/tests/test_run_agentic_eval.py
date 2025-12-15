@@ -17,6 +17,11 @@ def _fake_agent_output(category: str) -> Dict[str, Any]:
         "category": category,
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
+        "classification": {
+            "label": category,
+            "confidence": 0.9,
+            "confidence_bucket": "high",
+        },
         "router_name": "slm_dominant",
         "model_used": "slm1",
         "context_mode": "none",

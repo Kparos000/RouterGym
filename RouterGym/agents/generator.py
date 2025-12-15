@@ -20,6 +20,18 @@ CLASS_LABELS = CANONICAL_LABELS
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
+CONFIDENCE_HIGH_THRESHOLD = 0.80
+CONFIDENCE_MEDIUM_THRESHOLD = 0.50
+
+
+def get_confidence_bucket(conf: float) -> str:
+    """Map a numeric confidence into low/medium/high buckets."""
+    if conf >= CONFIDENCE_HIGH_THRESHOLD:
+        return "high"
+    if conf >= CONFIDENCE_MEDIUM_THRESHOLD:
+        return "medium"
+    return "low"
+
 def classification_instruction() -> str:
     """High-quality instruction prompt for ticket classification with hard boundaries and examples."""
     return "\n".join(
@@ -367,6 +379,7 @@ def run_ticket_pipeline(
     latency_ms = (time.perf_counter() - start) * 1000.0
     category = max(probabilities, key=probabilities.__getitem__)
     classifier_confidence = float(probabilities.get(category, 0.0))
+    confidence_bucket = get_confidence_bucket(classifier_confidence)
 
     if router_name == "llm_first":
         model_used = "llm1"
@@ -386,6 +399,11 @@ def run_ticket_pipeline(
         "category": category,
         "classifier_backend": classifier.backend_name,
         "classifier_confidence": classifier_confidence,
+        "classification": {
+            "label": category,
+            "confidence": classifier_confidence,
+            "confidence_bucket": confidence_bucket,
+        },
         "router_name": router_name,
         "model_used": model_used,
         "context_mode": context_mode,

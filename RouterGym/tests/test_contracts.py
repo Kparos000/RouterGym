@@ -57,6 +57,11 @@ def _build_agent_output_payload() -> dict:
         "category": "hardware",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
+        "classification": {
+            "label": "hardware",
+            "confidence": 0.9,
+            "confidence_bucket": "high",
+        },
         "router_name": "slm_dominant",
         "model_used": "slm1",
         "context_mode": "none",
@@ -110,5 +115,12 @@ def test_agent_output_schema_invalid_category() -> None:
 def test_agent_output_schema_invalid_metrics_type() -> None:
     payload = _build_agent_output_payload()
     payload["metrics"]["cost_usd"] = "bad"  # type: ignore[index]
+    with pytest.raises(ValueError):
+        validate_agent_output(payload)
+
+
+def test_agent_output_schema_invalid_bucket() -> None:
+    payload = _build_agent_output_payload()
+    payload["classification"]["confidence_bucket"] = "unknown"
     with pytest.raises(ValueError):
         validate_agent_output(payload)
