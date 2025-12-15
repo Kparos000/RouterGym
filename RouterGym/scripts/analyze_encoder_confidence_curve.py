@@ -29,7 +29,7 @@ except Exception as exc:  # pragma: no cover
 RESULTS_PATH = Path("RouterGym/results/analysis/encoder_confidence_curve.csv")
 
 
-def _load_calibrated_head(path: Path) -> Dict[str, np.ndarray]:
+def _load_calibrated_head(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(
             f"Calibrated head not found at {path}. "
@@ -37,11 +37,16 @@ def _load_calibrated_head(path: Path) -> Dict[str, np.ndarray]:
             "or pass --head-path pointing to the generated encoder_calibrated_head.npz."
         )
     data = np.load(path, allow_pickle=True)
-    required = ["labels", "W", "b", "feature_mean", "feature_std", "feature_dim"]
+    head_type = str(data.get("head_type", "logreg"))
+    if head_type == "mlp":
+        required = ["labels", "feature_mean", "feature_std", "feature_dim", "layer_weights", "layer_biases"]
+    elif head_type == "logreg":
+        required = ["labels", "W", "b", "feature_mean", "feature_std", "feature_dim"]
+    else:
+        raise RuntimeError(f"Unknown head_type '{head_type}' in calibrated head file at {path}. Supported: logreg, mlp.")
     for key in required:
         if key not in data:
             raise RuntimeError(f"Missing key '{key}' in calibrated head file at {path}")
-    head_type = str(data.get("head_type", "logreg"))
     head: Dict[str, Any] = {
         "labels": data["labels"],
         "feature_mean": np.asarray(data["feature_mean"], dtype="float32"),
