@@ -202,6 +202,7 @@ def train_head(
         for weight_mode in sweep_weight_modes:
             class_weights_label = _compute_class_weights(y_train_labels, weight_mode=weight_mode)
             class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
+            sample_weight = np.array([class_weights[int(idx)] for idx in y_train_ids], dtype="float32")
             clf = MLPClassifier(
                 hidden_layer_sizes=(256, 128),
                 activation="relu",
@@ -209,9 +210,8 @@ def train_head(
                 max_iter=80,
                 random_state=seed,
                 alpha=alpha_value,
-                class_weight=class_weights,
             )
-            clf.fit(X_train_std, y_train_ids)
+            clf.fit(X_train_std, y_train_ids, sample_weight=sample_weight)
 
             train_preds = clf.predict(X_train_std)
             val_preds = clf.predict(X_val_std)
