@@ -77,8 +77,11 @@ class EncoderClassifier(ClassifierProtocol):
         self._head_mode_config = head_mode
         self._head_mode_active = "centroid"
         self._backend_name = "encoder_centroid"
+        self._head_type: str = "logreg"
         self._calib_W: Optional[np.ndarray] = None if np is not None else None
         self._calib_b: Optional[np.ndarray] = None if np is not None else None
+        self._mlp_weights: Optional[List[np.ndarray]] = None
+        self._mlp_biases: Optional[List[np.ndarray]] = None
         self._calib_mean: Optional[np.ndarray] = None if np is not None else None
         self._calib_std: Optional[np.ndarray] = None if np is not None else None
         self._calib_feature_dim: Optional[int] = None
@@ -140,25 +143,27 @@ class EncoderClassifier(ClassifierProtocol):
         try:
             data = np.load(path, allow_pickle=True)
             labels = [canonical_label(lbl) for lbl in data["labels"].tolist()]
-            W = np.asarray(data["W"], dtype="float32")
-            b = np.asarray(data["b"], dtype="float32")
-            mean = np.asarray(data.get("feature_mean", np.zeros(W.shape[1], dtype="float32")), dtype="float32")
-            std = np.asarray(data.get("feature_std", np.ones(W.shape[1], dtype="float32")), dtype="float32")
-            feature_dim = int(data.get("feature_dim", W.shape[1] if W.ndim == 2 else 0))
-            if (
-                W.ndim != 2
-                or b.ndim != 1
-                or W.shape[0] != len(labels)
-                or b.shape[0] != len(labels)
-                or feature_dim <= 0
-                or feature_dim != W.shape[1]
-            ):
-                if allow_fallback:
-                    print("[EncoderClassifier] Warning: calibrated head incompatible; falling back to centroids.")
-                    return False
-                raise RuntimeError(
-                    "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
-                )
+            head_type = str(data.get("head_type", "logreg"))
+            self._head_type = head_type
+            W = np.asarray(data.get("W")) if "W" in data else None
+            b = np.asarray(data.get("b")) if "b" in data else None
+            layer_weights = data.get("layer_weights")
+            layer_biases = data.get("layer_biases")
+            if head_type == "mlp" and layer_weights is not None:
+                first = np.asarray(layer_weights, dtype=object)[0]
+                feature_dim = int(first.shape[0]) if hasattr(first, "shape") else 0
+            elif "feature_dim" in data:
+                feature_dim = int(data["feature_dim"])
+            elif W is not None and W.ndim == 2:
+                feature_dim = W.shape[1]
+            else:
+                feature_dim = 0
+            mean = np.asarray(data.get("feature_mean", np.zeros(feature_dim, dtype="float32")), dtype="float32")
+            std = np.asarray(
+                data.get("feature_std", np.ones(feature_dim if feature_dim > 0 else 1, dtype="float32")),
+                dtype="float32",
+            )
+
             if list(self.labels) != labels:
                 if allow_fallback:
                     print("[EncoderClassifier] Warning: calibrated head labels mismatch; falling back to centroids.")
@@ -166,11 +171,47 @@ class EncoderClassifier(ClassifierProtocol):
                 raise RuntimeError(
                     "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
                 )
-            self._calib_W = W
-            self._calib_b = b
+
+            if head_type == "mlp":
+                if layer_weights is None or layer_biases is None:
+                    if allow_fallback:
+                        print("[EncoderClassifier] Warning: calibrated MLP head missing weights; falling back to centroids.")
+                        return False
+                    raise RuntimeError(
+                        "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                    )
+                weights_list = [np.asarray(w, dtype="float32") for w in layer_weights]
+                biases_list = [np.asarray(bias, dtype="float32") for bias in layer_biases]
+                if not weights_list or weights_list[0].shape[0] != feature_dim:
+                    if allow_fallback:
+                        print("[EncoderClassifier] Warning: calibrated MLP head incompatible; falling back to centroids.")
+                        return False
+                    raise RuntimeError(
+                        "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                    )
+                self._mlp_weights = weights_list
+                self._mlp_biases = biases_list
+                self._calib_feature_dim = feature_dim
+            else:
+                if W is None or b is None or W.ndim != 2 or b.ndim != 1 or W.shape[0] != len(labels) or b.shape[0] != len(labels):
+                    if allow_fallback:
+                        print("[EncoderClassifier] Warning: calibrated head incompatible; falling back to centroids.")
+                        return False
+                    raise RuntimeError(
+                        "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                    )
+                if feature_dim <= 0 or feature_dim != W.shape[1]:
+                    if allow_fallback:
+                        print("[EncoderClassifier] Warning: calibrated head incompatible; falling back to centroids.")
+                        return False
+                    raise RuntimeError(
+                        "Encoder calibrated head missing or incompatible. Run `python -m RouterGym.scripts.train_encoder_calibrated_head` to regenerate encoder_calibrated_head.npz."
+                    )
+                self._calib_W = np.asarray(W, dtype="float32")
+                self._calib_b = np.asarray(b, dtype="float32")
+                self._calib_feature_dim = feature_dim
             self._calib_mean = mean
             self._calib_std = std
-            self._calib_feature_dim = feature_dim
             try:
                 self._tfidf_classifier = TFIDFClassifier(labels=self.labels)
             except Exception:
@@ -250,6 +291,21 @@ class EncoderClassifier(ClassifierProtocol):
             )
         return features
 
+    def _softmax(self, logits: np.ndarray) -> np.ndarray:
+        shifted = logits - logits.max(axis=-1, keepdims=True)
+        exp = np.exp(shifted, dtype="float64")
+        return exp / exp.sum(axis=-1, keepdims=True)
+
+    def _forward_mlp(self, feats_std: np.ndarray) -> np.ndarray:
+        if self._mlp_weights is None or self._mlp_biases is None or np is None:
+            raise RuntimeError("MLP weights not loaded for calibrated head.")
+        z = feats_std
+        for idx, (W, b) in enumerate(zip(self._mlp_weights, self._mlp_biases)):
+            z = z @ W + b
+            if idx < len(self._mlp_weights) - 1:
+                z = np.maximum(0.0, z)
+        return self._softmax(z)
+
     @property
     def backend_name(self) -> str:
         """Expose which backend is active for debugging/analytics."""
@@ -260,17 +316,20 @@ class EncoderClassifier(ClassifierProtocol):
             try:
                 emb = self._encoder.encode(text or "", normalize_embeddings=True)  # type: ignore[attr-defined]
                 emb_np = np.array(emb, dtype="float32")
-                if self._head_mode_active == "calibrated" and self._calib_W is not None and self._calib_b is not None:
+                if self._head_mode_active == "calibrated" and self._calib_feature_dim is not None:
                     feats = self._compute_calibrated_features(text, emb_np)
                     if feats is not None:
                         mean = self._calib_mean if self._calib_mean is not None else np.zeros_like(feats)
                         std = self._calib_std if self._calib_std is not None else np.ones_like(feats)
                         std_safe = np.where(std > 1e-6, std, 1.0)
                         feats_std = (feats - mean) / std_safe
-                        logits = self._calib_W @ feats_std + self._calib_b
-                        logits = logits - float(logits.max())
-                        exp = np.exp(logits, dtype="float64")
-                        probs = exp / float(exp.sum())
+                        if self._head_type == "mlp":
+                            probs = self._forward_mlp(feats_std)
+                        else:
+                            if self._calib_W is None or self._calib_b is None:
+                                raise RuntimeError("Calibrated logistic head missing weights.")
+                            logits = self._calib_W @ feats_std + self._calib_b
+                            probs = self._softmax(logits)
                         return {lbl: float(probs[idx]) for idx, lbl in enumerate(self.labels)}
 
                 if self._centroids is not None and self._centroid_labels:

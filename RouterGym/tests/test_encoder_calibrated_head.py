@@ -63,6 +63,69 @@ def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> N
     assert classifier._calib_feature_dim == feature_dim
 
 
+def test_calibrated_head_mlp_inference(monkeypatch: Any, tmp_path: Path) -> None:
+    labels = ["access", "hardware"]
+    feature_dim = 14
+    head_path = tmp_path / "encoder_calibrated_head.npz"
+    layer_weights = [
+        np.ones((feature_dim, 4), dtype="float32"),
+        np.ones((4, len(labels)), dtype="float32"),
+    ]
+    layer_biases = [
+        np.zeros(4, dtype="float32"),
+        np.array([0.5, -0.5], dtype="float32"),
+    ]
+    np.savez(
+        head_path,
+        labels=np.array(labels, dtype=object),
+        feature_mean=np.zeros(feature_dim, dtype="float32"),
+        feature_std=np.ones(feature_dim, dtype="float32"),
+        feature_dim=np.array(feature_dim, dtype="int64"),
+        head_type=np.array("mlp"),
+        layer_weights=np.array(layer_weights, dtype=object),
+        layer_biases=np.array(layer_biases, dtype=object),
+    )
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
+    classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
+    monkeypatch.setattr(classifier, "_compute_calibrated_features", lambda text, emb: np.ones(feature_dim, dtype="float32"))  # type: ignore[method-assign]
+    classifier._tfidf_classifier = object()  # type: ignore[assignment]
+    probs = classifier.predict_proba("text")
+    assert classifier._head_mode_active == "calibrated"
+    assert set(probs.keys()) == set(labels)
+    assert abs(sum(probs.values()) - 1.0) < 1e-6
+    assert probs["access"] != probs["hardware"]
+
+
+def test_logreg_head_defaults_when_missing_head_type(monkeypatch: Any, tmp_path: Path) -> None:
+    labels = ["access", "hardware"]
+    feature_dim = 6
+    head_path = tmp_path / "encoder_calibrated_head.npz"
+    W = np.ones((len(labels), feature_dim), dtype="float32")
+    b = np.zeros(len(labels), dtype="float32")
+    np.savez(
+        head_path,
+        labels=np.array(labels, dtype=object),
+        W=W,
+        b=b,
+        feature_mean=np.zeros(feature_dim, dtype="float32"),
+        feature_std=np.ones(feature_dim, dtype="float32"),
+        feature_dim=np.array(feature_dim, dtype="int64"),
+    )
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
+    classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
+    monkeypatch.setattr(classifier, "_compute_calibrated_features", lambda text, emb: np.ones(feature_dim, dtype="float32"))  # type: ignore[method-assign]
+    classifier._tfidf_classifier = object()  # type: ignore[assignment]
+    probs = classifier.predict_proba("text")
+    assert classifier._head_type == "logreg"
+    assert abs(sum(probs.values()) - 1.0) < 1e-6
+
+
 def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
     labels = ["access", "administrative rights"]
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")

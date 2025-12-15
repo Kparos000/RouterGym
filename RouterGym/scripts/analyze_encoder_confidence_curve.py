@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict, Sequence
+from typing import Any, Dict, List, Sequence
 
 import numpy as np
 import pandas as pd
@@ -41,16 +41,26 @@ def _load_calibrated_head(path: Path) -> Dict[str, np.ndarray]:
     for key in required:
         if key not in data:
             raise RuntimeError(f"Missing key '{key}' in calibrated head file at {path}")
-    return {
+    head_type = str(data.get("head_type", "logreg"))
+    head: Dict[str, Any] = {
         "labels": data["labels"],
-        "W": np.asarray(data["W"], dtype="float32"),
-        "b": np.asarray(data["b"], dtype="float32"),
         "feature_mean": np.asarray(data["feature_mean"], dtype="float32"),
         "feature_std": np.asarray(data["feature_std"], dtype="float32"),
         "feature_dim": int(data["feature_dim"]),
-        "C": data.get("C"),
+        "head_type": head_type,
         "weight_mode": data.get("weight_mode"),
     }
+    if head_type == "mlp":
+        if "layer_weights" not in data or "layer_biases" not in data:
+            raise RuntimeError("Calibrated MLP head missing layer weights/biases.")
+        head["layer_weights"] = [np.asarray(w, dtype="float32") for w in data["layer_weights"]]
+        head["layer_biases"] = [np.asarray(bias, dtype="float32") for bias in data["layer_biases"]]
+        head["alpha"] = data.get("alpha")
+    else:
+        head["W"] = np.asarray(data["W"], dtype="float32")
+        head["b"] = np.asarray(data["b"], dtype="float32")
+        head["C"] = data.get("C")
+    return head
 
 
 def _compute_metrics(
@@ -78,6 +88,29 @@ def _compute_metrics(
             }
         )
     return pd.DataFrame(rows)
+
+
+def _softmax(logits: np.ndarray) -> np.ndarray:
+    shifted = logits - logits.max(axis=-1, keepdims=True)
+    exp = np.exp(shifted, dtype="float64")
+    return exp / exp.sum(axis=-1, keepdims=True)
+
+
+def _forward_head(head: Dict[str, Any], X_std: np.ndarray) -> np.ndarray:
+    if head["head_type"] == "mlp":
+        weights: List[np.ndarray] = head["layer_weights"]
+        biases: List[np.ndarray] = head["layer_biases"]
+        z = X_std
+        for idx, (W, b) in enumerate(zip(weights, biases)):
+            z = z @ W + b
+            if idx < len(weights) - 1:
+                z = np.maximum(0.0, z)
+        return _softmax(z)
+    # default logreg
+    W = head["W"]
+    b = head["b"]
+    logits = X_std @ W + b
+    return _softmax(logits)
 
 
 def run_analysis(
@@ -119,11 +152,7 @@ def run_analysis(
     std_safe = np.where(std > 1e-6, std, 1.0)
     X_val_std = (X_val - mean) / std_safe
 
-    logits = head["W"] @ X_val_std.T + head["b"][:, None]
-    logits = logits - logits.max(axis=0)
-    exp = np.exp(logits, dtype="float64")
-    probs = exp / exp.sum(axis=0)
-    probs = probs.T  # shape (n_val, num_labels)
+    probs = _forward_head(head, X_val_std)
 
     y_val_ids = np.array([LABEL_TO_ID[canonicalize_label(lbl)] for lbl in y_val], dtype=int)
     tau_list = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9]

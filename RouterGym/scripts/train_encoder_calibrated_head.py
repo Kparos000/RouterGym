@@ -9,10 +9,10 @@ import logging
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import f1_score
+from sklearn.neural_network import MLPClassifier
 
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
@@ -36,6 +36,7 @@ DEFAULT_LABEL_COL = "Topic_group"
 HEAD_OUT_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_calibrated_head.npz"
 HEAD_VERSION = "1.0"
 C_GRID = [0.5, 1.0, 2.0]
+ALPHA_GRID = [1e-4, 3e-4, 1e-3]
 WEIGHT_MODES = ["balanced", "balanced_plus_boosts"]
 log = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def _select_best_config(
     candidates: List[Dict[str, Any]],
     weight_mode_order: List[str] = WEIGHT_MODES,
 ) -> Dict[str, Any]:
-    """Select the best candidate by val_acc, then macro_f1, then tie-breaker on C/weight order."""
+    """Select the best candidate by val_acc, then macro_f1, then tie-breaker on alpha/weight order."""
 
     def weight_mode_rank(mode: str) -> int:
         return weight_mode_order.index(mode) if mode in weight_mode_order else len(weight_mode_order)
@@ -136,7 +137,7 @@ def _select_best_config(
             -c["val_acc"],
             -c["macro_f1"],
             weight_mode_rank(c["weight_mode"]),
-            c["C"],
+            c.get("alpha", 0.0),
         ),
     )
     return candidates_sorted[0]
@@ -191,22 +192,24 @@ def train_head(
 
     candidates: List[Dict[str, Any]] = []
     if C is not None:
-        sweep_C = [C]
+        sweep_alphas = [C]  # Backward-compat: treat provided C as alpha for MLP
         sweep_weight_modes = ["balanced_plus_boosts"]
     else:
-        sweep_C = C_GRID
+        sweep_alphas = ALPHA_GRID
         sweep_weight_modes = WEIGHT_MODES
 
-    for c_value in sweep_C:
+    for alpha_value in sweep_alphas:
         for weight_mode in sweep_weight_modes:
             class_weights_label = _compute_class_weights(y_train_labels, weight_mode=weight_mode)
             class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
-            clf = LogisticRegression(
-                multi_class="multinomial",
-                solver="lbfgs",
-                max_iter=1000,
+            clf = MLPClassifier(
+                hidden_layer_sizes=(256, 128),
+                activation="relu",
+                solver="adam",
+                max_iter=80,
+                random_state=seed,
+                alpha=alpha_value,
                 class_weight=class_weights,
-                C=c_value,
             )
             clf.fit(X_train_std, y_train_ids)
 
@@ -217,7 +220,7 @@ def train_head(
             train_acc = float((train_preds == y_train_ids).mean())
             candidates.append(
                 {
-                    "C": c_value,
+                    "alpha": alpha_value,
                     "weight_mode": weight_mode,
                     "clf": clf,
                     "class_weights_label": class_weights_label,
@@ -229,19 +232,19 @@ def train_head(
             )
 
     print("[CalibratedHead] Hyperparameter sweep results:")
-    print("C\tweight_mode\t\tval_acc\tmacro_F1")
+    print("alpha\tweight_mode\t\tval_acc\tmacro_F1")
     for cand in candidates:
         print(
-            f"{cand['C']:.2f}\t{cand['weight_mode']:<20s}\t{cand['val_acc']:.3f}\t{cand['macro_f1']:.3f}"
+            f"{cand['alpha']:.4f}\t{cand['weight_mode']:<20s}\t{cand['val_acc']:.3f}\t{cand['macro_f1']:.3f}"
         )
 
     best = _select_best_config(candidates)
     print(
-        f"[CalibratedHead] Selected config: C={best['C']}, weight_mode={best['weight_mode']} "
+        f"[CalibratedHead] Selected config: alpha={best['alpha']}, weight_mode={best['weight_mode']} "
         f"(val_acc={best['val_acc']:.3f}, macro_F1={best['macro_f1']:.3f})"
     )
 
-    best_clf: LogisticRegression = best["clf"]
+    best_clf: MLPClassifier = best["clf"]
     val_preds = best["val_preds"]
     train_acc = best["train_acc"]
     val_acc = best["val_acc"]
@@ -257,14 +260,18 @@ def train_head(
     np.savez(
         HEAD_OUT_PATH,
         labels=np.array(CANONICAL_LABELS, dtype=object),
-        W=best_clf.coef_.astype("float32"),
-        b=best_clf.intercept_.astype("float32"),
+        layer_weights=np.array(best_clf.coefs_, dtype=object),
+        layer_biases=np.array(best_clf.intercepts_, dtype=object),
         feature_mean=mean.astype("float32"),
         feature_std=std.astype("float32"),
         feature_dim=np.array(feature_dim, dtype="int64"),
         version=np.array(HEAD_VERSION),
-        C=np.array(best["C"]),
+        head_type=np.array("mlp"),
+        alpha=np.array(best["alpha"]),
         weight_mode=np.array(best["weight_mode"]),
+        val_accuracy=np.array(val_acc),
+        macro_f1=np.array(best["macro_f1"]),
+        train_accuracy=np.array(train_acc),
     )
     print(
         f"[CalibratedHead] Saved calibrated head to {HEAD_OUT_PATH} "
