@@ -14,13 +14,21 @@ from RouterGym.data.tickets import dataset_loader
 def test_load_dataset_success(tmp_path: Path, monkeypatch: Any) -> None:
     """Ensure dataset load applies column normalization and limits."""
     csv_path = tmp_path / "tickets.csv"
-    df = pd.DataFrame({"Document": ["hello"], "Topic_group": ["greeting"]})
+    df = pd.DataFrame({"Document": ["hello"], "Topic_group": ["Access"]})
     df.to_csv(csv_path, index=False)
     # monkeypatch default path
     monkeypatch.setattr(dataset_loader, "DEFAULT_PATH", csv_path)
     loaded = dataset_loader.load_dataset(1)
     assert list(loaded.columns) == ["text", "label"]
     assert len(loaded) == 1
+
+
+def test_load_dataset_raises_on_unknown_label(tmp_path: Path, monkeypatch: Any) -> None:
+    csv_path = tmp_path / "tickets.csv"
+    pd.DataFrame({"Document": ["hello"], "Topic_group": ["unknown_label"]}).to_csv(csv_path, index=False)
+    monkeypatch.setattr(dataset_loader, "DEFAULT_PATH", csv_path)
+    with pytest.raises(RuntimeError):
+        dataset_loader.load_dataset(1)
 
 
 def test_load_dataset_missing_columns(tmp_path: Path, monkeypatch: Any) -> None:

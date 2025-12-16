@@ -7,8 +7,6 @@ from pathlib import Path
 import pytest
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
-
-
 CENTROID_FILE = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 
 
@@ -19,7 +17,7 @@ def test_centroid_probabilities_valid(monkeypatch: pytest.MonkeyPatch) -> None:
     probs = clf.predict_proba("purchase order for monitors")
     total = sum(probs.values())
     assert 0.99 <= total <= 1.01
-    assert set(probs.keys()).issuperset({"access", "hardware", "purchase", "hr support", "miscellaneous"})
+    assert set(probs.keys()) == set(clf.labels)
 
 
 @pytest.mark.skipif(not CENTROID_FILE.exists(), reason="encoder centroids not trained yet")
@@ -27,7 +25,7 @@ def test_centroid_prefers_relevant_label(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     clf = EncoderClassifier()
     probs = clf.predict_proba("purchase order for monitors")
-    assert probs.get("purchase", 0.0) >= probs.get("access", 0.0)
-    assert probs.get("purchase", 0.0) >= probs.get("hr support", 0.0)
+    assert probs.get("Purchase", 0.0) >= probs.get("Access", 0.0)
+    assert probs.get("Purchase", 0.0) >= probs.get("HR Support", 0.0)
     probs_hw = clf.predict_proba("laptop screen broken replace device")
-    assert probs_hw.get("hardware", 0.0) >= probs_hw.get("purchase", 0.0)
+    assert probs_hw.get("Hardware", 0.0) >= probs_hw.get("Purchase", 0.0)

@@ -17,14 +17,7 @@ from sklearn.neural_network import MLPClassifier
 from RouterGym.classifiers.paths import HEAD_PATH
 from RouterGym.classifiers.tfidf_classifier import TFIDFClassifier
 from RouterGym.classifiers.utils import apply_lexical_prior
-from RouterGym.label_space import (
-    CANONICAL_LABELS,
-    ID_TO_LABEL,
-    LABEL_NORMALIZATION_MAP,
-    LABEL_TO_ID,
-    canonical_label,
-    canonicalize_label,
-)
+from RouterGym.label_space import CANONICAL_LABELS, ID_TO_LABEL, LABEL_TO_ID, canonicalize_label
 
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -49,7 +42,9 @@ def _load_dataset(path: Path, text_col: str, label_col: str) -> pd.DataFrame:
     df = df[[text_col, label_col]].dropna()
     df[text_col] = df[text_col].astype(str)
     df[label_col] = df[label_col].apply(canonicalize_label)
-    df = df[df[label_col].isin(CANONICAL_LABELS)]
+    unexpected = set(df[label_col].unique()) - set(CANONICAL_LABELS)
+    if unexpected:
+        raise RuntimeError(f"Unexpected labels in dataset: {sorted(unexpected)}")
     return df.reset_index(drop=True)
 
 
@@ -85,37 +80,31 @@ def _compute_class_weights(y_labels: np.ndarray, weight_mode: str = "balanced_pl
     """Compute balanced class weights from canonical string labels."""
     # Accept either canonical strings or integer IDs and normalize to strings for validation.
     normalized_labels_list: List[str] = []
-    unexpected_raw: List[str] = []
     for lbl in y_labels:
-        # Handle numeric labels even when dtype=object.
         if isinstance(lbl, (int, np.integer)):
             idx_int = int(lbl)
             if idx_int not in ID_TO_LABEL:
                 raise RuntimeError(f"Unexpected label id {idx_int} in y_labels")
             normalized_labels_list.append(ID_TO_LABEL[idx_int])
         else:
-            raw = str(lbl).strip().lower()
-            norm = canonical_label(raw)
-            if raw not in CANONICAL_LABELS and raw not in LABEL_NORMALIZATION_MAP:
-                # Surface truly unknown labels instead of silently mapping to misc.
-                unexpected_raw.append(raw)
+            norm = canonicalize_label(str(lbl))
             normalized_labels_list.append(norm)
 
-    if unexpected_raw:
-        raise RuntimeError(f"Unexpected labels in y_labels: {sorted(set(unexpected_raw))}")
     normalized_labels = np.array(normalized_labels_list, dtype=object)
 
     unique_y = np.unique(normalized_labels)
+    unexpected = set(unique_y) - set(CANONICAL_LABELS)
+    if unexpected:
+        raise RuntimeError(f"Unexpected labels in y_labels: {sorted(unexpected)}")
     base_weights = compute_class_weight(class_weight="balanced", classes=unique_y, y=normalized_labels)
     weights: Dict[str, float] = {label: float(weight) for label, weight in zip(unique_y, base_weights)}
-    # Ensure every canonical label is present; default unseen classes to weight 1.0
     weights = {label: weights.get(label, 1.0) for label in CANONICAL_LABELS}
 
     if weight_mode == "balanced_plus_boosts":
         # Targeted boost for minority/underperforming classes to improve recall without collapsing overall accuracy.
-        weights["hr support"] = weights.get("hr support", 1.0) * 1.3
-        weights["purchase"] = weights.get("purchase", 1.0) * 1.1
-        weights["administrative rights"] = weights.get("administrative rights", 1.0) * 1.1
+        weights["HR Support"] = weights.get("HR Support", 1.0) * 1.3
+        weights["Purchase"] = weights.get("Purchase", 1.0) * 1.1
+        weights["Administrative rights"] = weights.get("Administrative rights", 1.0) * 1.1
     elif weight_mode == "balanced":
         pass
     else:

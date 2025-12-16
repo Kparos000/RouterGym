@@ -11,7 +11,7 @@ from RouterGym.classifiers.encoder_classifier import EncoderClassifier
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
 from RouterGym.contracts.schema_contract import SchemaContract
 from RouterGym.engines.model_registry import get_repair_model
-from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonical_label
+from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonicalize_label
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -39,27 +39,31 @@ def classification_instruction() -> str:
             "You are an expert IT support triage assistant.",
             "",
             "Classify a single IT support ticket into EXACTLY ONE category:",
-            "- access: login failures, password resets, MFA/SSO/VPN access issues, permission denied for portals.",
-            "- administrative rights: requests for elevated/admin privileges to install or configure software, group or role changes granting admin powers.",
-            "- hardware: physical device or peripheral issues (laptop, monitor, keyboard, mouse, docking station, printer).",
-            "- hr support: payroll/benefits/leave/onboarding/offboarding/employment status/HR portal content questions.",
-            "- purchase: requests to buy/order/procure/renew/pay for hardware, software, licenses, subscriptions, invoices, vendor spend.",
-            "- miscellaneous: genuinely unclear, mixed, or off-topic IT questions. Only use 'miscellaneous' if none of the above clearly apply.",
+            "- Access: login failures, password resets, MFA/SSO/VPN access issues, permission denied for portals.",
+            "- Administrative rights: requests for elevated/admin privileges to install or configure software, group or role changes granting admin powers.",
+            "- Hardware: physical device or peripheral issues (laptop, monitor, keyboard, mouse, docking station, printer).",
+            "- HR Support: payroll/benefits/leave/onboarding/offboarding/employment status/HR portal content questions.",
+            "- Purchase: requests to buy/order/procure/renew/pay for hardware, software, licenses, subscriptions, invoices, vendor spend.",
+            "- Internal Project: internal initiative/project work (setup, coordination, project-specific tooling).",
+            "- Storage: storage capacity, quotas, disk/drive space, backups/archival.",
+            "- Miscellaneous: genuinely unclear, mixed, or off-topic IT questions. Only use 'Miscellaneous' if none of the above clearly apply.",
             "",
             "Hard boundary examples (resolve ambiguity):",
-            '- "Need access to HR portal" -> access (NOT hr support; portal access issue).',
-            '- "Need admin rights to install HR payroll tool" -> administrative rights (NOT hr support).',
-            '- "Question about benefits enrollment" -> hr support (NOT access).',
-            '- "Need to order new monitors for the team" -> purchase (NOT hardware; it is a buying request).',
+            '- "Need access to HR portal" -> Access (NOT HR Support; portal access issue).',
+            '- "Need admin rights to install HR payroll tool" -> Administrative rights (NOT HR Support).',
+            '- "Question about benefits enrollment" -> HR Support (NOT Access).',
+            '- "Need to order new monitors for the team" -> Purchase (NOT Hardware; it is a buying request).',
+            '- "Create repo for internal project Apollo" -> Internal Project (NOT Miscellaneous).',
+            '- "Increase my OneDrive quota" -> Storage (NOT Miscellaneous).',
             "",
             "Think step-by-step before answering:",
             "1) Restate the main request briefly.",
             "2) Identify strong cues (order/buy/purchase, access/login/password, admin/rights, benefits/payroll/leave, device names).",
             "3) Pick the SINGLE best category that matches the primary intent.",
-            "4) Only use 'miscellaneous' if no other label reasonably fits after re-reading.",
+            "4) Only use 'Miscellaneous' if no other label reasonably fits after re-reading.",
             "",
             "Respond with STRICT JSON only:",
-            '{"reasoning": "<short explanation>", "category": "<one of: access, administrative rights, hardware, hr support, purchase, miscellaneous>"}',
+            '{"reasoning": "<short explanation>", "category": "<one of: Access, Administrative rights, Hardware, HR Support, Purchase, Internal Project, Storage, Miscellaneous>"}',
         ]
     )
 
@@ -198,19 +202,19 @@ def _normalize_category(raw: str, context: str = "") -> str:
         return any(k in combined for k in keys)
 
     if contains_any(strong_access):
-        return "access"
+        return canonicalize_label("Access")
     if contains_any(strong_hardware):
-        return "hardware"
+        return canonicalize_label("Hardware")
 
     if text in CANONICAL_LABEL_SET:
-        return text
+        return canonicalize_label(text)
 
     keyword_map = [
         (
             {"admin", "administrator", "permission", "privilege", "rights", "entitlement", "group"},
-            "administrative rights",
+            "Administrative rights",
         ),
-        ({"hr", "benefit", "leave", "vacation", "payroll"}, "hr support"),
+        ({"hr", "benefit", "leave", "vacation", "payroll"}, "HR Support"),
         (
             {
                 "buy",
@@ -224,24 +228,31 @@ def _normalize_category(raw: str, context: str = "") -> str:
                 "quote",
                 "po",
             },
-            "purchase",
+            "Purchase",
         ),
     ]
     for keywords, label in keyword_map:
         if any(k in combined for k in keywords):
-            return label
+            return canonicalize_label(label)
 
+    if "internal project" in combined:
+        return canonicalize_label("Internal Project")
+    if "storage" in combined or "quota" in combined or "disk" in combined:
+        return canonicalize_label("Storage")
     if "misc" in combined or "general" in combined or "other" in combined:
-        return "miscellaneous"
-    # If no strong match, prefer miscellaneous over unknown to avoid empty labels
-    return canonical_label(text)
+        return canonicalize_label("Miscellaneous")
+    # If no strong match, prefer Miscellaneous over unknown to avoid empty labels while still canonicalizing.
+    try:
+        return canonicalize_label(text)
+    except RuntimeError:
+        return "Miscellaneous"
 
 
 def infer_category_from_text(text: str) -> str:
     """Heuristic mapping from ticket text to canonical labels."""
     lower = (text or "").lower()
     keyword_map = [
-        ({"login", "password", "account", "access", "credential", "mfa", "sso"}, "access"),
+        ({"login", "password", "account", "access", "credential", "mfa", "sso"}, "Access"),
         (
             {
                 "admin",
@@ -254,21 +265,34 @@ def infer_category_from_text(text: str) -> str:
                 "group",
                 "security group",
             },
-            "administrative rights",
+            "Administrative rights",
         ),
-        ({"laptop", "printer", "device", "hardware", "dock", "keyboard", "mouse", "monitor", "screen"}, "hardware"),
-        ({"hr", "benefit", "leave", "vacation", "payroll"}, "hr support"),
+        ({"laptop", "printer", "device", "hardware", "dock", "keyboard", "mouse", "monitor", "screen"}, "Hardware"),
+        ({"hr", "benefit", "leave", "vacation", "payroll"}, "HR Support"),
         (
-            {"buy", "purchase", "order", "procure", "invoice", "billing", "subscription", "license", "quote", "po"},
-            "purchase",
+            {
+                "buy",
+                "purchase",
+                "order",
+                "procure",
+                "invoice",
+                "billing",
+                "subscription",
+                "license",
+                "quote",
+                "po",
+            },
+            "Purchase",
         ),
+        ({"internal project", "project work"}, "Internal Project"),
+        ({"storage", "quota", "disk", "drive"}, "Storage"),
     ]
     for keywords, label in keyword_map:
         if any(k in lower for k in keywords):
-            return label
+            return canonicalize_label(label)
     if "misc" in lower or "general" in lower or "other" in lower:
-        return "miscellaneous"
-    return "miscellaneous"
+        return canonicalize_label("Miscellaneous")
+    return "Miscellaneous"
 
 
 class SelfRepair:

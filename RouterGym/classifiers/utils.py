@@ -31,7 +31,7 @@ def normalize_probabilities(scores: Dict[str, float], labels: Iterable[str]) -> 
 
 
 CATEGORY_KEYWORDS: Dict[str, List[str]] = {
-    "access": [
+    "Access": [
         "access",
         "login",
         "log in",
@@ -51,7 +51,7 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "authorisation",
     ],
     # Explicitly separate administrative rights from access to strengthen recall on permissions.
-    "administrative rights": [
+    "Administrative rights": [
         "admin",
         "administrator",
         "admin rights",
@@ -69,7 +69,7 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "access change",
         "group change",
     ],
-    "hardware": [
+    "Hardware": [
         "laptop",
         "computer",
         "pc",
@@ -86,7 +86,7 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "phone",
         "hardware",
     ],
-    "hr support": [
+    "HR Support": [
         "hr",
         "human resources",
         "payroll",
@@ -122,7 +122,7 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "promotion",
         "appraisal",
     ],
-    "purchase": [
+    "Purchase": [
         "purchase",
         "buy",
         "buying",
@@ -149,8 +149,10 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
         "hardware purchase",
         "software purchase",
     ],
+    "Internal Project": ["internal project", "project work", "initiative", "internal program"],
+    "Storage": ["storage", "quota", "disk", "drive", "backup", "archive", "archival"],
     # Keep miscellaneous extremely low-signal; it should only win when nothing else fits.
-    "miscellaneous": ["general", "question", "enquiry", "inquiry", "other", "misc", "miscellaneous"],
+    "Miscellaneous": ["general", "question", "enquiry", "inquiry", "other", "misc", "miscellaneous"],
 }
 
 
@@ -169,8 +171,9 @@ def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.75,
             for kw in keywords:
                 if kw and kw in lower:
                     count += 1.0
-            weight = 1.3 if canonical_label(label) == "hr support" else 1.2 if canonical_label(label) == "purchase" else 1.0
-            hits[canonical_label(label)] = count * weight
+            canonical = canonical_label(label)
+            weight = 1.3 if canonical == "HR Support" else 1.2 if canonical == "Purchase" else 1.0
+            hits[canonical] = count * weight
 
         total_hits = sum(hits.values())
         if total_hits <= 0:
@@ -179,8 +182,8 @@ def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.75,
         epsilon = 1e-6
         prior_raw = {lbl: (hits.get(lbl, 0.0) + epsilon) for lbl in probs}
         # Reduce the influence of the miscellaneous prior so it only wins when clearly dominant.
-        if "miscellaneous" in prior_raw:
-            prior_raw["miscellaneous"] *= 0.5
+        if "Miscellaneous" in prior_raw:
+            prior_raw["Miscellaneous"] *= 0.5
         prior_total = sum(prior_raw.values()) or 1.0
         prior = {lbl: val / prior_total for lbl, val in prior_raw.items()}
         blended: Dict[str, float] = {}

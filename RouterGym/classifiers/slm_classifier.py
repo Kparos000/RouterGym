@@ -17,8 +17,8 @@ from RouterGym.classifiers.utils import (
 )
 
 _KEYWORDS: Dict[str, List[str]] = {
-    "access": ["login", "password", "account", "mfa", "otp", "sso", "lockout"],
-    "administrative rights": [
+    "Access": ["login", "password", "account", "mfa", "otp", "sso", "lockout"],
+    "Administrative rights": [
         "admin",
         "administrator",
         "privilege",
@@ -29,8 +29,8 @@ _KEYWORDS: Dict[str, List[str]] = {
         "group",
         "security group",
     ],
-    "hardware": ["laptop", "printer", "dock", "monitor", "battery", "device", "keyboard", "mouse", "screen"],
-    "hr support": [
+    "Hardware": ["laptop", "printer", "dock", "monitor", "battery", "device", "keyboard", "mouse", "screen"],
+    "HR Support": [
         "benefit",
         "benefits",
         "leave",
@@ -45,8 +45,8 @@ _KEYWORDS: Dict[str, List[str]] = {
         "time off",
         "pto",
     ],
-    "miscellaneous": ["misc", "general", "other"],
-    "purchase": [
+    "Miscellaneous": ["misc", "general", "other"],
+    "Purchase": [
         "purchase",
         "buy",
         "order",
@@ -66,6 +66,8 @@ _KEYWORDS: Dict[str, List[str]] = {
         "procurement",
         "billing",
     ],
+    "Internal Project": ["internal project", "project work", "initiative", "internal program"],
+    "Storage": ["storage", "quota", "disk", "drive", "backup", "archive"],
 }
 
 
@@ -131,9 +133,12 @@ class SLMClassifier(ClassifierProtocol):
                 break
         if parsed is None:
             return None
-        category = canonical_label(
-            parsed.get("category") or parsed.get("label") or parsed.get("predicted_category") or ""
-        )
+        try:
+            category = canonical_label(
+                parsed.get("category") or parsed.get("label") or parsed.get("predicted_category") or ""
+            )
+        except RuntimeError:
+            category = None
         if category not in self.label_set:
             # Fall back to lexical prior if the model produced an unexpected label.
             prior = apply_lexical_prior(text, {lbl: 1.0 / max(len(self.labels), 1) for lbl in self.labels})
@@ -155,10 +160,10 @@ class SLMClassifier(ClassifierProtocol):
                 continue
             for keyword in keywords:
                 if keyword in lower:
-                    boost = 1.8 if canonical in {"hr support", "purchase"} else 1.5
+                    boost = 1.8 if canonical in {"HR Support", "Purchase"} else 1.5
                     scores[canonical] += boost
         if len(lower.split()) < 5:
-            scores["miscellaneous"] = scores.get("miscellaneous", 0.05) + 0.2
+            scores["Miscellaneous"] = scores.get("Miscellaneous", 0.05) + 0.2
         return scores
 
     def predict_proba(self, text: str) -> Dict[str, float]:
@@ -174,7 +179,7 @@ class SLMClassifier(ClassifierProtocol):
     def predict_label(self, text: str) -> str:
         probabilities = self.predict_proba(text)
         label = self._last_model_label or max(probabilities, key=probabilities.__getitem__)
-        if label == "miscellaneous":
+        if label == "Miscellaneous":
             # If the model falls back to miscellaneous, check lexical prior for strong concrete evidence.
             lower = (text or "").lower()
             prior_hits: Dict[str, float] = {}
@@ -187,7 +192,7 @@ class SLMClassifier(ClassifierProtocol):
             total_hits = sum(prior_hits.values())
             if total_hits > 0:
                 # Normalize and find strongest non-misc label.
-                miscless = {k: v for k, v in prior_hits.items() if k != "miscellaneous"}
+                miscless = {k: v for k, v in prior_hits.items() if k != "Miscellaneous"}
                 if miscless:
                     top_label = max(miscless, key=lambda k: miscless[k])
                     top_score = miscless[top_label] / max(total_hits, 1e-9)

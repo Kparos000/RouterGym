@@ -228,7 +228,10 @@ def _build_result_row(
 
 def _norm_label(label: Any) -> str:
     """Normalize category labels into the canonical label space."""
-    return canonical_label(str(label or ""))
+    try:
+        return canonical_label(str(label or ""))
+    except RuntimeError:
+        return "Miscellaneous"
 
 
 def _as_dict(obj: Any, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

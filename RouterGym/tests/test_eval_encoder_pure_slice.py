@@ -17,17 +17,17 @@ class DummyClassifier:
     def predict_label(self, text: str) -> str:
         self.calls.append(text)
         if "purchase" in text:
-            return "purchase"
+            return "Purchase"
         if "laptop" in text:
-            return "hardware"
-        return "access"
+            return "Hardware"
+        return "Access"
 
 
 def test_eval_encoder_pure_slice_outputs(tmp_path: Path, monkeypatch: Any, capsys: Any) -> None:
     data = pd.DataFrame(
         {
             "Document": ["purchase order", "laptop broken", "login issue"],
-            "Topic_group": ["purchase", "hardware", "access"],
+            "Topic_group": ["Purchase", "Hardware", "Access"],
         }
     )
 
@@ -43,4 +43,4 @@ def test_eval_encoder_pure_slice_outputs(tmp_path: Path, monkeypatch: Any, capsy
     eval_script.evaluate_slice(0, 3, "centroid")
     captured = capsys.readouterr().out
     assert "Overall accuracy on slice" in captured
-    assert "purchase" in captured and "hardware" in captured and "access" in captured
+    assert "Purchase" in captured and "Hardware" in captured and "Access" in captured

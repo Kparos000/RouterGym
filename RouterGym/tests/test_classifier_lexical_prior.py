@@ -9,26 +9,29 @@ from RouterGym.classifiers.utils import apply_lexical_prior
 
 
 BASE = {
-    "access": 0.2,
-    "hardware": 0.2,
-    "hr support": 0.2,
-    "purchase": 0.2,
-    "miscellaneous": 0.2,
+    "Access": 0.125,
+    "Administrative rights": 0.125,
+    "Hardware": 0.125,
+    "HR Support": 0.125,
+    "Purchase": 0.125,
+    "Internal Project": 0.125,
+    "Storage": 0.125,
+    "Miscellaneous": 0.125,
 }
 
 
 def test_purchase_text_boosts_purchase() -> None:
     text = "We need to raise a purchase order for new licenses"
     adjusted = apply_lexical_prior(text, BASE)
-    assert adjusted["purchase"] > BASE["purchase"]
-    assert adjusted["purchase"] > adjusted["hardware"]
+    assert adjusted["Purchase"] > BASE["Purchase"]
+    assert adjusted["Purchase"] > adjusted["Hardware"]
 
 
 def test_hardware_text_boosts_hardware() -> None:
     text = "My laptop screen is broken and needs replacement"
     adjusted = apply_lexical_prior(text, BASE)
-    assert adjusted["hardware"] > BASE["hardware"]
-    assert adjusted["hardware"] > adjusted["hr support"]
+    assert adjusted["Hardware"] > BASE["Hardware"]
+    assert adjusted["Hardware"] > adjusted["HR Support"]
 
 
 def test_neutral_text_stays_close() -> None:
@@ -42,12 +45,12 @@ def test_neutral_text_stays_close() -> None:
 def test_misc_prior_is_downweighted() -> None:
     text = "password reset other category maybe general other"
     adjusted = apply_lexical_prior(text, BASE)
-    assert adjusted["access"] >= adjusted["miscellaneous"]
+    assert adjusted["Access"] >= adjusted["Miscellaneous"]
 
 
 def test_classification_instruction_mentions_all_labels_and_misc_rule() -> None:
     prompt = classification_instruction()
-    for label in ["access", "administrative rights", "hardware", "hr support", "purchase", "miscellaneous"]:
+    for label in ["Access", "Administrative rights", "Hardware", "HR Support", "Purchase", "Internal Project", "Storage", "Miscellaneous"]:
         assert label in prompt
     assert "miscellaneous" in prompt.lower()
     assert "only" in prompt.lower()
@@ -56,20 +59,20 @@ def test_classification_instruction_mentions_all_labels_and_misc_rule() -> None:
 def test_hr_support_keywords_dominate_misc() -> None:
     text = "My payroll and vacation hours are incorrect; HR needs to fix my benefits."
     adjusted = apply_lexical_prior(text, BASE)
-    assert adjusted["hr support"] > adjusted["miscellaneous"]
-    assert adjusted["hr support"] > adjusted["hardware"]
+    assert adjusted["HR Support"] > adjusted["Miscellaneous"]
+    assert adjusted["HR Support"] > adjusted["Hardware"]
 
 
 def test_purchase_keywords_dominate_misc() -> None:
     text = "Need to renew my software subscription and get a new invoice from the vendor."
     adjusted = apply_lexical_prior(text, BASE)
-    assert adjusted["purchase"] > adjusted["miscellaneous"]
-    assert adjusted["purchase"] > adjusted["access"]
+    assert adjusted["Purchase"] > adjusted["Miscellaneous"]
+    assert adjusted["Purchase"] > adjusted["Access"]
 
 
 def test_generic_text_keeps_misc_relevant() -> None:
     text = "I have a general question."
     adjusted = apply_lexical_prior(text, BASE)
-    assert "miscellaneous" in adjusted
+    assert "Miscellaneous" in adjusted
     # Generic text should not strongly favor concrete labels; misc should be competitive.
-    assert adjusted["miscellaneous"] >= 0.15
+    assert adjusted["Miscellaneous"] >= 0.10

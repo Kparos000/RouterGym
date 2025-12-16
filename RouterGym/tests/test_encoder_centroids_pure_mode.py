@@ -15,4 +15,4 @@ def test_pure_mode_skips_lexical(monkeypatch: pytest.MonkeyPatch) -> None:
     clf = EncoderClassifier(use_lexical_prior=False)
     probs = clf.predict_proba("generic text with no centroids")
     assert abs(sum(probs.values()) - 1.0) < 1e-6
-    assert set(probs.keys()).issuperset({"access", "hardware", "purchase", "hr support", "miscellaneous"})
+    assert set(probs.keys()).issuperset(set(clf.labels))

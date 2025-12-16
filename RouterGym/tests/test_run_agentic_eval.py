@@ -50,7 +50,7 @@ def test_run_agentic_eval_writes_jsonl(monkeypatch: Any, tmp_path: Path) -> None
 
     # Stub pipeline to return deterministic AgentOutput.
     def _fake_pipeline(ticket_text: str, router_name: str, context_mode: str) -> Dict[str, Any]:
-        return _fake_agent_output("hardware")
+        return _fake_agent_output("Hardware")
 
     monkeypatch.setattr(agentic, "run_ticket_pipeline", _fake_pipeline)
 
@@ -69,6 +69,6 @@ def test_run_agentic_eval_writes_jsonl(monkeypatch: Any, tmp_path: Path) -> None
         obj = json.loads(line)
         # Validate core contract.
         validated = validate_agent_output(obj)
-        assert validated["category"] == "hardware"
+        assert validated["category"] == "Hardware"
         assert "ticket_id" in obj
         assert "gold_label" in obj

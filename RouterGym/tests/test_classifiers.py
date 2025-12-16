@@ -37,7 +37,7 @@ def test_each_classifier_returns_normalized_distribution() -> None:
 
 
 def test_router_engine_emits_metrics_payload() -> None:
-    ticket = {"text": SAMPLE_TEXT, "gold_category": "access"}
+    ticket = {"text": SAMPLE_TEXT, "gold_category": "Access"}
     engine = RouterEngine("tfidf")
     summary = engine.classify_ticket(ticket)
     payload = summary.as_dict("tfidf")
@@ -49,7 +49,7 @@ def test_router_engine_emits_metrics_payload() -> None:
 
 def test_slm_classifier_agent_wraps_registry() -> None:
     agent = SLMClassifierAgent()
-    result = agent.classify(SAMPLE_TEXT, gold_category="access")
+    result = agent.classify(SAMPLE_TEXT, gold_category="Access")
     assert result["classifier_mode"] == "slm_finetuned"
     assert result["predicted_category"] in LABEL_SET
     assert 0.0 <= result["confidence"] <= 1.0

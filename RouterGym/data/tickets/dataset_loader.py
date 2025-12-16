@@ -27,8 +27,11 @@ def load_dataset(n: Optional[int] = 5) -> pd.DataFrame:
     df = df.dropna(subset=["text", "label"])
     df = df[df["text"].astype(str).str.strip() != ""]
     df = df[df["label"].astype(str).str.strip() != ""]
-    # Normalize labels into the canonical 6-label space.
-    df["label"] = df["label"].apply(canonicalize_label)
+    # Normalize labels into the canonical 8-label space.
+    try:
+        df["label"] = df["label"].apply(canonicalize_label)
+    except RuntimeError as err:
+        raise RuntimeError(f"Failed to normalize labels: {err}") from err
     unexpected = set(df["label"].unique()) - set(CANONICAL_LABELS)
     if unexpected:
         raise RuntimeError(

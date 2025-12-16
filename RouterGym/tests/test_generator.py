@@ -80,14 +80,13 @@ class DummyEncoderClassifier:
         self.backend_name = "encoder_calibrated"
 
     def predict_proba(self, text: str):
-        return {
-            CANONICAL_LABELS[0]: 0.1,
-            CANONICAL_LABELS[1]: 0.1,
-            CANONICAL_LABELS[2]: 0.7,
-            CANONICAL_LABELS[3]: 0.05,
-            CANONICAL_LABELS[4]: 0.03,
-            CANONICAL_LABELS[5]: 0.02,
-        }
+        total = len(CANONICAL_LABELS)
+        probs = {label: 0.0 for label in CANONICAL_LABELS}
+        probs[CANONICAL_LABELS[0]] = 0.6
+        remaining = (1.0 - probs[CANONICAL_LABELS[0]]) / float(total - 1)
+        for label in CANONICAL_LABELS[1:]:
+            probs[label] = remaining
+        return probs
 
 
 def test_run_ticket_pipeline(monkeypatch):

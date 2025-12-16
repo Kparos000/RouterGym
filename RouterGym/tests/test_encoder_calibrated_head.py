@@ -38,7 +38,7 @@ def _build_fake_head(path: Path, labels: list[str], feature_dim: int) -> None:
 
 
 def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "administrative rights"]
+    labels = ["Access", "Administrative rights"]
     head_path = tmp_path / "encoder_calibrated_head.npz"
     feature_dim = 6  # embedding_dim (2) + priors (2) + tfidf (2) for two labels
     _build_fake_head(head_path, labels, feature_dim=feature_dim)
@@ -59,12 +59,12 @@ def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> N
     assert classifier._head_mode_active == "calibrated"
     assert set(probs.keys()) == set(labels)
     assert abs(sum(probs.values()) - 1.0) < 1e-6
-    assert probs["access"] != probs["administrative rights"]
+    assert probs["Access"] != probs["Administrative rights"]
     assert classifier._calib_feature_dim == feature_dim
 
 
 def test_calibrated_head_mlp_inference(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "hardware"]
+    labels = ["Access", "Hardware"]
     feature_dim = 14
     head_path = tmp_path / "encoder_calibrated_head.npz"
     layer_weights = [
@@ -96,11 +96,11 @@ def test_calibrated_head_mlp_inference(monkeypatch: Any, tmp_path: Path) -> None
     assert classifier._head_mode_active == "calibrated"
     assert set(probs.keys()) == set(labels)
     assert abs(sum(probs.values()) - 1.0) < 1e-6
-    assert probs["access"] != probs["hardware"]
+    assert probs["Access"] != probs["Hardware"]
 
 
 def test_logreg_head_defaults_when_missing_head_type(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "hardware"]
+    labels = ["Access", "Hardware"]
     feature_dim = 6
     head_path = tmp_path / "encoder_calibrated_head.npz"
     W = np.ones((len(labels), feature_dim), dtype="float32")
@@ -127,7 +127,7 @@ def test_logreg_head_defaults_when_missing_head_type(monkeypatch: Any, tmp_path:
 
 
 def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "administrative rights"]
+    labels = ["Access", "Administrative rights"]
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
@@ -144,8 +144,8 @@ def test_compute_class_weights_upweights_hr(monkeypatch: Any) -> None:
     y_named = np.array([label_mapping[idx] for idx in y_labels])
 
     weights = trainer._compute_class_weights(y_named)
-    assert weights["hr support"] > weights["access"]
-    assert weights["hr support"] > weights.get("miscellaneous", 0.0)
+    assert weights["HR Support"] > weights["Access"]
+    assert weights["HR Support"] > weights.get("Miscellaneous", 0.0)
 
 
 def test_compute_class_weights_accepts_int_ids() -> None:
@@ -162,14 +162,14 @@ def test_compute_class_weights_accepts_object_ints() -> None:
 
 def test_compute_class_weights_modes() -> None:
     y_labels = np.array(
-        ["access", "access", "hardware", "hr support", "purchase", "administrative rights"],
+        ["Access", "Access", "Hardware", "HR Support", "Purchase", "Administrative rights"],
         dtype=object,
     )
     balanced = trainer._compute_class_weights(y_labels, weight_mode="balanced")
     boosted = trainer._compute_class_weights(y_labels, weight_mode="balanced_plus_boosts")
-    # Boosted should give higher weight to hr support and administrative rights compared to balanced.
-    assert boosted["hr support"] > balanced["hr support"]
-    assert boosted["administrative rights"] > balanced["administrative rights"]
+    # Boosted should give higher weight to HR Support and Administrative rights compared to balanced.
+    assert boosted["HR Support"] > balanced["HR Support"]
+    assert boosted["Administrative rights"] > balanced["Administrative rights"]
 
 
 def test_compute_class_weights_raises_on_unexpected_label() -> None:
@@ -179,7 +179,7 @@ def test_compute_class_weights_raises_on_unexpected_label() -> None:
 
 
 def test_auto_mode_raises_without_calibrated_head(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "administrative rights"]
+    labels = ["Access", "Administrative rights"]
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
@@ -188,7 +188,7 @@ def test_auto_mode_raises_without_calibrated_head(monkeypatch: Any, tmp_path: Pa
 
 
 def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "administrative rights"]
+    labels = ["Access", "Administrative rights"]
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
@@ -198,7 +198,7 @@ def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path
 
 
 def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path) -> None:
-    labels = ["access", "administrative rights"]
+    labels = ["Access", "Administrative rights"]
     head_path = tmp_path / "encoder_calibrated_head.npz"
     _build_fake_head(head_path, labels, feature_dim=6)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)

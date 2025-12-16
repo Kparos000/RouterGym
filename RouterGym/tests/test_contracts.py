@@ -54,11 +54,11 @@ def _build_agent_output_payload() -> dict:
     return {
         "original_query": "laptop is broken",
         "rewritten_query": "laptop is broken",
-        "category": "hardware",
+        "category": "Hardware",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
         "classification": {
-            "label": "hardware",
+            "label": "Hardware",
             "confidence": 0.9,
             "confidence_bucket": "high",
         },
@@ -88,7 +88,7 @@ def test_agent_output_schema_happy_path() -> None:
     ok, errors = schema.validate(dict(payload))
     assert ok and not errors
     validated = validate_agent_output(payload)
-    assert validated["category"] == "hardware"
+    assert validated["category"] == "Hardware"
     assert validated["context_mode"] == "none"
 
 

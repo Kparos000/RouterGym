@@ -10,18 +10,20 @@ from RouterGym.label_space import CANONICAL_LABELS
 
 def _synthetic_corpus() -> List[Tuple[str, str]]:
     return [
-        ("reset password login issue", "access"),
-        ("vpn access locked account", "access"),
-        ("admin rights needed to install software", "administrative rights"),
-        ("add user to security group with admin permissions", "administrative rights"),
-        ("laptop battery failure and monitor issue", "hardware"),
-        ("printer paper jam and monitor not working", "hardware"),
-        ("payroll benefits question for hr", "hr support"),
-        ("vacation approval request and hr question", "hr support"),
-        ("buy new laptop invoice and renewal", "purchase"),
-        ("renew software subscription and pay invoice", "purchase"),
-        ("general inquiry no clear category", "miscellaneous"),
-        ("miscellaneous other general question", "miscellaneous"),
+        ("reset password login issue", "Access"),
+        ("vpn access locked account", "Access"),
+        ("admin rights needed to install software", "Administrative rights"),
+        ("add user to security group with admin permissions", "Administrative rights"),
+        ("laptop battery failure and monitor issue", "Hardware"),
+        ("printer paper jam and monitor not working", "Hardware"),
+        ("payroll benefits question for hr", "HR Support"),
+        ("vacation approval request and hr question", "HR Support"),
+        ("buy new laptop invoice and renewal", "Purchase"),
+        ("renew software subscription and pay invoice", "Purchase"),
+        ("general inquiry no clear category", "Miscellaneous"),
+        ("miscellaneous other general question", "Miscellaneous"),
+        ("internal project roadmap and stakeholders", "Internal Project"),
+        ("storage quota increase and disk expansion", "Storage"),
     ]
 
 
@@ -43,8 +45,8 @@ def test_tfidf_classifier_prefers_hr_and_purchase_over_misc() -> None:
 
     hr_text = "payroll deduction and benefits correction required"
     hr_probs = clf.predict_proba(hr_text)
-    assert hr_probs["hr support"] > hr_probs["miscellaneous"]
+    assert hr_probs["HR Support"] > hr_probs["Miscellaneous"]
 
     purchase_text = "need to renew software subscription and pay vendor invoice"
     purchase_probs = clf.predict_proba(purchase_text)
-    assert purchase_probs["purchase"] > purchase_probs["miscellaneous"]
+    assert purchase_probs["Purchase"] > purchase_probs["Miscellaneous"]

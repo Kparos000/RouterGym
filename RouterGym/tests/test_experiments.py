@@ -30,13 +30,13 @@ class DummyClient:
         return type(
             "Resp",
             (),
-            {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'}}]},
+            {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r","predicted_category":"Access"}'}}]},
         )
 
 
 def test_run_single_and_config(monkeypatch: Any) -> None:
     """Run single ticket and a minimal config without filesystem side effects."""
-    ticket = {"id": 1, "text": "test ticket", "category": "access"}
+    ticket = {"id": 1, "text": "test ticket", "category": "Access"}
     kb_retriever = None
     router = LLMFirstRouter()
 
@@ -101,9 +101,9 @@ def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
 def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
     """Ensure groundedness/accuracy vary and KB is attached when RAG is used."""
     tickets = [
-        {"id": 1, "text": "vpn issue", "category": "network"},
-        {"id": 2, "text": "password reset", "category": "access"},
-        {"id": 3, "text": "printer problem", "category": "hardware"},
+        {"id": 1, "text": "vpn issue", "category": "Access"},
+        {"id": 2, "text": "password reset", "category": "Administrative rights"},
+        {"id": 3, "text": "printer problem", "category": "Hardware"},
     ]
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
 
@@ -117,7 +117,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
 
         def route(self, ticket: dict, **kwargs: Any):
             self.count += 1
-            predicted = ["network", "access", "hardware"][(self.count - 1) % 3]
+            predicted = ["Access", "Administrative rights", "Hardware"][(self.count - 1) % 3]
             return {
                 "strategy": "llm_first",
                 "target_model": "llm",
@@ -238,7 +238,7 @@ def test_encoder_grid_uses_calibrated_backend(monkeypatch: Any, tmp_path: Path) 
     monkeypatch.setattr(run_grid, "load_models", lambda *args, **kwargs: {})
     monkeypatch.setattr(router_engine, "EncoderClassifier", DummyEncoder)
 
-    tickets = [{"id": 1, "text": "reset password", "category": "access", "gold_category": "access"}]
+    tickets = [{"id": 1, "text": "reset password", "category": "Access", "gold_category": "Access"}]
     df = run_grid.run_full_grid(
         tickets=tickets,
         kb_retriever=None,
@@ -319,7 +319,7 @@ def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Pa
     row = df.iloc[0]
     assert row["classifier_label"] == "hardware"
     assert row["predicted_category"] == "hardware"
-    assert row["llm_category"] == "access"
+    assert row["llm_category"] == "Access"
     assert row["classifier_backend"] == "fake_backend"
 
 

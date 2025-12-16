@@ -115,7 +115,10 @@ def latency(start_time: float, end_time: float) -> float:
 
 
 def _normalize_label(label: str) -> str:
-    return canonical_label(label)
+    try:
+        return canonical_label(label)
+    except RuntimeError:
+        return str(label).strip()
 
 
 def estimate_tokens(*texts: str) -> int:

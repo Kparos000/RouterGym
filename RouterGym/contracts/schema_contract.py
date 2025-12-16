@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
-from RouterGym.label_space import CANONICAL_LABEL_SET, canonical_label
+from RouterGym.label_space import CANONICAL_LABEL_SET, canonicalize_label
 
 ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_hybrid", "transcript"}
 ALLOWED_CONFIDENCE_BUCKETS = {"high", "medium", "low"}
@@ -41,9 +41,13 @@ class SchemaContract:
             if isinstance(json_obj[field], str) and not json_obj[field].strip():
                 errors.append(f"Field {field} is empty")
             if field == "predicted_category":
-                normalized = canonical_label(json_obj[field])
-                if normalized not in CANONICAL_LABEL_SET:
+                try:
+                    normalized = canonicalize_label(json_obj[field])
+                except RuntimeError:
                     errors.append("Field predicted_category is not in the allowed label set")
+                else:
+                    if normalized not in CANONICAL_LABEL_SET:
+                        errors.append("Field predicted_category is not in the allowed label set")
         return len(errors) == 0, errors
 
 
@@ -78,11 +82,10 @@ class AgentOutputSchema:
                 errors.append(f"Field {field} is empty")
 
         if "category" in json_obj:
-            raw_category = str(json_obj["category"]).strip().lower()
-            if raw_category not in CANONICAL_LABEL_SET:
+            try:
+                json_obj["category"] = canonicalize_label(json_obj["category"])
+            except RuntimeError:
                 errors.append("Field category is not in the allowed label set")
-            else:
-                json_obj["category"] = canonical_label(raw_category)
 
         if "classifier_confidence" not in json_obj:
             errors.append("Missing field: classifier_confidence")
@@ -106,6 +109,11 @@ class AgentOutputSchema:
             else:
                 if "label" not in cls or not isinstance(cls.get("label"), str):
                     errors.append("classification.label must be a string")
+                else:
+                    try:
+                        cls["label"] = canonicalize_label(cls["label"])
+                    except RuntimeError:
+                        errors.append("classification.label is not in the allowed label set")
                 if "confidence" not in cls or not isinstance(cls.get("confidence"), (int, float)):
                     errors.append("classification.confidence must be a number")
                 else:
