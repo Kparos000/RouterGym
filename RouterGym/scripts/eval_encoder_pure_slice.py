@@ -10,7 +10,7 @@ from typing import Dict
 import pandas as pd
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
-from RouterGym.label_space import CANONICAL_LABELS, canonical_label
+from RouterGym.label_space import CANONICAL_LABELS, canonicalize_label
 
 DATA_PATH = Path("RouterGym/data/tickets/tickets.csv")
 TEXT_COL = "Document"
@@ -28,15 +28,31 @@ def _load_data(path: Path) -> pd.DataFrame:
 
 
 def _normalize_label(label: str) -> str:
-    return canonical_label(label)
+    return canonicalize_label(label)
 
 
 def evaluate_slice(ticket_start: int, ticket_limit: int, head_mode: str) -> None:
-    os.environ["ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR"] = "0"
+    # Preserve centroid/pure behaviour when requested, but keep calibrated path aligned with training features.
+    if head_mode == "centroid":
+        os.environ["ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR"] = "0"
+    else:
+        os.environ.pop("ROUTERGYM_ENCODER_USE_LEXICAL_PRIOR", None)
     df = _load_data(DATA_PATH)
     end = ticket_start + ticket_limit if ticket_limit >= 0 else len(df)
     slice_df = df.iloc[ticket_start:end]
-    clf = EncoderClassifier(use_lexical_prior=False, head_mode=head_mode)
+    # Initialize encoder classifier. For calibrated mode we explicitly reload the calibrated head after instantiation
+    # to avoid stale centroid label sets (older 6-label centroids) forcing a mismatch.
+    clf = EncoderClassifier(use_lexical_prior=True, head_mode="centroid" if head_mode == "calibrated" else head_mode)
+    if head_mode in {"calibrated", "auto"}:
+        # Reset labels to canonical 8-label order and drop any loaded centroids before loading the calibrated head.
+        clf.labels = [canonicalize_label(lbl) for lbl in CANONICALS]  # type: ignore[attr-defined]
+        clf._centroids = None  # type: ignore[attr-defined]
+        clf._centroid_labels = []  # type: ignore[attr-defined]
+        success = clf._try_load_calibrated_head(allow_fallback=False)  # type: ignore[attr-defined]
+        if not success:
+            raise RuntimeError(
+                "Calibrated head unavailable or incompatible. Run train_encoder_calibrated_head to regenerate."
+            )
 
     total_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
     correct_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
@@ -44,9 +60,9 @@ def evaluate_slice(ticket_start: int, ticket_limit: int, head_mode: str) -> None
 
     for _, row in slice_df.iterrows():
         gold = _normalize_label(str(row[LABEL_COL]))
-        pred = canonical_label(clf.predict_label(str(row[TEXT_COL])))
+        pred = canonicalize_label(clf.predict_label(str(row[TEXT_COL])))
         if gold not in total_per:
-            gold = "miscellaneous"
+            gold = "Miscellaneous"
         total_per[gold] += 1
         if pred == gold:
             correct_per[gold] += 1
