@@ -113,10 +113,14 @@ class EncoderClassifier(ClassifierProtocol):
             if centroids.ndim != 2 or len(labels) != centroids.shape[0]:
                 print("[EncoderClassifier] Invalid centroid file; falling back to prototypes.")
                 return
+            normalized_labels = [canonical_label(lbl) for lbl in labels]
+            if set(normalized_labels) != set(self.labels):
+                print("[EncoderClassifier] Centroid labels do not match canonical label space; ignoring centroids.")
+                return
             # Normalize centroids once for cosine similarity.
             norms = np.linalg.norm(centroids, axis=1, keepdims=True) + 1e-9
             self._centroids = centroids / norms
-            self._centroid_labels = [canonical_label(lbl) for lbl in labels]
+            self._centroid_labels = normalized_labels
             self.labels = self._centroid_labels
             self.metadata.description += " (centroid mode)"
         except Exception:

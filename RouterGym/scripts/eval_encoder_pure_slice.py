@@ -40,19 +40,7 @@ def evaluate_slice(ticket_start: int, ticket_limit: int, head_mode: str) -> None
     df = _load_data(DATA_PATH)
     end = ticket_start + ticket_limit if ticket_limit >= 0 else len(df)
     slice_df = df.iloc[ticket_start:end]
-    # Initialize encoder classifier. For calibrated mode we explicitly reload the calibrated head after instantiation
-    # to avoid stale centroid label sets (older 6-label centroids) forcing a mismatch.
-    clf = EncoderClassifier(use_lexical_prior=True, head_mode="centroid" if head_mode == "calibrated" else head_mode)
-    if head_mode in {"calibrated", "auto"}:
-        # Reset labels to canonical 8-label order and drop any loaded centroids before loading the calibrated head.
-        clf.labels = [canonicalize_label(lbl) for lbl in CANONICALS]  # type: ignore[attr-defined]
-        clf._centroids = None  # type: ignore[attr-defined]
-        clf._centroid_labels = []  # type: ignore[attr-defined]
-        success = clf._try_load_calibrated_head(allow_fallback=False)  # type: ignore[attr-defined]
-        if not success:
-            raise RuntimeError(
-                "Calibrated head unavailable or incompatible. Run train_encoder_calibrated_head to regenerate."
-            )
+    clf = EncoderClassifier(labels=CANONICAL_LABELS, use_lexical_prior=True, head_mode=head_mode)
 
     total_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
     correct_per: Dict[str, int] = {lbl: 0 for lbl in CANONICALS}
