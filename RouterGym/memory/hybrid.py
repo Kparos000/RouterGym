@@ -1,19 +1,18 @@
-"""Hybrid hierarchical memory combining BM25, dense RAG, salience, and transcript context."""
+"""Hybrid memory combining BM25 and dense RAG fusion over KB."""
 
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from RouterGym.memory.base import MemoryBase, MemoryRetrieval
 from RouterGym.memory.bm25 import BM25Memory
 from RouterGym.memory.rag import RAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
-from RouterGym.memory.transcript import TranscriptMemory
 
 
 class HybridRAGMemory(MemoryBase):
-    """Hybrid retrieval with lexical + dense fusion and transcript hierarchy."""
+    """Hybrid retrieval with lexical + dense fusion."""
 
     def __init__(self, top_k: int = 3, alpha: float = 0.6) -> None:
         super().__init__()
@@ -22,7 +21,6 @@ class HybridRAGMemory(MemoryBase):
         self.bm25 = BM25Memory(top_k=top_k)
         self.dense = RAGMemory(top_k=top_k)
         self.salience = SalienceGatedMemory(top_k=top_k, max_items=8)
-        self.transcript = TranscriptMemory(k=3)
         self._latest_context = ""
 
     def load(self, ticket: Dict[str, Any]) -> None:
@@ -30,19 +28,15 @@ class HybridRAGMemory(MemoryBase):
         self.bm25.load(ticket)
         self.dense.load(ticket)
         self.salience.load(ticket)
-        self.transcript.load(ticket)
 
     def update(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> None:
-        self.transcript.update(text)
         self.salience.update(text)
         self.bm25.update(text)
         self.dense.update(text)
 
     def retrieve(self, query: Optional[str] = None) -> MemoryRetrieval:
         start = time.perf_counter()
-        query_text = query or (self.transcript.messages[-1] if self.transcript.messages else "")
-
-        transcript_hits = self._transcript_hits(query_text)
+        query_text = query or ""
         bm25_result = self.bm25.retrieve(query_text)
         dense_result = self.dense.retrieve(query_text)
         fused_snippets = self._fuse_snippets(
@@ -51,8 +45,6 @@ class HybridRAGMemory(MemoryBase):
         )
 
         context_parts = []
-        if transcript_hits:
-            context_parts.append(self._format_snippets(transcript_hits, prefix="Transcript"))
         if fused_snippets:
             context_parts.append(self._format_snippets(fused_snippets, prefix="KB Hybrid"))
         context = "\n\n".join([part for part in context_parts if part])
@@ -65,14 +57,13 @@ class HybridRAGMemory(MemoryBase):
         relevance = (
             fused_snippets[0]["score"]
             if fused_snippets
-            else (transcript_hits[0][1] if transcript_hits else 0.0)
+            else 0.0
         )
         metadata = {
             "mode": "rag_hybrid",
             "alpha": self.alpha,
             "query": query_text,
             "fused_snippets": fused_snippets,
-            "transcript_hits": [{"text": t, "score": s} for t, s in transcript_hits],
             "bm25": bm25_result.retrieval_metadata,
             "dense": dense_result.retrieval_metadata,
         }
@@ -89,25 +80,6 @@ class HybridRAGMemory(MemoryBase):
 
     def summarize(self) -> str:
         return self._latest_context
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-    def _transcript_hits(self, query: str) -> List[Tuple[str, float]]:
-        """Score transcript snippets by overlap + salience."""
-        if not query:
-            return []
-        q_tokens = set(query.lower().split())
-        hits: List[Tuple[str, float]] = []
-        for text, sal_score in self.salience.docs:
-            tokens = set(text.lower().split())
-            if not tokens:
-                continue
-            overlap = len(tokens & q_tokens) / max(len(q_tokens), 1)
-            score = sal_score * (1.0 + overlap)
-            hits.append((text, score))
-        hits.sort(key=lambda x: x[1], reverse=True)
-        return hits[: self.top_k]
 
     def _fuse_snippets(
         self, bm25_snips: List[Dict[str, Any]], dense_snips: List[Dict[str, Any]]

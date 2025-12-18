@@ -348,7 +348,7 @@ def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
 
 def test_dimensions_constants() -> None:
     assert run_grid.ROUTER_MODES == ["llm_first", "slm_dominant", "hybrid_specialist"]
-    assert run_grid.MEMORY_MODES_CANONICAL == ["none", "transcript", "rag_dense", "rag_bm25", "rag_hybrid"]
+    assert run_grid.MEMORY_MODES_CANONICAL == ["none", "rag_dense", "rag_bm25", "rag_hybrid"]
     assert run_grid.CLASSIFIER_MODES == ["tfidf", "encoder", "slm_finetuned"]
     assert run_grid.MODEL_NAMES == ["slm1", "slm2", "llm1", "llm2"]
     assert len(set(run_grid.ROUTER_MODES)) == len(run_grid.ROUTER_MODES)

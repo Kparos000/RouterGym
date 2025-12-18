@@ -39,7 +39,7 @@ DEFAULT_TICKETS_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
 ROUTER_MODES = ["llm_first", "slm_dominant", "hybrid_specialist"]
-MEMORY_MODES_CANONICAL = ["none", "transcript", "rag_dense", "rag_bm25", "rag_hybrid"]
+MEMORY_MODES_CANONICAL = ["none", "rag_dense", "rag_bm25", "rag_hybrid"]
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 CLASSIFIER_MODES = ["tfidf", "encoder", "slm_finetuned"]
 

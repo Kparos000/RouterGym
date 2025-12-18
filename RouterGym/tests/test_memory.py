@@ -8,7 +8,6 @@ from RouterGym.memory.bm25 import BM25Memory
 from RouterGym.memory.hybrid import HybridRAGMemory
 from RouterGym.memory.none import NoneMemory
 from RouterGym.memory.rag import RAGMemory
-from RouterGym.memory.transcript import TranscriptMemory
 
 
 def _make_index(kb: Dict[str, str]) -> List[Dict[str, Any]]:
@@ -47,17 +46,6 @@ def test_none_memory() -> None:
     payload = mem.retrieve("text")
     assert payload.retrieved_context == ""
     assert payload.retrieval_cost_tokens == 0
-    assert payload.retrieval_latency_ms >= 0.0
-
-
-def test_transcript_memory_add_and_get() -> None:
-    mem = TranscriptMemory(k=2)
-    mem.update("hello")
-    mem.update("world")
-    payload = mem.retrieve()
-    assert "hello" in payload.retrieved_context
-    assert "world" in payload.retrieved_context
-    assert payload.relevance_score > 0
     assert payload.retrieval_latency_ms >= 0.0
 
 

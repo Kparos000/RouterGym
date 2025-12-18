@@ -5,18 +5,16 @@ from typing import Dict, Type
 
 from RouterGym.memory.base import MemoryRetrieval
 from RouterGym.memory.none import NoneMemory
-from RouterGym.memory.transcript import TranscriptMemory
 from RouterGym.memory.rag import RAGMemory, DenseRAGMemory
 from RouterGym.memory.bm25 import BM25Memory
 from RouterGym.memory.hybrid import HybridRAGMemory
 from RouterGym.memory.salience import SalienceGatedMemory
 
 # Public memory modes
-MEMORY_MODES = ["none", "transcript", "rag_dense", "rag_bm25", "rag_hybrid"]
+MEMORY_MODES = ["none", "rag_dense", "rag_bm25", "rag_hybrid"]
 
 _MEMORY_REGISTRY: Dict[str, Type] = {
     "none": NoneMemory,
-    "transcript": TranscriptMemory,
     "rag_dense": DenseRAGMemory,
     "rag_bm25": BM25Memory,
     "rag_hybrid": HybridRAGMemory,
@@ -46,7 +44,6 @@ def get_memory_class(name: str):
 __all__ = [
     "MemoryRetrieval",
     "NoneMemory",
-    "TranscriptMemory",
     "RAGMemory",
     "DenseRAGMemory",
     "BM25Memory",
