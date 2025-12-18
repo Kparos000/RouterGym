@@ -132,3 +132,55 @@ def test_run_ticket_pipeline(monkeypatch):
     assert isinstance(result["metrics"], dict)
     for key in ("latency_ms", "total_input_tokens", "total_output_tokens", "total_cost_usd"):
         assert key in result["metrics"]
+
+
+def test_run_ticket_pipeline_with_kb(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "final_answer": "answer",
+                    "reasoning": "reason",
+                    "resolution_steps": ["step1"],
+                }
+            )
+
+    from RouterGym.memory.base import MemoryBase, MemoryRetrieval  # type: ignore
+
+    class DummyMemory(MemoryBase):
+        def update(self, item, metadata=None):
+            return None
+
+        def summarize(self):
+            return "summary"
+
+        def retrieve(self, query=None):
+            return MemoryRetrieval(
+                retrieved_context="ctx",
+                retrieval_metadata={
+                    "mode": "rag_dense",
+                    "query": query or "",
+                    "snippets": [
+                        {"policy_id": "hardware.doc1", "category": "Hardware", "text": "content"},
+                        {"policy_id": "hardware.doc1", "category": "Hardware", "text": "content2"},
+                    ],
+                },
+                retrieval_cost_tokens=0,
+                relevance_score=1.0,
+                retrieval_latency_ms=1.0,
+            )
+
+    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+    monkeypatch.setattr(gen, "get_memory_class", lambda mode: DummyMemory)
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "ticket with kb"},
+        model_name="slm1",
+        memory_mode="rag_dense",
+    )
+
+    assert result["memory_mode"] == "rag_dense"
+    assert result["kb_policy_ids"] == ["hardware.doc1"]
+    assert result["kb_categories"] == ["Hardware"]

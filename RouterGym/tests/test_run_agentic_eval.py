@@ -51,7 +51,7 @@ def test_run_agentic_eval_writes_jsonl(monkeypatch: Any, tmp_path: Path) -> None
             "label": ["hardware", "access", "purchase"],
         }
     )
-    monkeypatch.setattr(agentic, "load_dataset", lambda n=None: fake_df)
+    monkeypatch.setattr(agentic, "load_dataset", lambda n=None, start=0, path=None: fake_df)
 
     # Stub pipeline to return deterministic AgentOutput.
     def _fake_pipeline(ticket: Dict[str, Any], model_name: str, memory_mode: str, router_mode: str = "manual", max_retries: int = 2) -> Dict[str, Any]:
@@ -62,6 +62,7 @@ def test_run_agentic_eval_writes_jsonl(monkeypatch: Any, tmp_path: Path) -> None
     out_path = tmp_path / "agentic.jsonl"
     agentic.run_agentic_eval(
         ticket_limit=2,
+        ticket_start=0,
         router_mode="manual",
         memory_mode="none",
         model_name="slm1",

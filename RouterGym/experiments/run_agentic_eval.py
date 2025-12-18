@@ -14,13 +14,14 @@ from RouterGym.data.tickets.dataset_loader import load_dataset
 
 def run_agentic_eval(
     ticket_limit: Optional[int],
+    ticket_start: int,
     router_mode: str,
     memory_mode: str,
     model_name: str,
     output_path: Path,
 ) -> None:
     """Run the agentic pipeline over tickets and write results as JSONL."""
-    df = load_dataset(n=None)
+    df = load_dataset(n=None, start=ticket_start)
     if ticket_limit is not None:
         df = df.head(ticket_limit)
 
@@ -47,6 +48,7 @@ def run_agentic_eval(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run agentic pipeline over tickets and emit AgentOutput JSONL.")
     parser.add_argument("--ticket-limit", type=int, default=None, help="Limit number of tickets (optional).")
+    parser.add_argument("--ticket-start", type=int, default=0, help="Row offset to start from (default 0).")
     parser.add_argument("--router-mode", type=str, default="manual", help="Router strategy name (recorded only).")
     parser.add_argument("--memory-mode", type=str, default="none", help="Context mode (none, rag_dense, rag_bm25, rag_hybrid).")
     parser.add_argument("--model-name", type=str, default="slm1", help="Model name (slm1/slm2/llm1/llm2).")
@@ -60,6 +62,7 @@ def main() -> None:
 
     run_agentic_eval(
         ticket_limit=args.ticket_limit,
+        ticket_start=args.ticket_start,
         router_mode=args.router_mode,
         memory_mode=args.memory_mode,
         model_name=args.model_name,
