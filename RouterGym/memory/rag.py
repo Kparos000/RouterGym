@@ -23,8 +23,8 @@ class RAGMemory(MemoryBase):
         self.top_k = top_k
         self.embed_model = embed_model
         self.docs: List[str] = []
-        self.kb = kb_loader.load_kb()
-        self.doc_keys, self.doc_texts = self._collect_docs(self.kb)
+        self.index = kb_loader.load_kb_index()
+        self.doc_keys, self.doc_texts, self.doc_meta = self._collect_docs(self.index)
         self.kb_hash = self._kb_hash_safe()
         self.embedder = self._maybe_load_embedder(embed_model)
         self._latest_context = ""
@@ -47,13 +47,25 @@ class RAGMemory(MemoryBase):
         except Exception:
             return None
 
-    def _collect_docs(self, kb: Dict[str, str] | Any) -> Tuple[List[str], List[str]]:
-        if isinstance(kb, dict):
-            items = sorted(kb.items())
+    def _collect_docs(self, index: Dict[str, str] | List[Dict[str, Any]] | Any) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
+        if isinstance(index, list):
+            keys: List[str] = []
+            texts: List[str] = []
+            meta: List[Dict[str, Any]] = []
+            for entry in index:
+                if not isinstance(entry, dict):
+                    continue
+                keys.append(str(entry.get("id", entry.get("path", ""))))
+                texts.append(str(entry.get("content", "")))
+                meta.append(entry)
+            return keys, texts, meta
+        if isinstance(index, dict):
+            items = sorted(index.items())
             keys = [path for path, _ in items]
             texts = [text for _, text in items]
-            return keys, texts
-        return [], []
+            meta = [{"id": key, "content": text, "path": key, "title": key, "category": ""} for key, text in items]
+            return keys, texts, meta
+        return [], [], []
 
     def _kb_hash_safe(self) -> str:
         try:
@@ -130,7 +142,18 @@ class RAGMemory(MemoryBase):
             "kb_hash": self.kb_hash,
             "backend": backend,
             "top_k": self.top_k,
-            "snippets": [{"text": chunk, "score": score} for chunk, score in snippets],
+            "snippets": [
+                {
+                    "policy_id": article.get("id", ""),
+                    "category": article.get("category", ""),
+                    "title": article.get("title", ""),
+                    "tags": article.get("tags", []),
+                    "score": score,
+                    "source": article.get("path", ""),
+                    "text": article.get("content", ""),
+                }
+                for article, score in snippets
+            ],
             "query": query,
             "retrieval_latency_ms": latency_ms,
         }
@@ -147,7 +170,7 @@ class RAGMemory(MemoryBase):
     def summarize(self) -> str:
         return self._latest_context
 
-    def _retrieve_snippets(self, query: str) -> Tuple[List[Tuple[str, float]], str]:
+    def _retrieve_snippets(self, query: str) -> Tuple[List[Tuple[Dict[str, Any], float]], str]:
         if not query:
             return [], "none"
         if self.embedder is not None and self.doc_embeddings.size > 0:
@@ -157,31 +180,34 @@ class RAGMemory(MemoryBase):
             sims = (self.doc_embeddings @ query_vec.T) / (doc_norm * query_norm)
             sims = sims.flatten()
             top_idx = sims.argsort()[-self.top_k :][::-1]
-            ranked = [(self.doc_texts[idx], float(sims[idx])) for idx in top_idx]
+            ranked = [(self.doc_meta[idx], float(sims[idx])) for idx in top_idx]
             return ranked, "embedding"
 
         lexical = self._lexical_rank(query)
         return lexical, "lexical"
 
-    def _lexical_rank(self, query: str) -> List[Tuple[str, float]]:
+    def _lexical_rank(self, query: str) -> List[Tuple[Dict[str, Any], float]]:
         q_tokens = set(query.lower().split())
-        ranked: List[Tuple[str, float]] = []
-        for text in self.doc_texts[:500]:
+        ranked: List[Tuple[Dict[str, Any], float]] = []
+        for idx, meta in enumerate(self.doc_meta[:500]):
+            text = self.doc_texts[idx]
             tokens = set(text.lower().split())
             if not tokens:
                 continue
             overlap = len(tokens & q_tokens) / len(tokens)
             if overlap > 0:
-                ranked.append((text, overlap))
+                ranked.append((meta, overlap))
         ranked.sort(key=lambda item: item[1], reverse=True)
         return ranked[: self.top_k]
 
-    def _format_snippets(self, snippets: List[Tuple[str, float]]) -> str:
+    def _format_snippets(self, snippets: List[Tuple[Dict[str, Any], float]]) -> str:
         formatted = []
-        for idx, (chunk, score) in enumerate(snippets, start=1):
-            if not chunk:
+        for idx, (article, score) in enumerate(snippets, start=1):
+            text = article.get("content", "")
+            if not text:
                 continue
-            formatted.append(f"### KB Reference {idx} (score={score:.2f}):\n> {chunk.strip()}")
+            pid = article.get("id", "")
+            formatted.append(f"### KB Reference {idx} [{pid}] (score={score:.2f}):\n> {text.strip()}")
         return "\n\n".join(formatted)
 
 

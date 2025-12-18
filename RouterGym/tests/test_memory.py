@@ -1,30 +1,41 @@
 """Memory tests."""
 
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, List
 
-from RouterGym.memory.none import NoneMemory
-from RouterGym.memory.transcript import TranscriptMemory
-from RouterGym.memory.rag import RAGMemory
+from RouterGym.data.policy_kb import kb_loader
 from RouterGym.memory.bm25 import BM25Memory
 from RouterGym.memory.hybrid import HybridRAGMemory
-from RouterGym.data.policy_kb import kb_loader
+from RouterGym.memory.none import NoneMemory
+from RouterGym.memory.rag import RAGMemory
+from RouterGym.memory.transcript import TranscriptMemory
+
+
+def _make_index(kb: Dict[str, str]) -> List[Dict[str, Any]]:
+    index: List[Dict[str, Any]] = []
+    for i, (path, text) in enumerate(sorted(kb.items())):
+        index.append(
+            {
+                "id": f"doc{i}",
+                "category": "Access",
+                "title": Path(path).stem,
+                "summary": "",
+                "content": text,
+                "escalation_notes": "",
+                "tags": [],
+                "path": path,
+            }
+        )
+    return index
 
 
 def _patch_kb(monkeypatch: Any, kb: Dict[str, str]) -> None:
-    def fake_load_kb(*args: Any, **kwargs: Any) -> Dict[str, str]:
-        return kb
+    index = _make_index(kb)
 
-    def fake_retrieve(query: str, top_k: int = 3):
-        tokens = set(query.lower().split())
-        hits = []
-        for path, text in kb.items():
-            overlap = len(tokens & set(text.lower().split()))
-            if overlap:
-                hits.append({"chunk": text, "text": text, "score": float(overlap)})
-        return hits[:top_k]
+    def fake_load_kb_index(*args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
+        return index
 
-    monkeypatch.setattr(kb_loader, "load_kb", fake_load_kb)
-    monkeypatch.setattr(kb_loader, "retrieve", fake_retrieve)
+    monkeypatch.setattr(kb_loader, "load_kb_index", fake_load_kb_index)
     monkeypatch.setattr(kb_loader, "kb_hash", lambda: "hash")
     monkeypatch.setattr(kb_loader, "load_cached_embeddings", lambda: {})
     monkeypatch.setattr(kb_loader, "save_cached_embeddings", lambda data: None)
@@ -61,6 +72,8 @@ def test_rag_dense_memory_retrieval(monkeypatch: Any) -> None:
     assert payload.relevance_score > 0.0
     assert payload.retrieval_latency_ms >= 0.0
     assert payload.retrieval_metadata["mode"] == "rag_dense"
+    snips = payload.retrieval_metadata.get("snippets", [])
+    assert snips and "policy_id" in snips[0] and "category" in snips[0]
 
 
 def test_bm25_memory_overlap(monkeypatch: Any) -> None:
@@ -71,6 +84,8 @@ def test_bm25_memory_overlap(monkeypatch: Any) -> None:
     assert "uniqueprintertoken" in payload.retrieved_context
     assert payload.memory_relevance_score > 0
     assert payload.retrieval_metadata["mode"] == "rag_bm25"
+    snips = payload.retrieval_metadata.get("snippets", [])
+    assert snips and "policy_id" in snips[0] and "text" in snips[0]
 
 
 def test_hybrid_memory_fuses(monkeypatch: Any) -> None:
@@ -84,3 +99,5 @@ def test_hybrid_memory_fuses(monkeypatch: Any) -> None:
     dense_latency = result.retrieval_metadata["dense"].get("retrieval_latency_ms", 0.0)
     assert result.retrieval_latency_ms >= max(bm25_latency, dense_latency)
     assert result.memory_relevance_score >= 0.0
+    fused = result.retrieval_metadata.get("fused_snippets", [])
+    assert fused and "policy_id" in fused[0] and "text" in fused[0]

@@ -8,8 +8,8 @@ import time
 from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
-from RouterGym.memory.base import MemoryBase, MemoryRetrieval
 from RouterGym.data.policy_kb import kb_loader
+from RouterGym.memory.base import MemoryBase, MemoryRetrieval
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_]+")
 
@@ -33,21 +33,34 @@ class BM25Memory(MemoryBase):
         self.top_k = top_k
         self.k1 = k1
         self.b = b
-        self.kb = kb_loader.load_kb()
-        self.doc_keys, self.doc_texts = self._collect_docs(self.kb)
+        self.index = kb_loader.load_kb_index()
+        self.doc_keys, self.doc_texts, self.doc_meta = self._collect_docs(self.index)
         self.doc_tokens: List[List[str]] = [self._tokenize(text) for text in self.doc_texts]
         self.doc_freq: Counter[str] = Counter()
         self.term_freqs: List[Counter[str]] = []
         self._latest_context = ""
         self._build_index()
 
-    def _collect_docs(self, kb: Dict[str, str] | Any) -> Tuple[List[str], List[str]]:
-        if isinstance(kb, dict):
-            items = sorted(kb.items())
+    def _collect_docs(self, index: Any) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
+        if isinstance(index, list):
+            keys: List[str] = []
+            texts: List[str] = []
+            meta: List[Dict[str, Any]] = []
+            for entry in index:
+                if not isinstance(entry, dict):
+                    continue
+                keys.append(str(entry.get("id", entry.get("path", ""))))
+                texts.append(_normalize_text(entry.get("content", "")))
+                meta.append(entry)
+            return keys, texts, meta
+        if isinstance(index, dict):
+            # Fallback for legacy dict path->text
+            items = sorted(index.items())
             keys = [path for path, _ in items]
             texts = [_normalize_text(text) for _, text in items]
-            return keys, texts
-        return [], []
+            meta = [{"id": key, "content": text, "path": key, "title": key, "category": ""} for key, text in items]
+            return keys, texts, meta
+        return [], [], []
 
     def _tokenize(self, text: Any) -> List[str]:
         normalized = _normalize_text(text)
@@ -69,9 +82,21 @@ class BM25Memory(MemoryBase):
         if not text:
             return
         normalized = _normalize_text(text)
+        meta = metadata or {}
         tokens = self._tokenize(normalized)
-        self.doc_keys.append(f"dynamic:{len(self.doc_keys)}")
+        key = meta.get("id", f"dynamic:{len(self.doc_keys)}")
+        self.doc_keys.append(str(key))
         self.doc_texts.append(normalized)
+        self.doc_meta.append(
+            {
+                "id": str(key),
+                "content": normalized,
+                "path": meta.get("path", str(key)),
+                "title": meta.get("title", str(key)),
+                "category": meta.get("category", ""),
+                "tags": meta.get("tags", []),
+            }
+        )
         self.doc_tokens.append(tokens)
         tf = Counter(tokens)
         self.term_freqs.append(tf)
@@ -112,13 +137,24 @@ class BM25Memory(MemoryBase):
         top = scores[: self.top_k]
         max_score = top[0][1] if top else 0.0
         snippets = [
-            {"text": self.doc_texts[idx], "score": sc, "source": self.doc_keys[idx]}
+            {
+                "policy_id": self.doc_meta[idx].get("id", self.doc_keys[idx]),
+                "category": self.doc_meta[idx].get("category", ""),
+                "title": self.doc_meta[idx].get("title", ""),
+                "tags": self.doc_meta[idx].get("tags", []),
+                "score": sc,
+                "source": self.doc_meta[idx].get("path", self.doc_keys[idx]),
+                "text": self.doc_texts[idx],
+            }
             for idx, sc in top
         ]
         context_parts = []
         for i, snippet in enumerate(snippets, start=1):
             text = _normalize_text(snippet["text"])
-            context_parts.append(f"### KB (BM25) {i} (score={snippet['score']:.2f}):\n> {text}")
+            pid = snippet.get("policy_id", "")
+            context_parts.append(
+                f"### KB (BM25) {i} [{pid}] (score={snippet['score']:.2f}):\n> {text}"
+            )
         context = "\n\n".join(context_parts)
         latency_ms = (time.perf_counter() - t_start) * 1000
         relevance = float(max_score) if max_score else 0.0

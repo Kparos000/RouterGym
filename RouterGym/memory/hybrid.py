@@ -122,7 +122,19 @@ class HybridRAGMemory(MemoryBase):
             text = snippet.get("text", "")
             if not text:
                 return
-            entry = fused.setdefault(text, {"text": text, "bm25": 0.0, "dense": 0.0})
+            entry = fused.setdefault(
+                text,
+                {
+                    "text": text,
+                    "bm25": 0.0,
+                    "dense": 0.0,
+                    "policy_id": snippet.get("policy_id", ""),
+                    "category": snippet.get("category", ""),
+                    "title": snippet.get("title", ""),
+                    "tags": snippet.get("tags", []),
+                    "source": snippet.get("source", ""),
+                },
+            )
             entry[kind] = float(snippet.get("score", 0.0))
 
         for snip in bm25_snips:
@@ -136,7 +148,17 @@ class HybridRAGMemory(MemoryBase):
             dense_norm = entry["dense"] / max_dense if max_dense else 0.0
             salience_boost = 1.0 + 0.1 * self._salience_score(entry["text"])
             score = (self.alpha * bm25_norm + (1 - self.alpha) * dense_norm) * salience_boost
-            fused_list.append({"text": entry["text"], "score": score})
+            fused_list.append(
+                {
+                    "text": entry["text"],
+                    "score": score,
+                    "policy_id": entry.get("policy_id", ""),
+                    "category": entry.get("category", ""),
+                    "title": entry.get("title", ""),
+                    "tags": entry.get("tags", []),
+                    "source": entry.get("source", ""),
+                }
+            )
 
         fused_list.sort(key=lambda item: item["score"], reverse=True)
         return fused_list[: self.top_k]
@@ -146,9 +168,12 @@ class HybridRAGMemory(MemoryBase):
         for idx, snippet in enumerate(snippets, start=1):
             text = snippet[0] if isinstance(snippet, tuple) else snippet.get("text", "")
             score = snippet[1] if isinstance(snippet, tuple) else snippet.get("score", 0.0)
+            pid = ""
+            if not isinstance(snippet, tuple):
+                pid = snippet.get("policy_id", "")
             if not text:
                 continue
-            formatted.append(f"### {prefix} {idx} (score={score:.2f}):\n> {text.strip()}")
+            formatted.append(f"### {prefix} {idx} [{pid}] (score={score:.2f}):\n> {text.strip()}")
         return "\n\n".join(formatted)
 
     def _salience_score(self, text: str) -> float:

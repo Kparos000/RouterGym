@@ -20,21 +20,25 @@ def _synthetic_kb() -> Dict[str, str]:
 
 
 def _patch_kb(monkeypatch: Any, kb: Dict[str, str]) -> None:
-    def fake_load_kb(*args: Any, **kwargs: Any) -> Dict[str, str]:
-        return kb
+    index: List[Dict[str, Any]] = []
+    for i, (path, text) in enumerate(sorted(kb.items())):
+        index.append(
+            {
+                "id": f"doc{i}",
+                "category": "Access",
+                "title": path.split("/")[-1],
+                "summary": "",
+                "content": text,
+                "escalation_notes": "",
+                "tags": [],
+                "path": path,
+            }
+        )
 
-    def fake_retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        q_tokens = set(query.lower().split())
-        hits: List[Dict[str, Any]] = []
-        for path, text in kb.items():
-            overlap = len(q_tokens & set(text.lower().split()))
-            if overlap:
-                hits.append({"chunk": text, "text": text, "score": float(overlap), "source": path})
-        hits.sort(key=lambda h: h["score"], reverse=True)
-        return hits[:top_k]
+    def fake_load_kb_index(*args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
+        return index
 
-    monkeypatch.setattr(kb_loader, "load_kb", fake_load_kb)
-    monkeypatch.setattr(kb_loader, "retrieve", fake_retrieve)
+    monkeypatch.setattr(kb_loader, "load_kb_index", fake_load_kb_index)
     monkeypatch.setattr(kb_loader, "kb_hash", lambda: "hash")
     monkeypatch.setattr(kb_loader, "load_cached_embeddings", lambda: {})
     monkeypatch.setattr(kb_loader, "save_cached_embeddings", lambda data: None)
