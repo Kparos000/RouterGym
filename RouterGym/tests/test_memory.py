@@ -58,7 +58,7 @@ def test_rag_dense_memory_retrieval(monkeypatch: Any) -> None:
     mem.load({"text": "vpn reset"})
     payload = mem.retrieve("vpn reset")
     assert "KB Reference" in payload.retrieved_context
-    assert payload.relevance_score >= 1.0
+    assert payload.relevance_score > 0.0
     assert payload.retrieval_latency_ms >= 0.0
     assert payload.retrieval_metadata["mode"] == "rag_dense"
 

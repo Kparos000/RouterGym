@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 
 from RouterGym.label_space import CANONICAL_LABEL_SET, canonicalize_label
 
-ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_hybrid", "transcript"}
+ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_bm25", "rag_hybrid", "transcript"}
 ALLOWED_CONFIDENCE_BUCKETS = {"high", "medium", "low"}
 _METRIC_FIELDS = {
     "latency_ms": (float, int, type(None)),

@@ -150,13 +150,6 @@ class RAGMemory(MemoryBase):
     def _retrieve_snippets(self, query: str) -> Tuple[List[Tuple[str, float]], str]:
         if not query:
             return [], "none"
-        live = kb_loader.retrieve(query, top_k=self.top_k)
-        if live:
-            return [
-                (r.get("chunk") or r.get("text", ""), float(r.get("score", 0.0)))
-                for r in live
-            ], "kb_retriever"
-
         if self.embedder is not None and self.doc_embeddings.size > 0:
             query_vec = np.array(self.embedder.encode([query]), dtype="float32")
             doc_norm = np.linalg.norm(self.doc_embeddings, axis=1, keepdims=True) + 1e-9
