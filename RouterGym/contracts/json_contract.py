@@ -26,6 +26,12 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
     """Validate an AgentOutput payload and return a normalized copy or raise ValueError."""
     schema = AgentOutputSchema()
     data = dict(payload)
+    data.setdefault("classifier_label", data.get("classification", {}).get("label", ""))
+    data.setdefault("classifier_confidence", data.get("classification", {}).get("confidence", 0.0))
+    data.setdefault("classifier_confidence_bucket", data.get("classification", {}).get("confidence_bucket", "low"))
+    data.setdefault("memory_mode", data.get("context_mode"))
+    data.setdefault("kb_policy_ids", [])
+    data.setdefault("kb_categories", [])
     if "metrics" not in data:
         data["metrics"] = {
             "latency_ms": None,

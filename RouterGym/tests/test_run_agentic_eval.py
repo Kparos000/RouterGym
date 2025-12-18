@@ -15,6 +15,8 @@ def _fake_agent_output(category: str) -> Dict[str, Any]:
         "original_query": "text",
         "rewritten_query": "text",
         "category": category,
+        "classifier_label": category,
+        "classifier_confidence_bucket": "high",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
         "classification": {
@@ -25,6 +27,9 @@ def _fake_agent_output(category: str) -> Dict[str, Any]:
         "router_name": "slm_dominant",
         "model_used": "slm1",
         "context_mode": "none",
+        "memory_mode": "none",
+        "kb_policy_ids": [],
+        "kb_categories": [],
         "resolution_steps": [],
         "reasoning": "stub",
         "escalation": {"agent_escalation": False, "human_escalation": False, "reasons": []},

@@ -58,6 +58,8 @@ class AgentOutputSchema:
         "original_query",
         "rewritten_query",
         "category",
+        "classifier_label",
+        "classifier_confidence_bucket",
         "classifier_backend",
         "router_name",
         "model_used",
@@ -86,6 +88,17 @@ class AgentOutputSchema:
                 json_obj["category"] = canonicalize_label(json_obj["category"])
             except RuntimeError:
                 errors.append("Field category is not in the allowed label set")
+        if "classifier_label" in json_obj:
+            try:
+                json_obj["classifier_label"] = canonicalize_label(json_obj["classifier_label"])
+            except RuntimeError:
+                errors.append("Field classifier_label is not in the allowed label set")
+        if "classifier_confidence_bucket" in json_obj:
+            bucket = json_obj.get("classifier_confidence_bucket")
+            if bucket and isinstance(bucket, str) and bucket not in ALLOWED_CONFIDENCE_BUCKETS:
+                errors.append(
+                    f"classifier_confidence_bucket must be one of {sorted(ALLOWED_CONFIDENCE_BUCKETS)}"
+                )
 
         if "classifier_confidence" not in json_obj:
             errors.append("Missing field: classifier_confidence")
@@ -99,6 +112,10 @@ class AgentOutputSchema:
         if "context_mode" in json_obj and isinstance(json_obj.get("context_mode"), str):
             if json_obj["context_mode"] not in ALLOWED_CONTEXT_MODES:
                 errors.append(f"context_mode must be one of {sorted(ALLOWED_CONTEXT_MODES)}")
+        if "memory_mode" in json_obj and json_obj.get("memory_mode") is not None:
+            mem_mode = json_obj.get("memory_mode")
+            if not isinstance(mem_mode, str) or mem_mode not in ALLOWED_CONTEXT_MODES:
+                errors.append(f"memory_mode must be one of {sorted(ALLOWED_CONTEXT_MODES)} or None")
 
         if "classification" not in json_obj:
             errors.append("Missing field: classification")
@@ -155,6 +172,19 @@ class AgentOutputSchema:
                     isinstance(r, str) for r in esc["reasons"]
                 ):
                     errors.append("escalation.reasons must be a list of strings")
+
+        if "kb_policy_ids" in json_obj:
+            ids = json_obj.get("kb_policy_ids")
+            if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+                errors.append("kb_policy_ids must be a list of strings")
+        if "kb_categories" in json_obj:
+            cats = json_obj.get("kb_categories")
+            if not isinstance(cats, list) or not all(isinstance(c, str) for c in cats):
+                errors.append("kb_categories must be a list of strings")
+            else:
+                for cat in cats:
+                    if cat and cat not in CANONICAL_LABEL_SET:
+                        errors.append(f"kb_categories contains non-canonical label: {cat}")
 
         if "metrics" not in json_obj:
             errors.append("Missing field: metrics")

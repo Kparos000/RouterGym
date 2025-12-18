@@ -55,8 +55,10 @@ def _build_agent_output_payload() -> dict:
         "original_query": "laptop is broken",
         "rewritten_query": "laptop is broken",
         "category": "Hardware",
+        "classifier_label": "Hardware",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
+        "classifier_confidence_bucket": "high",
         "classification": {
             "label": "Hardware",
             "confidence": 0.9,
@@ -65,6 +67,9 @@ def _build_agent_output_payload() -> dict:
         "router_name": "slm_dominant",
         "model_used": "slm1",
         "context_mode": "none",
+        "memory_mode": "none",
+        "kb_policy_ids": [],
+        "kb_categories": [],
         "resolution_steps": [],
         "reasoning": "dummy",
         "escalation": {
@@ -122,5 +127,9 @@ def test_agent_output_schema_invalid_metrics_type() -> None:
 def test_agent_output_schema_invalid_bucket() -> None:
     payload = _build_agent_output_payload()
     payload["classification"]["confidence_bucket"] = "unknown"
+    with pytest.raises(ValueError):
+        validate_agent_output(payload)
+    payload = _build_agent_output_payload()
+    payload["classifier_confidence_bucket"] = "unknown"
     with pytest.raises(ValueError):
         validate_agent_output(payload)

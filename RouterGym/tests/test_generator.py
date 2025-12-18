@@ -95,8 +95,13 @@ def test_run_ticket_pipeline(monkeypatch):
     assert result["original_query"] == "simple hardware test ticket text"
     assert result["rewritten_query"] == "simple hardware test ticket text"
     assert result["category"] in CANONICAL_LABELS
+    assert result["classifier_label"] == result["classification"]["label"]
+    assert isinstance(result["classifier_confidence_bucket"], str)
     assert result["classifier_backend"] == "encoder_calibrated"
     assert result["context_mode"] == "none"
+    assert result["memory_mode"] == "none"
+    assert result["kb_policy_ids"] == []
+    assert result["kb_categories"] == []
     assert "classification" in result
     cls = result["classification"]
     assert cls["label"] in CANONICAL_LABELS

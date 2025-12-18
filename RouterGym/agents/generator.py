@@ -373,12 +373,19 @@ class ResponseGenerator:
     def build_prompt(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> str:
         """Build a structured prompt from ticket, memory, and KB."""
         base_text = ticket.get("text", "")
+        context_mode = ticket.get("context_mode", "none")
         kb_section = [f"### KB Reference {i+1}:\n> {s.strip()}" for i, s in enumerate(kb_snippets)]
-        memory_section = f"### Memory Context:\n{memory_context}" if memory_context else ""
+        memory_section = f"### Memory Context (mode={context_mode}):\n{memory_context}" if memory_context else ""
+        kb_intro = (
+            "The following KB snippets are internal policies; treat them as primary sources when present."
+            if kb_section
+            else "No KB context provided; rely only on the ticket and best practices."
+        )
         parts = [
             base_text,
             memory_section,
             "\n\n".join(kb_section) if kb_section else "",
+            kb_intro,
             "### Respond with JSON containing final_answer and reasoning.",
         ]
         return "\n\n".join([p for p in parts if p])
@@ -416,13 +423,17 @@ def run_ticket_pipeline(
         f"Classified as {category} with confidence {classifier_confidence:.3f} using {classifier.backend_name}. "
         f"Router '{router_name}' selected model '{model_used}'. Resolution steps not yet generated in this skeleton."
     )
+    kb_policy_ids: List[str] = []
+    kb_categories: List[str] = []
 
     payload: Dict[str, Any] = {
         "original_query": ticket_text,
         "rewritten_query": ticket_text,
         "category": category,
-        "classifier_backend": classifier.backend_name,
+        "classifier_label": category,
         "classifier_confidence": classifier_confidence,
+        "classifier_confidence_bucket": confidence_bucket,
+        "classifier_backend": classifier.backend_name,
         "classification": {
             "label": category,
             "confidence": classifier_confidence,
@@ -431,6 +442,9 @@ def run_ticket_pipeline(
         "router_name": router_name,
         "model_used": model_used,
         "context_mode": context_mode,
+        "memory_mode": context_mode,
+        "kb_policy_ids": kb_policy_ids,
+        "kb_categories": kb_categories,
         "resolution_steps": [],
         "reasoning": reasoning,
         "escalation": {
