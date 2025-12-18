@@ -12,9 +12,15 @@ from RouterGym.label_space import CANONICAL_LABELS, canonicalize_label
 DEFAULT_PATH = Path(__file__).resolve().parent / "tickets.csv"
 
 
-def load_dataset(n: Optional[int] = 5) -> pd.DataFrame:
-    """Load tickets dataset and optionally limit rows."""
-    df = pd.read_csv(DEFAULT_PATH)
+def load_dataset(n: Optional[int] = 5, start: int = 0, path: Optional[Path] = None) -> pd.DataFrame:
+    """Load tickets dataset and optionally limit/slice rows.
+
+    Args:
+        n: Optional limit on number of rows to return. If None, return all rows after start.
+        start: Row offset to begin from (after cleaning/normalization).
+        path: Optional override path to the tickets CSV.
+    """
+    df = pd.read_csv(path or DEFAULT_PATH)
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
     if "document" in df.columns and "text" not in df.columns:
         df = df.rename(columns={"document": "text"})
@@ -39,8 +45,11 @@ def load_dataset(n: Optional[int] = 5) -> pd.DataFrame:
             "Update label_space.canonicalize_label mappings."
         )
     df = df.reset_index(drop=True)
+    if start:
+        df = df.iloc[start:]
     if n is not None:
         df = df.head(n)
+    df = df.reset_index(drop=True)
     return df
 
 
