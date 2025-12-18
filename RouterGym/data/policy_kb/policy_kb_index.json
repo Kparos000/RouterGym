@@ -1,0 +1,1210 @@
+[
+  {
+    "id": "access.access_request_flow_new_modify_remove",
+    "category": "Access",
+    "title": "Access Request Flow (New, Modify, Remove)",
+    "summary": "Standard workflow for creating, changing, or removing user access to systems (e.g., Git, Jira, Confluence, line-of-business apps).",
+    "content": "# Access Request Flow (New, Modify, Remove)\n\n**Category:** Access  \n\n## Description\nStandard workflow for creating, changing, or removing user access to systems (e.g., Git, Jira, Confluence, line-of-business apps).\n\n## Typical Ticket Patterns\n- “Need access to Confluence / Git repo”\n- “Please add user to project group”\n- “Remove access for leaver”\n\n## Resolution Steps\n1. Verify requester identity and approval (manager or system owner).\n2. Identify exact system, group, or repository required and role level.\n3. Check for existing access to avoid duplicates.\n4. Apply change via IAM tool, AD group, or application admin console.\n5. Ask user to log off and back in to refresh permissions.\n6. Confirm access works for key actions; update ticket with groups/roles applied.\n\n## When to Escalate\n- Requests for elevated or production access.\n- Conflicting approvals or unclear ownership.\n- Bulk access changes for projects or migrations.\n\n## Related Articles\n- User Permissions Overview\n- Administrative Rights Request Flow\n- HR System Access Guide (HRIS / Oracle)\n\n\n",
+    "escalation_notes": "- Requests for elevated or production access.\n- Conflicting approvals or unclear ownership.\n- Bulk access changes for projects or migrations.",
+    "tags": [
+      "access",
+      "request",
+      "flow",
+      "new",
+      "modify",
+      "remove"
+    ],
+    "path": "access/Access Request Flow (New-Modify-Remove).md"
+  },
+  {
+    "id": "access.account_lockout_troubleshooting",
+    "category": "Access",
+    "title": "Account Lockout Troubleshooting",
+    "summary": "Resolving lockouts caused by repeated failed logins or cached credentials.",
+    "content": "# Account Lockout Troubleshooting\n\n**Category:** Access  \n\n## Description\nResolving lockouts caused by repeated failed logins or cached credentials.\n\n## Typical Ticket Patterns\n- “Account locked every morning”\n- “Too many failed login attempts”\n- “Cannot unlock with self-service”\n\n## Resolution Steps\n1. Verify user identity and confirm which account is locked.\n2. Unlock the account in AD or target system.\n3. Identify possible sources of repeated failures (mobile devices, mapped drives, old sessions, VPN).\n4. Ask user to update saved credentials on all devices and restart sessions.\n5. Monitor for re-lock within 24 hours and advise user to change password if suspicion remains.\n\n## When to Escalate\n- Multiple accounts locked simultaneously (possible attack).\n- User suspects credentials were exposed.\n- Lockouts persist after full credential refresh.\n\n## Related Articles\n- Password Reset Procedure\n- SSO Login Problems\n- VPN Access Troubleshooting\n\n\n",
+    "escalation_notes": "- Multiple accounts locked simultaneously (possible attack).\n- User suspects credentials were exposed.\n- Lockouts persist after full credential refresh.",
+    "tags": [
+      "access",
+      "account",
+      "lockout",
+      "troubleshooting"
+    ],
+    "path": "access/Account Lockout Troubleshooting.md"
+  },
+  {
+    "id": "access.email_access_and_configuration",
+    "category": "Access",
+    "title": "Email Access and Configuration",
+    "summary": "Ensuring users can access corporate email on desktops, web, and mobile devices.",
+    "content": "# Email Access and Configuration\n\n**Category:** Access  \n\n## Description\nEnsuring users can access corporate email on desktops, web, and mobile devices.\n\n## Typical Ticket Patterns\n- “Cannot add mailbox to Outlook”\n- “Email not syncing on phone”\n- “Shared mailbox missing”\n\n## Resolution Steps\n1. Confirm mailbox exists and is licensed/active.\n2. Check that user has the correct mailbox permissions (own mailbox, shared mailboxes).\n3. Configure email profile using standard auto-discovery settings.\n4. For mobile, confirm approved mail client and security policies (MDM, device encryption).\n5. Sync mail and confirm sending/receiving works.\n\n## When to Escalate\n- Large numbers of users with mail sync issues.\n- Corrupt mailbox or suspected mail data loss.\n- Regulatory/legal holds preventing mailbox changes.\n\n## Related Articles\n- Mailbox Quota and Full Mailbox Issues\n- Storage Quota Management\n- Password Reset Procedure\n\n\n",
+    "escalation_notes": "- Large numbers of users with mail sync issues.\n- Corrupt mailbox or suspected mail data loss.\n- Regulatory/legal holds preventing mailbox changes.",
+    "tags": [
+      "access",
+      "email",
+      "and",
+      "configuration"
+    ],
+    "path": "access/Email Access and Configuration.md"
+  },
+  {
+    "id": "access.expired_account_handling",
+    "category": "Access",
+    "title": "Expired Account Handling",
+    "summary": "Managing accounts for contractors, interns, and dormant users when access expires.",
+    "content": "# Expired Account Handling\n\n**Category:** Access  \n\n## Description\nManaging accounts for contractors, interns, and dormant users when access expires.\n\n## Typical Ticket Patterns\n- “Account expired – cannot log in”\n- “Contract extended, need access restored”\n- “Account disabled after long leave”\n\n## Resolution Steps\n1. Check HR or contractor records for true end date vs requested extension.\n2. If user is still active, extend account expiration date per policy and re-enable access.\n3. If user is no longer active, confirm deprovisioning and ensure all access is removed.\n4. For returning users, consider creating a new account if deprovisioning was completed long ago.\n5. Update ticket with final account status and actions taken.\n\n## When to Escalate\n- Unclear employment status or missing HR records.\n- Legal or compliance holds on user data.\n- High-risk systems (finance, security) involved.\n\n## Related Articles\n- Employee Offboarding IT Checklist\n- Access Request Flow (New, Modify, Remove)\n- HR System Access Guide (HRIS / Oracle)\n\n\n",
+    "escalation_notes": "- Unclear employment status or missing HR records.\n- Legal or compliance holds on user data.\n- High-risk systems (finance, security) involved.",
+    "tags": [
+      "access",
+      "expired",
+      "account",
+      "handling"
+    ],
+    "path": "access/Expired Account Handling.md"
+  },
+  {
+    "id": "access.mailbox_quota_and_full_mailbox_issues",
+    "category": "Access",
+    "title": "Mailbox Quota and Full Mailbox Issues",
+    "summary": "Handling full or nearly full mailboxes and quota warnings.",
+    "content": "# Mailbox Quota and Full Mailbox Issues\n\n**Category:** Access  \n\n## Description\nHandling full or nearly full mailboxes and quota warnings.\n\n## Typical Ticket Patterns\n- “Mailbox full, cannot send email”\n- “Quota warning messages”\n- “Need larger mailbox”\n\n## Resolution Steps\n1. Confirm current mailbox size vs assigned quota.\n2. Help user archive or delete large items (sent folder, old attachments).\n3. Configure retention/archive policies as per corporate standard.\n4. Where justified, request a quota increase from mail admin with business reason.\n5. Confirm mailbox returns to normal operation.\n\n## When to Escalate\n- Executives or shared mailboxes that cannot be reduced easily.\n- Global retention or archive policies incorrectly applied.\n- Legal hold on mailbox content.\n\n## Related Articles\n- Storage Quota Management\n- Email Access and Configuration\n- Backup and Restore Guidelines\n\n\n",
+    "escalation_notes": "- Executives or shared mailboxes that cannot be reduced easily.\n- Global retention or archive policies incorrectly applied.\n- Legal hold on mailbox content.",
+    "tags": [
+      "access",
+      "mailbox",
+      "quota",
+      "and",
+      "full",
+      "issues"
+    ],
+    "path": "access/Mailbox Quota and Full Mailbox Issues.md"
+  },
+  {
+    "id": "access.password_reset_procedure",
+    "category": "Access",
+    "title": "Password Reset Procedure",
+    "summary": "Resetting user passwords for AD, email, VPN, and primary business applications.",
+    "content": "# Password Reset Procedure\n\n**Category:** Access  \n\n## Description\nResetting user passwords for AD, email, VPN, and primary business applications.\n\n## Typical Ticket Patterns\n- “Forgot my password”\n- “Password expired over the weekend”\n- “Account locked after too many attempts”\n\n## Resolution Steps\n1. Verify user identity using approved security checks.\n2. Confirm which system password requires reset.\n3. Use official password reset tooling (self-service or service desk) to generate a new password or unlock.\n4. Ensure password meets complexity and history requirements.\n5. Ask user to log into primary device and test SSO into key applications.\n6. Remind user of self-service options for future resets where available.\n\n## When to Escalate\n- Suspicious account activity or potential compromise.\n- Multiple users reporting password failures for one system.\n- Self-service reset platform outage.\n\n## Related Articles\n- Account Lockout Troubleshooting\n- SSO Login Problems\n- Two-Factor Authentication (2FA) Setup and Issues\n\n\n",
+    "escalation_notes": "- Suspicious account activity or potential compromise.\n- Multiple users reporting password failures for one system.\n- Self-service reset platform outage.",
+    "tags": [
+      "access",
+      "password",
+      "reset",
+      "procedure"
+    ],
+    "path": "access/Password Reset Procedure.md"
+  },
+  {
+    "id": "access.remote_access_rdp_troubleshooting",
+    "category": "Access",
+    "title": "Remote Access RDP Troubleshooting",
+    "summary": "Users cannot connect to remote desktops or servers via RDP or similar tools.",
+    "content": "# Remote Access RDP Troubleshooting\n\n**Category:** Access  \n\n## Description\nUsers cannot connect to remote desktops or servers via RDP or similar tools.\n\n## Typical Ticket Patterns\n- “RDP connection failed”\n- “Remote desktop black screen”\n- “Cannot reach office PC from home”\n\n## Resolution Steps\n1. Confirm RDP target is powered on and reachable on the network/VPN.\n2. Verify user is in the correct remote access/desktop groups.\n3. Check firewall rules and RDP configuration on target machine.\n4. Ask user to test from another device or network if feasible.\n5. Review logs for failed logins or network errors; update client as needed.\n\n## When to Escalate\n- Many users cannot reach the same host or farm.\n- Critical servers affected.\n- Security concerns (excessive failed logins or suspected brute-force).\n\n## Related Articles\n- VPN Access Troubleshooting\n- Access Request Flow (New, Modify, Remove)\n- Administrative Rights Request Flow\n\n\n",
+    "escalation_notes": "- Many users cannot reach the same host or farm.\n- Critical servers affected.\n- Security concerns (excessive failed logins or suspected brute-force).",
+    "tags": [
+      "access",
+      "remote",
+      "rdp",
+      "troubleshooting"
+    ],
+    "path": "access/Remote Access RDP Troubleshooting.md"
+  },
+  {
+    "id": "access.shared_folder_access_guide",
+    "category": "Access",
+    "title": "Shared Folder Access Guide",
+    "summary": "Requests to access shared drives or project folders used by a team or application.",
+    "content": "# Shared Folder Access Guide\n\n**Category:** Access  \n\n## Description\nRequests to access shared drives or project folders used by a team or application.\n\n## Typical Ticket Patterns\n- “Cannot open shared folder on server”\n- “Need access to team drive”\n- “Access denied to project documents”\n\n## Resolution Steps\n1. Confirm folder path and owning team or application.\n2. Validate manager or data owner approval for access.\n3. Add user to the appropriate AD group or permissions ACL.\n4. Ask user to log off and back on or reconnect mapped drive.\n5. Verify read/write access as requested; avoid full control unless required.\n\n## When to Escalate\n- Sensitive folders (finance, HR, legal).\n- Many users lose access after system or migration changes.\n- Permissions inheritance issues affecting nested folders.\n\n## Related Articles\n- Shared Drive Access Procedure\n- File Permissions Management\n- Storage Quota Management\n\n\n",
+    "escalation_notes": "- Sensitive folders (finance, HR, legal).\n- Many users lose access after system or migration changes.\n- Permissions inheritance issues affecting nested folders.",
+    "tags": [
+      "access",
+      "shared",
+      "folder",
+      "guide"
+    ],
+    "path": "access/Shared Folder Access Guide.md"
+  },
+  {
+    "id": "access.sso_login_problems",
+    "category": "Access",
+    "title": "SSO Login Problems",
+    "summary": "Issues logging into applications that use single sign-on (SSO) and corporate identity provider.",
+    "content": "# SSO Login Problems\n\n**Category:** Access  \n\n## Description\nIssues logging into applications that use single sign-on (SSO) and corporate identity provider.\n\n## Typical Ticket Patterns\n- “SSO loop when logging into app”\n- “Stuck on sign-in page”\n- “SSO works for email but not for Confluence”\n\n## Resolution Steps\n1. Confirm user can log into primary SSO portal.\n2. Check if the specific application is assigned to the user in the SSO admin console.\n3. Ask user to clear browser cache, try another browser, or use incognito.\n4. Review error codes or SSO logs; verify attributes (email, username, groups) match app expectations.\n5. Re-sync user or groups if mapping is incorrect; test again.\n\n## When to Escalate\n- Many users affected for the same app.\n- IdP or federation outage suspected.\n- Applications used for business-critical workflows.\n\n## Related Articles\n- Two-Factor Authentication (2FA) Setup and Issues\n- Access Request Flow (New, Modify, Remove)\n- HR Portal Troubleshooting\n\n\n",
+    "escalation_notes": "- Many users affected for the same app.\n- IdP or federation outage suspected.\n- Applications used for business-critical workflows.",
+    "tags": [
+      "access",
+      "sso",
+      "login",
+      "problems"
+    ],
+    "path": "access/SSO Login Problems.md"
+  },
+  {
+    "id": "access.two_factor_authentication_guide",
+    "category": "Access",
+    "title": "Two-Factor Authentication (2FA) Setup and Issues",
+    "summary": "Enrolling users in 2FA (e.g., authenticator app, SMS, hardware token) and fixing related issues.",
+    "content": "# Two-Factor Authentication (2FA) Setup and Issues\n\n**Category:** Access  \n\n## Description\nEnrolling users in 2FA (e.g., authenticator app, SMS, hardware token) and fixing related issues.\n\n## Typical Ticket Patterns\n- “New phone, lost 2FA codes”\n- “Authenticator app not working”\n- “2FA challenge not received”\n\n## Resolution Steps\n1. Verify user identity using backup verification methods.\n2. Check their 2FA status in the identity provider or security portal.\n3. Reset 2FA and guide user through re-enrollment on their device.\n4. Confirm time sync on mobile device if using TOTP apps.\n5. Validate login to at least one key application after setup.\n\n## When to Escalate\n- Repeated 2FA failures or suspected man-in-the-middle attacks.\n- Missing or malfunctioning hardware tokens for critical users.\n- IdP-wide 2FA delivery problems (e.g., SMS provider outage).\n\n## Related Articles\n- Password Reset Procedure\n- SSO Login Problems\n- VPN Access Troubleshooting\n\n\n",
+    "escalation_notes": "- Repeated 2FA failures or suspected man-in-the-middle attacks.\n- Missing or malfunctioning hardware tokens for critical users.\n- IdP-wide 2FA delivery problems (e.g., SMS provider outage).",
+    "tags": [
+      "access",
+      "two",
+      "factor",
+      "authentication",
+      "guide"
+    ],
+    "path": "access/Two-Factor Authentication Guide.md"
+  },
+  {
+    "id": "access.user_permissions_overview",
+    "category": "Access",
+    "title": "User Permissions Overview",
+    "summary": "Reference guide explaining standard permission models for common systems.",
+    "content": "# User Permissions Overview\n\n**Category:** Access  \n\n## Description\nReference guide explaining standard permission models for common systems.\n\n## Typical Ticket Patterns\n- “What permissions should a new analyst get?”\n- “Difference between read and contribute in SharePoint?”\n- “Why can’t I delete files in this folder?”\n\n## Resolution Steps\n1. Document common role profiles per system (e.g., employee, manager, admin).\n2. Explain how group-based access, least privilege, and separation of duties are applied.\n3. Provide examples of what each role can and cannot do.\n4. Link to detailed policies for privileged accounts and admin rights.\n5. Use this guide to answer general permission questions in tickets.\n\n## When to Escalate\n- Requests to deviate from standard roles.\n- Conflicts between business needs and security standards.\n- New systems without defined permission models.\n\n## Related Articles\n- Access Request Flow (New, Modify, Remove)\n- Administrative Rights Request Flow\n- Privileged Account Usage Guidelines\n\n\n\n============================================================\nCATEGORY: Storage (8 articles)\n============================================================\n\n",
+    "escalation_notes": "- Requests to deviate from standard roles.\n- Conflicts between business needs and security standards.\n- New systems without defined permission models.",
+    "tags": [
+      "access",
+      "user",
+      "permissions",
+      "overview"
+    ],
+    "path": "access/User Permissions Overview.md"
+  },
+  {
+    "id": "access.vpn_access_troubleshooting",
+    "category": "Access",
+    "title": "VPN Access Troubleshooting",
+    "summary": "Problems connecting to corporate VPN or accessing internal resources over VPN.",
+    "content": "# VPN Access Troubleshooting\n\n**Category:** Access  \n\n## Description\nProblems connecting to corporate VPN or accessing internal resources over VPN.\n\n## Typical Ticket Patterns\n- “VPN client stuck on connecting”\n- “Connected but cannot reach internal sites”\n- “VPN login failed – certificate error”\n\n## Resolution Steps\n1. Confirm user has VPN entitlement in access system.\n2. Check network connectivity (home internet, Wi-Fi quality).\n3. Review VPN client logs for common errors (credentials, certificate, tunnel).\n4. Ask user to restart device and try a different network if possible.\n5. Update VPN client and root certificates where required.\n6. For split tunnel setups, verify DNS and routing configuration.\n\n## When to Escalate\n- Many users unable to connect to VPN.\n- Site-to-site or firewall issues suspected.\n- Access to regulated or high-risk environments.\n\n## Related Articles\n- Remote Access RDP Troubleshooting\n- Network Connectivity Troubleshooting (Workstations)\n- Two-Factor Authentication (2FA) Setup and Issues\n\n\n",
+    "escalation_notes": "- Many users unable to connect to VPN.\n- Site-to-site or firewall issues suspected.\n- Access to regulated or high-risk environments.",
+    "tags": [
+      "access",
+      "vpn",
+      "troubleshooting"
+    ],
+    "path": "access/VPN Access Troubleshooting.md"
+  },
+  {
+    "id": "admin_rights.admin_rights_review_and_recertification",
+    "category": "Administrative rights",
+    "title": "Admin Rights Review and Recertification",
+    "summary": "Periodic review to validate that existing admin rights are still required and appropriate.",
+    "content": "# Admin Rights Review and Recertification\n\n**Category:** Administrative rights  \n\n## Description\nPeriodic review to validate that existing admin rights are still required and appropriate.\n\n## Typical Ticket Patterns\n- “Quarterly admin access review”\n- “Audit of privileged accounts”\n- “Need list of admins for system X”\n\n## Resolution Steps\n1. Generate list of users and groups with admin rights per system.\n2. Send to system owners and managers for review and confirmation.\n3. Remove or downgrade access that is no longer justified.\n4. Record approvals and changes for audit purposes.\n5. Schedule next review according to policy.\n\n## When to Escalate\n- System owners do not respond to review requests.\n- Excessive or unjustified admin rights found.\n- Findings that require reporting to risk committees or regulators.\n\n## Related Articles\n- Security Review Requirements for Admin Access\n- Privileged Account Usage Guidelines\n- Employee Offboarding IT Checklist\n\n\n\n============================================================\nCATEGORY: Miscellaneous (8 articles)\n============================================================\n\n",
+    "escalation_notes": "- System owners do not respond to review requests.\n- Excessive or unjustified admin rights found.\n- Findings that require reporting to risk committees or regulators.",
+    "tags": [
+      "admin_rights",
+      "admin",
+      "rights",
+      "review",
+      "and",
+      "recertification"
+    ],
+    "path": "admin_rights/Admin Rights Review and Recertification.md"
+  },
+  {
+    "id": "admin_rights.administrative_rights_request_flow",
+    "category": "Administrative rights",
+    "title": "Administrative Rights Request Flow",
+    "summary": "Workflow for granting local admin or elevated application rights.",
+    "content": "# Administrative Rights Request Flow\n\n**Category:** Administrative rights  \n\n## Description\nWorkflow for granting local admin or elevated application rights.\n\n## Typical Ticket Patterns\n- “Need admin rights to install tools”\n- “Developer access to system files”\n- “Temporary admin for troubleshooting”\n\n## Resolution Steps\n1. Confirm request comes from the user’s manager or system owner.\n2. Validate business justification and duration of access.\n3. Map request to standard admin profiles (local admin, app admin, database admin).\n4. Apply rights using approved tools; avoid shared admin accounts where possible.\n5. Document scope, duration, and approvals in the ticket.\n\n## When to Escalate\n- Requests for domain admin or global privileges.\n- Conflicts with security policy or audit findings.\n- Repeated admin requests from same user/team.\n\n## Related Articles\n- Local Admin Rights Policy\n- Temporary Admin Access for Troubleshooting\n- Admin Rights Review and Recertification\n\n\n",
+    "escalation_notes": "- Requests for domain admin or global privileges.\n- Conflicts with security policy or audit findings.\n- Repeated admin requests from same user/team.",
+    "tags": [
+      "admin_rights",
+      "administrative",
+      "rights",
+      "request",
+      "flow"
+    ],
+    "path": "admin_rights/Administrative Rights Request Flow.md"
+  },
+  {
+    "id": "admin_rights.local_admin_rights_policy",
+    "category": "Administrative rights",
+    "title": "Local Admin Rights Policy",
+    "summary": "Defines when and how local administrator rights may be granted on workstations.",
+    "content": "# Local Admin Rights Policy\n\n**Category:** Administrative rights  \n\n## Description\nDefines when and how local administrator rights may be granted on workstations.\n\n## Typical Ticket Patterns\n- “Need local admin to install drivers”\n- “Cannot run tool without admin rights”\n- “Question about local admin policy”\n\n## Resolution Steps\n1. Explain that local admin is an exception, not default.\n2. Review user role and whether a non-admin workaround is available.\n3. Grant time-bound local admin rights using approved mechanism if justified.\n4. Educate user on safe usage and responsibility for changes.\n5. Schedule or trigger removal of admin rights once work is complete.\n\n## When to Escalate\n- Long-term or permanent local admin requested.\n- Users with access to sensitive data or systems.\n- Past security incidents involving the same user/team.\n\n## Related Articles\n- Administrative Rights Request Flow\n- Privileged Account Usage Guidelines\n- Admin Rights Review and Recertification\n\n\n",
+    "escalation_notes": "- Long-term or permanent local admin requested.\n- Users with access to sensitive data or systems.\n- Past security incidents involving the same user/team.",
+    "tags": [
+      "admin_rights",
+      "local",
+      "admin",
+      "rights",
+      "policy"
+    ],
+    "path": "admin_rights/Local Admin Rights Policy.md"
+  },
+  {
+    "id": "admin_rights.privileged_account_usage_guidelines",
+    "category": "Administrative rights",
+    "title": "Privileged Account Usage Guidelines",
+    "summary": "Rules for using privileged accounts (server admin, database admin, security tools).",
+    "content": "# Privileged Account Usage Guidelines\n\n**Category:** Administrative rights  \n\n## Description\nRules for using privileged accounts (server admin, database admin, security tools).\n\n## Typical Ticket Patterns\n- “Which account should I use for this task?”\n- “Need runbook for admin tasks”\n- “Shared admin credentials question”\n\n## Resolution Steps\n1. Clarify which privileged accounts exist for the system in question.\n2. Explain that admin accounts are for admin tasks only, not day-to-day usage.\n3. Require multi-factor authentication and session logging where supported.\n4. Direct users to standard runbooks for common admin actions.\n5. Record privileged actions in change/incident records where appropriate.\n\n## When to Escalate\n- Shared credentials discovered without proper control.\n- High-risk changes without approvals.\n- Suspected misuse of admin privileges.\n\n## Related Articles\n- Security Review Requirements for Admin Access\n- Admin Rights Review and Recertification\n- Data Access and Security for Project Teams\n\n\n",
+    "escalation_notes": "- Shared credentials discovered without proper control.\n- High-risk changes without approvals.\n- Suspected misuse of admin privileges.",
+    "tags": [
+      "admin_rights",
+      "privileged",
+      "account",
+      "usage",
+      "guidelines"
+    ],
+    "path": "admin_rights/Privileged Account Usage Guidelines.md"
+  },
+  {
+    "id": "admin_rights.security_review_requirements_for_admin_access",
+    "category": "Administrative rights",
+    "title": "Security Review Requirements for Admin Access",
+    "summary": "Security checks required before granting high-risk admin access.",
+    "content": "# Security Review Requirements for Admin Access\n\n**Category:** Administrative rights  \n\n## Description\nSecurity checks required before granting high-risk admin access.\n\n## Typical Ticket Patterns\n- “Security review for new admin group”\n- “Need approval for elevated rights”\n- “Audit findings about admin access”\n\n## Resolution Steps\n1. Identify system, scope, and purpose of requested admin access.\n2. Confirm risk assessment and segregation of duties requirements.\n3. Ensure background checks or training are complete where required.\n4. Obtain approvals from security, compliance, and system owner.\n5. Document review outcomes and any compensating controls.\n\n## When to Escalate\n- Requests conflict with security standards.\n- Critical infrastructure or regulatory systems.\n- Repeat findings from previous audits.\n\n## Related Articles\n- Privileged Account Usage Guidelines\n- Administrative Rights Request Flow\n- Admin Rights Review and Recertification\n\n\n",
+    "escalation_notes": "- Requests conflict with security standards.\n- Critical infrastructure or regulatory systems.\n- Repeat findings from previous audits.",
+    "tags": [
+      "admin_rights",
+      "security",
+      "review",
+      "requirements",
+      "for",
+      "admin",
+      "access"
+    ],
+    "path": "admin_rights/Security Review Requirements for Admin Access.md"
+  },
+  {
+    "id": "admin_rights.temporary_admin_access_for_troubleshooting",
+    "category": "Administrative rights",
+    "title": "Temporary Admin Access for Troubleshooting",
+    "summary": "Short-term admin access used to diagnose or fix specific issues.",
+    "content": "# Temporary Admin Access for Troubleshooting\n\n**Category:** Administrative rights  \n\n## Description\nShort-term admin access used to diagnose or fix specific issues.\n\n## Typical Ticket Patterns\n- “Need admin for one-off fix”\n- “Temporary rights to run script”\n- “Short-term access to logs”\n\n## Resolution Steps\n1. Confirm the exact task and expected duration (ideally hours, not days).\n2. Grant access using time-bound groups or just-in-time tooling.\n3. Monitor actions taken where feasible (logs, screen sharing).\n4. Remove rights immediately after the task is complete.\n5. Record what was changed and outcomes in the ticket.\n\n## When to Escalate\n- Tasks that may impact many users or systems.\n- Repeated temporary requests that indicate permanent need.\n- Troubleshooting in regulated or sensitive environments.\n\n## Related Articles\n- Local Admin Rights Policy\n- Unsupported Issues and Escalation Matrix\n- Admin Rights Review and Recertification\n\n\n",
+    "escalation_notes": "- Tasks that may impact many users or systems.\n- Repeated temporary requests that indicate permanent need.\n- Troubleshooting in regulated or sensitive environments.",
+    "tags": [
+      "admin_rights",
+      "temporary",
+      "admin",
+      "access",
+      "for",
+      "troubleshooting"
+    ],
+    "path": "admin_rights/Temporary Admin Access for Troubleshooting.md"
+  },
+  {
+    "id": "hardware.blue_screen_or_system_crash_recovery",
+    "category": "Hardware",
+    "title": "Blue Screen or System Crash Recovery",
+    "summary": "Handling intermittent blue screens (BSOD), kernel panics, or sudden system crashes.",
+    "content": "# Blue Screen or System Crash Recovery\n\n**Category:** Hardware  \n\n## Description\nHandling intermittent blue screens (BSOD), kernel panics, or sudden system crashes.\n\n## Typical Ticket Patterns\n- “Blue screen with error code”\n- “System crashes randomly”\n- “Automatic repair loop”\n\n## Resolution Steps\n1. Capture error codes, mini-dumps, and the approximate time the crash occurs.\n2. Check recent driver or OS updates; roll back problematic changes where appropriate.\n3. Run memory and disk diagnostics; repair file system errors.\n4. If crashes started after new hardware was attached, test without the new device.\n5. Apply vendor and OS patches recommended for stability.\n6. If crashes persist, build a new corporate image and test; if still failing, initiate replacement.\n7. Record root cause if identified (driver, hardware fault, application).\n\n## When to Escalate\n- Frequent crashes preventing user from working.\n- Reproducible crashes tied to a core business application.\n- Suspected hardware defect (RAM, motherboard, SSD) after diagnostics.\n\n## Related Articles\n- Workstation Performance Problems\n- Device Not Booting\n- Warranty and Repair Escalation\n\n\n",
+    "escalation_notes": "- Frequent crashes preventing user from working.\n- Reproducible crashes tied to a core business application.\n- Suspected hardware defect (RAM, motherboard, SSD) after diagnostics.",
+    "tags": [
+      "hardware",
+      "blue",
+      "screen",
+      "or",
+      "system",
+      "crash",
+      "recovery"
+    ],
+    "path": "hardware/Blue Screen or System Crash Recovery.md"
+  },
+  {
+    "id": "hardware.device_not_booting",
+    "category": "Hardware",
+    "title": "Device Not Booting",
+    "summary": "User’s laptop or desktop will not power on or will not pass the initial boot screen.",
+    "content": "# Device Not Booting\n\n**Category:** Hardware  \n\n## Description\nUser’s laptop or desktop will not power on or will not pass the initial boot screen.\n\n## Typical Ticket Patterns\n- “Laptop won’t turn on / black screen”\n- “PC stuck on vendor logo”\n- “No response when pressing power button”\n\n## Resolution Steps\n1. Confirm the device, power adapter, and dock are connected to a known-good outlet.\n2. Ask the user to remove external peripherals (USB drives, docking station, monitors) and retry.\n3. Perform a forced power cycle (hold power button 10–15 seconds) and then power on again.\n4. Check for indicator lights, fan noise, or beeps; record any error messages on screen.\n5. If the device boots into recovery or diagnostics, run the hardware test and capture codes.\n6. If disk or memory issues are reported, follow the Hardware Replacement Process to swap parts.\n7. Document all steps and outcomes in the ticket.\n\n## When to Escalate\n- Device fails vendor diagnostics or cannot reach BIOS/UEFI.\n- Critical user (e.g., executive, frontline) without backup hardware.\n- Suspected physical damage, liquid damage, or data-recovery needed.\n\n## Related Articles\n- Laptop Power and Battery Diagnostics\n- Blue Screen or System Crash Recovery\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Device fails vendor diagnostics or cannot reach BIOS/UEFI.\n- Critical user (e.g., executive, frontline) without backup hardware.\n- Suspected physical damage, liquid damage, or data-recovery needed.",
+    "tags": [
+      "hardware",
+      "device",
+      "not",
+      "booting"
+    ],
+    "path": "hardware/Device Not Booting.md"
+  },
+  {
+    "id": "hardware.docking_station_and_external_monitor_setup",
+    "category": "Hardware",
+    "title": "Docking Station and External Monitor Setup",
+    "summary": "Issues connecting laptops to docks and configuring external monitors, network, and peripherals.",
+    "content": "# Docking Station and External Monitor Setup\n\n**Category:** Hardware  \n\n## Description\nIssues connecting laptops to docks and configuring external monitors, network, and peripherals.\n\n## Typical Ticket Patterns\n- “Nothing works when I plug into the dock”\n- “Dock only drives one of my two screens”\n- “Ethernet works only when dock is unplugged”\n\n## Resolution Steps\n1. Confirm dock model is supported and connected to the correct laptop port (e.g., USB-C/Thunderbolt).\n2. Check dock power, cables, and monitor connections; power-cycle dock and laptop.\n3. Update dock firmware and drivers according to vendor instructions.\n4. Verify OS display settings, audio output, and network adapter priorities when docked.\n5. Test dock with another laptop or test laptop on another dock to isolate the issue.\n6. Replace faulty docks through Hardware Replacement Process and update asset tracking.\n\n## When to Escalate\n- Multiple users report issues with the same dock model.\n- Dock firmware update fails or bricks the device.\n- Docking issues affecting critical hot-desk or trading floors.\n\n## Related Articles\n- Monitor Display Issues\n- Peripheral Device Issues\n- Network Connectivity Troubleshooting (Workstations)\n\n\n\n============================================================\nCATEGORY: HR Support (12 articles)\n============================================================\n\n",
+    "escalation_notes": "- Multiple users report issues with the same dock model.\n- Dock firmware update fails or bricks the device.\n- Docking issues affecting critical hot-desk or trading floors.",
+    "tags": [
+      "hardware",
+      "docking",
+      "station",
+      "and",
+      "external",
+      "monitor",
+      "setup"
+    ],
+    "path": "hardware/Docking Station and External Monitor Setup.md"
+  },
+  {
+    "id": "hardware.hardware_asset_tagging_and_tracking",
+    "category": "Hardware",
+    "title": "Hardware Asset Tagging and Tracking",
+    "summary": "How IT tracks physical devices (laptops, monitors, docks, printers) using asset tags.",
+    "content": "# Hardware Asset Tagging and Tracking\n\n**Category:** Hardware  \n\n## Description\nHow IT tracks physical devices (laptops, monitors, docks, printers) using asset tags.\n\n## Typical Ticket Patterns\n- “Asset tag not in system”\n- “Device assigned to wrong user”\n- “Need asset details for audit”\n\n## Resolution Steps\n1. Verify physical asset tag and serial number on the device.\n2. Search the asset database by tag, serial, and hostname.\n3. Correct ownership and location fields if the asset has moved or been reassigned.\n4. For new devices, create a record with model, serial, tag, assigned user, and warranty info.\n5. For retired devices, ensure they are marked decommissioned with disposal details.\n6. Confirm inventory is updated and attach screenshots or audit evidence to the ticket.\n\n## When to Escalate\n- Asset discrepancies impacting audit or compliance.\n- Suspected lost or stolen equipment.\n- Large differences between physical and recorded inventory.\n\n## Related Articles\n- Hardware Replacement Process\n- Warranty and Repair Escalation\n- Admin Rights Review and Recertification\n\n\n",
+    "escalation_notes": "- Asset discrepancies impacting audit or compliance.\n- Suspected lost or stolen equipment.\n- Large differences between physical and recorded inventory.",
+    "tags": [
+      "hardware",
+      "asset",
+      "tagging",
+      "and",
+      "tracking"
+    ],
+    "path": "hardware/Hardware Asset Tagging and Tracking.md"
+  },
+  {
+    "id": "hardware.hardware_replacement_process",
+    "category": "Hardware",
+    "title": "Hardware Replacement Process",
+    "summary": "Standard process for replacing laptops, desktops, monitors, or key peripherals.",
+    "content": "# Hardware Replacement Process\n\n**Category:** Hardware  \n\n## Description\nStandard process for replacing laptops, desktops, monitors, or key peripherals.\n\n## Typical Ticket Patterns\n- “Laptop beyond repair, need replacement”\n- “Damaged screen / device dropped”\n- “Hardware older than refresh policy”\n\n## Resolution Steps\n1. Confirm troubleshooting has been completed (see relevant KB) and that replacement is justified.\n2. Check warranty status, asset age, and refresh eligibility in the asset system.\n3. Raise a request or purchase order according to IT Equipment Procurement Policy.\n4. Assign replacement device and ensure asset tag is updated and linked to the user.\n5. Migrate user data from old device via backup/restore process or cloud sync.\n6. Wipe and securely dispose of or return the old asset as per policy.\n7. Update ticket with new asset ID, warranty details, and handover confirmation.\n\n## When to Escalate\n- Bulk replacement required (site migration, vendor recall).\n- Data cannot be recovered from failing device.\n- Exceptions to standard models or refresh cycle requested.\n\n## Related Articles\n- Hardware Asset Tagging and Tracking\n- Warranty and Repair Escalation\n- IT Equipment Procurement Policy\n\n\n",
+    "escalation_notes": "- Bulk replacement required (site migration, vendor recall).\n- Data cannot be recovered from failing device.\n- Exceptions to standard models or refresh cycle requested.",
+    "tags": [
+      "hardware",
+      "replacement",
+      "process"
+    ],
+    "path": "hardware/Hardware Replacement Process.md"
+  },
+  {
+    "id": "hardware.laptop_overheating_and_fan_noise",
+    "category": "Hardware",
+    "title": "Laptop Overheating and Fan Noise",
+    "summary": "Devices that become very hot, show “overheating” warnings, or run fans at maximum speed.",
+    "content": "# Laptop Overheating and Fan Noise\n\n**Category:** Hardware  \n\n## Description\nDevices that become very hot, show “overheating” warnings, or run fans at maximum speed.\n\n## Typical Ticket Patterns\n- “Laptop is very hot”\n- “Fan always running at 100%”\n- “Thermal shutdown message”\n\n## Resolution Steps\n1. Ask user where the device is used (desk, bed, docking station) and encourage use on a hard surface.\n2. Check for blocked vents, dust buildup, or third-party covers obstructing airflow.\n3. Review running processes for CPU-intensive apps or malware.\n4. Update BIOS and chipset drivers, focusing on thermal / power management updates.\n5. Run hardware diagnostics for CPU and fan; capture any error codes.\n6. If overheating persists, schedule inspection and possible replacement of thermal paste or fan.\n7. Document findings and user guidance.\n\n## When to Escalate\n- Device shuts down due to thermal protection more than once.\n- Overheating smells, smoke, or visible damage.\n- Vendor has published a thermal recall for this model.\n\n## Related Articles\n- Workstation Performance Problems\n- Warranty and Repair Escalation\n- Device Not Booting\n\n\n",
+    "escalation_notes": "- Device shuts down due to thermal protection more than once.\n- Overheating smells, smoke, or visible damage.\n- Vendor has published a thermal recall for this model.",
+    "tags": [
+      "hardware",
+      "laptop",
+      "overheating",
+      "and",
+      "fan",
+      "noise"
+    ],
+    "path": "hardware/Laptop Overheating and Fan Noise.md"
+  },
+  {
+    "id": "hardware.laptop_power_and_battery_diagnostics",
+    "category": "Hardware",
+    "title": "Laptop Power and Battery Diagnostics",
+    "summary": "Laptops that power off unexpectedly, do not charge, or have rapidly draining batteries.",
+    "content": "# Laptop Power and Battery Diagnostics\n\n**Category:** Hardware  \n\n## Description\nLaptops that power off unexpectedly, do not charge, or have rapidly draining batteries.\n\n## Typical Ticket Patterns\n- “Laptop battery drains in an hour”\n- “Charging light not on”\n- “Device turns off when disconnected from power”\n\n## Resolution Steps\n1. Confirm user is using an approved power adapter and cable; test with a known-good adapter if available.\n2. Check OS battery status and health report (e.g., Windows battery report or vendor tool).\n3. Ensure power plan is set to “Balanced” or corporate standard, not performance-throttling or custom.\n4. Update BIOS/firmware and power-management drivers if versions are outdated.\n5. Run vendor battery diagnostics and capture results.\n6. If battery health is below policy threshold or diagnostics fail, log details and initiate replacement.\n7. Educate user on charging habits and proper shutdown/sleep usage.\n\n## When to Escalate\n- Battery or power adapter shows physical damage or overheating.\n- Repeated power failures after adapter and battery replacement.\n- Firmware update failures.\n\n## Related Articles\n- Device Not Booting\n- Workstation Performance Problems\n- Warranty and Repair Escalation\n\n\n",
+    "escalation_notes": "- Battery or power adapter shows physical damage or overheating.\n- Repeated power failures after adapter and battery replacement.\n- Firmware update failures.",
+    "tags": [
+      "hardware",
+      "laptop",
+      "power",
+      "and",
+      "battery",
+      "diagnostics"
+    ],
+    "path": "hardware/Laptop Power and Battery Diagnostics.md"
+  },
+  {
+    "id": "hardware.monitor_display_issues",
+    "category": "Hardware",
+    "title": "Monitor Display Issues",
+    "summary": "Problems with built-in or external displays: no signal, flickering, wrong resolution, or colour issues.",
+    "content": "# Monitor Display Issues\n\n**Category:** Hardware  \n\n## Description\nProblems with built-in or external displays: no signal, flickering, wrong resolution, or colour issues.\n\n## Typical Ticket Patterns\n- “Second monitor not detected”\n- “No signal on screen”\n- “Fuzzy / stretched display”\n\n## Resolution Steps\n1. Confirm monitor power, cable connections, and input source (HDMI/DP/USB-C).\n2. Ask user to test with a different cable or port where possible.\n3. From the OS, detect displays and ensure extended/duplicate mode is correctly configured.\n4. Check GPU/display drivers and update if required.\n5. For docking stations, test the monitor directly on the laptop to rule out dock issues.\n6. If monitor still fails, swap with a known-good monitor to isolate hardware vs configuration.\n7. Document the final working configuration or failure symptoms.\n\n## When to Escalate\n- Multiple users on same dock/desk report identical issues.\n- Monitors fail power-on self test (no power light, burnt smell, visible damage).\n- User relies on multi-monitor setup for business-critical workflows and no spare hardware is available.\n\n## Related Articles\n- Docking Station and External Monitor Setup\n- Workstation Performance Problems\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Multiple users on same dock/desk report identical issues.\n- Monitors fail power-on self test (no power light, burnt smell, visible damage).\n- User relies on multi-monitor setup for business-critical workflows and no spare hardware is available.",
+    "tags": [
+      "hardware",
+      "monitor",
+      "display",
+      "issues"
+    ],
+    "path": "hardware/Monitor Display Issues.md"
+  },
+  {
+    "id": "hardware.network_connectivity_troubleshooting_workstations",
+    "category": "Hardware",
+    "title": "Network Connectivity Troubleshooting (Workstations)",
+    "summary": "Wired or wireless network issues from a single user’s device (not site-wide outages).",
+    "content": "# Network Connectivity Troubleshooting (Workstations)\n\n**Category:** Hardware  \n\n## Description\nWired or wireless network issues from a single user’s device (not site-wide outages).\n\n## Typical Ticket Patterns\n- “Cannot connect to office Wi-Fi”\n- “Network cable unplugged” warning\n- “VPN connects but no internet”\n\n## Resolution Steps\n1. Check if other users or devices on the same network segment are affected.\n2. Confirm Wi-Fi is enabled or network cable is properly seated and undamaged.\n3. Run basic tests: `ipconfig`/`ping` (or equivalents), check for valid IP and gateway.\n4. Forget and re-add Wi-Fi network or disable/enable network adapter.\n5. Verify VPN client status and split-tunnel policies; reconnect if required.\n6. Update network adapter drivers and restart the device.\n7. If only this device fails on a known-good network, assign for onsite diagnosis.\n\n## When to Escalate\n- Multiple users in the same area report connectivity loss.\n- Suspected switch, router, or firewall outage.\n- VPN or proxy issues impacting a full site/region.\n\n## Related Articles\n- VPN Access Troubleshooting\n- Remote Access RDP Troubleshooting\n- Storage Quota Management\n\n\n",
+    "escalation_notes": "- Multiple users in the same area report connectivity loss.\n- Suspected switch, router, or firewall outage.\n- VPN or proxy issues impacting a full site/region.",
+    "tags": [
+      "hardware",
+      "network",
+      "connectivity",
+      "troubleshooting",
+      "workstations"
+    ],
+    "path": "hardware/Network Connectivity Troubleshooting (Workstations).md"
+  },
+  {
+    "id": "hardware.peripheral_device_issues",
+    "category": "Hardware",
+    "title": "Peripheral Device Issues (Mouse, Keyboard, Dock, etc.)",
+    "summary": "Non-functioning or intermittent behaviour of mice, keyboards, headsets, docks, and similar peripherals.",
+    "content": "# Peripheral Device Issues (Mouse, Keyboard, Dock, etc.)\n\n**Category:** Hardware  \n\n## Description\nNon-functioning or intermittent behaviour of mice, keyboards, headsets, docks, and similar peripherals.\n\n## Typical Ticket Patterns\n- “Mouse not working when docked”\n- “Keyboard randomly stops responding”\n- “Headset not detected by laptop”\n\n## Resolution Steps\n1. Confirm peripheral is powered (if applicable) and properly connected (USB/Bluetooth).\n2. For docks, test with a direct laptop connection to isolate dock vs device.\n3. Swap USB port, reboot, and check Device Manager / system settings for errors.\n4. Remove and re-pair Bluetooth devices, ensuring only one active connection at a time.\n5. Update firmware or drivers for the dock or peripheral if available.\n6. Test with a known-good peripheral of the same type to confirm hardware failure.\n7. Replace faulty peripherals according to Hardware Replacement Process.\n\n## When to Escalate\n- Repeated failures with multiple peripherals on the same port/dock.\n- Critical accessibility devices (ergonomic keyboards, special mice) impacted.\n- Suspected compatibility issue with corporate image or encryption.\n\n## Related Articles\n- Docking Station and External Monitor Setup\n- USB Device Not Recognized\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Repeated failures with multiple peripherals on the same port/dock.\n- Critical accessibility devices (ergonomic keyboards, special mice) impacted.\n- Suspected compatibility issue with corporate image or encryption.",
+    "tags": [
+      "hardware",
+      "peripheral",
+      "device",
+      "issues"
+    ],
+    "path": "hardware/Peripheral Device Issues.md"
+  },
+  {
+    "id": "hardware.printer_setup_and_common_errors",
+    "category": "Hardware",
+    "title": "Printer Setup and Common Errors",
+    "summary": "Issues installing, selecting, or printing to network or local printers.",
+    "content": "# Printer Setup and Common Errors\n\n**Category:** Hardware  \n\n## Description\nIssues installing, selecting, or printing to network or local printers.\n\n## Typical Ticket Patterns\n- “Cannot print to office printer”\n- “Printer offline / not responding”\n- “Wrong default printer used”\n\n## Resolution Steps\n1. Confirm user’s location and assigned printer; verify printer power and network status.\n2. Check if others can print to the same device; if not, log as a wider incident.\n3. Remove stale printer queues and re-add the correct printer from the corporate list.\n4. Ensure correct printer driver and default settings are applied.\n5. Clear stuck jobs from the user’s print queue and the server queue if needed.\n6. Print a test page from the user’s device and directly from the printer console.\n7. Document steps and confirm the user can print successful test documents.\n\n## When to Escalate\n- Multiple users unable to print to the same device.\n- Hardware error codes (paper jams, fuser errors) that require onsite/vendor support.\n- Secure or high-volume print devices in critical locations.\n\n## Related Articles\n- Network Connectivity Troubleshooting (Workstations)\n- Storage Quota Management\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Multiple users unable to print to the same device.\n- Hardware error codes (paper jams, fuser errors) that require onsite/vendor support.\n- Secure or high-volume print devices in critical locations.",
+    "tags": [
+      "hardware",
+      "printer",
+      "setup",
+      "and",
+      "common",
+      "errors"
+    ],
+    "path": "hardware/Printer Setup and Common Errors.md"
+  },
+  {
+    "id": "hardware.usb_device_not_recognized",
+    "category": "Hardware",
+    "title": "USB Device Not Recognized",
+    "summary": "System fails to detect or mount USB drives, smartcards, cameras, or other USB devices.",
+    "content": "# USB Device Not Recognized\n\n**Category:** Hardware  \n\n## Description\nSystem fails to detect or mount USB drives, smartcards, cameras, or other USB devices.\n\n## Typical Ticket Patterns\n- “USB stick not showing up”\n- “Unknown USB device” warnings\n- “Smartcard not detected”\n\n## Resolution Steps\n1. Test the USB device on another known-good machine if possible.\n2. On the user’s device, try a different USB port and check Device Manager/System Info for errors.\n3. Remove ghost/unrecognized USB entries and rescan for hardware changes.\n4. Confirm corporate policy allows the device type (e.g., external storage may be blocked).\n5. If allowed but blocked, check security software logs and apply exceptions as per policy.\n6. For smartcards, ensure correct middleware/driver is installed and up-to-date.\n7. Document the final working state or reason for blocking.\n\n## When to Escalate\n- Corporate security tools are blocking a business-critical device.\n- Data recovery is required from a failing USB device.\n- Multiple users report USB issues after a recent OS update.\n\n## Related Articles\n- File Permissions Management\n- Hardware Replacement Process\n- Privileged Account Usage Guidelines\n\n\n",
+    "escalation_notes": "- Corporate security tools are blocking a business-critical device.\n- Data recovery is required from a failing USB device.\n- Multiple users report USB issues after a recent OS update.",
+    "tags": [
+      "hardware",
+      "usb",
+      "device",
+      "not",
+      "recognized"
+    ],
+    "path": "hardware/USB Device Not Recognized.md"
+  },
+  {
+    "id": "hardware.warranty_and_repair_escalation",
+    "category": "Hardware",
+    "title": "Warranty and Repair Escalation",
+    "summary": "Managing vendor repairs and warranty claims for faulty hardware.",
+    "content": "# Warranty and Repair Escalation\n\n**Category:** Hardware  \n\n## Description\nManaging vendor repairs and warranty claims for faulty hardware.\n\n## Typical Ticket Patterns\n- “Laptop still under warranty but failing diagnostics”\n- “Need repair authorization”\n- “Broken screen / keyboard / hinges”\n\n## Resolution Steps\n1. Confirm asset ownership, serial, and warranty status in asset system or vendor portal.\n2. Attach diagnostic results, photos, and error codes to the ticket.\n3. Log a case with the hardware vendor, including user location and urgency.\n4. Coordinate shipment or onsite technician visit with the user and vendor.\n5. Track repair progress and provide temporary device where possible.\n6. Update ticket with repair reference, ETA, and final completion details.\n\n## When to Escalate\n- Vendor misses SLA or repeatedly delays repair.\n- Business-critical roles left without functional equipment.\n- Safety concerns (e.g., overheating battery, exposed wiring).\n\n## Related Articles\n- Hardware Replacement Process\n- Laptop Power and Battery Diagnostics\n- Device Not Booting\n\n\n",
+    "escalation_notes": "- Vendor misses SLA or repeatedly delays repair.\n- Business-critical roles left without functional equipment.\n- Safety concerns (e.g., overheating battery, exposed wiring).",
+    "tags": [
+      "hardware",
+      "warranty",
+      "and",
+      "repair",
+      "escalation"
+    ],
+    "path": "hardware/Warranty and Repair Escalation.md"
+  },
+  {
+    "id": "hardware.workstation_performance_problems",
+    "category": "Hardware",
+    "title": "Workstation Performance Problems (Slow / Freezing)",
+    "summary": "User reports their workstation is slow, freezing, or unresponsive during normal tasks.",
+    "content": "# Workstation Performance Problems (Slow / Freezing)\n\n**Category:** Hardware  \n\n## Description\nUser reports their workstation is slow, freezing, or unresponsive during normal tasks.\n\n## Typical Ticket Patterns\n- “Laptop is very slow”\n- “Applications keep freezing”\n- “CPU at 100%”\n\n## Resolution Steps\n1. Confirm symptoms (slow login, app slowness, network slowness) and frequency.\n2. Check available disk space, RAM use, and CPU utilisation; close unnecessary background tasks.\n3. Run malware and health checks as per security policy.\n4. Ensure OS and key drivers are up-to-date; install pending performance or firmware updates.\n5. For persistent issues, test with a clean profile or safe mode.\n6. If hardware is older than refresh threshold or fails diagnostics, recommend replacement.\n7. Document root cause and remediation (software vs hardware vs profile).\n\n## When to Escalate\n- Repeated hangs or blue screens after OS repair.\n- Critical users unable to work for more than 30 minutes due to performance.\n- Performance issues correlated with a new global deployment.\n\n## Related Articles\n- Blue Screen or System Crash Recovery\n- Laptop Overheating and Fan Noise\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Repeated hangs or blue screens after OS repair.\n- Critical users unable to work for more than 30 minutes due to performance.\n- Performance issues correlated with a new global deployment.",
+    "tags": [
+      "hardware",
+      "workstation",
+      "performance",
+      "problems"
+    ],
+    "path": "hardware/Workstation Performance Problems.md"
+  },
+  {
+    "id": "hr_support.employee_offboarding_it_checklist",
+    "category": "HR Support",
+    "title": "Employee Offboarding IT Checklist",
+    "summary": "Standard steps when an employee leaves the organisation (resignation or termination).",
+    "content": "# Employee Offboarding IT Checklist\n\n**Category:** HR Support  \n\n## Description\nStandard steps when an employee leaves the organisation (resignation or termination).\n\n## Typical Ticket Patterns\n- “Employee leaving – disable access”\n- “Leaver processing request”\n- “Need mail forwarding for leaver”\n\n## Resolution Steps\n1. Confirm last working day and offboarding type (resignation, end of contract, termination).\n2. Schedule account disablement aligned with HR and legal requirements.\n3. Arrange laptop/equipment return and update asset inventory.\n4. Configure mailbox forwarding or delegate access as per HR instructions.\n5. Remove access to HR systems, shared drives, and applications.\n6. Archive user data (email, OneDrive, project folders) according to retention policy.\n7. Document completion steps and confirm with HR.\n\n## When to Escalate\n- Termination with immediate access removal required.\n- Legal hold or ongoing investigation involving user data.\n- Equipment not returned within policy timeline.\n\n## Related Articles\n- Backup and Restore Guidelines\n- Storage Quota Management\n- HR Data Privacy and Sensitive Information Requests\n\n\n",
+    "escalation_notes": "- Termination with immediate access removal required.\n- Legal hold or ongoing investigation involving user data.\n- Equipment not returned within policy timeline.",
+    "tags": [
+      "hr_support",
+      "employee",
+      "offboarding",
+      "it",
+      "checklist"
+    ],
+    "path": "hr_support/Employee Offboarding IT Checklist.md"
+  },
+  {
+    "id": "hr_support.expense_claims_and_reimbursements",
+    "category": "HR Support",
+    "title": "Expense Claims and Reimbursements",
+    "summary": "Problems submitting, approving, or paying employee expense claims.",
+    "content": "# Expense Claims and Reimbursements\n\n**Category:** HR Support  \n\n## Description\nProblems submitting, approving, or paying employee expense claims.\n\n## Typical Ticket Patterns\n- “Cannot upload receipts”\n- “Expense claim rejected by system”\n- “Status remains pending payment”\n\n## Resolution Steps\n1. Confirm user has the correct expense role and cost centre.\n2. Ensure they are using the current expense tool and template.\n3. Check attachment limits and file types for receipts.\n4. Review system error messages and approval workflow.\n5. Reprocess failed claims when appropriate and confirm status with payroll.\n\n## When to Escalate\n- Large or sensitive claims (travel, relocation) blocked.\n- Technical issues preventing expense submission for many users.\n- Suspected fraud or policy violations.\n\n## Related Articles\n- Time Sheet Submission and Correction\n- Budget Approval and Cost Allocation\n- HR Data Privacy and Sensitive Information Requests\n\n\n",
+    "escalation_notes": "- Large or sensitive claims (travel, relocation) blocked.\n- Technical issues preventing expense submission for many users.\n- Suspected fraud or policy violations.",
+    "tags": [
+      "hr_support",
+      "expense",
+      "claims",
+      "and",
+      "reimbursements"
+    ],
+    "path": "hr_support/Expense Claims and Reimbursements.md"
+  },
+  {
+    "id": "hr_support.hr_data_privacy_and_sensitive_information_requests",
+    "category": "HR Support",
+    "title": "HR Data Privacy and Sensitive Information Requests",
+    "summary": "Handling access requests, corrections, or deletions for personal HR data under privacy regulations.",
+    "content": "# HR Data Privacy and Sensitive Information Requests\n\n**Category:** HR Support  \n\n## Description\nHandling access requests, corrections, or deletions for personal HR data under privacy regulations.\n\n## Typical Ticket Patterns\n- “Employee requests a copy of their HR data”\n- “Request to delete old HR records”\n- “Question about who can see my data”\n\n## Resolution Steps\n1. Verify identity of the requester and confirm what data is requested.\n2. Review applicable privacy regulations and internal retention policies.\n3. Coordinate with HR, Legal, and Data Protection Officer as needed.\n4. Provide approved data exports or written responses via secure channel.\n5. Log request and response dates for compliance tracking.\n\n## When to Escalate\n- Complex or cross-border data requests.\n- Requests to erase data that must be retained by law.\n- Suspected data breach or unauthorised access.\n\n## Related Articles\n- HR Reports and Data Extract Requests\n- Employee Offboarding IT Checklist\n- Administrative Rights Review and Recertification\n\n\n\n============================================================\nCATEGORY: Access (12 articles)\n============================================================\n\n",
+    "escalation_notes": "- Complex or cross-border data requests.\n- Requests to erase data that must be retained by law.\n- Suspected data breach or unauthorised access.",
+    "tags": [
+      "hr_support",
+      "hr",
+      "data",
+      "privacy",
+      "and",
+      "sensitive",
+      "information",
+      "requests"
+    ],
+    "path": "hr_support/HR Data Privacy and Sensitive Information Requests.md"
+  },
+  {
+    "id": "hr_support.hr_portal_troubleshooting",
+    "category": "HR Support",
+    "title": "HR Portal Troubleshooting",
+    "summary": "Fixing login or navigation issues in the HR self-service portal.",
+    "content": "# HR Portal Troubleshooting\n\n**Category:** HR Support  \n\n## Description\nFixing login or navigation issues in the HR self-service portal.\n\n## Typical Ticket Patterns\n- “Error after logging into HR portal”\n- “Cannot see my payslips”\n- “Leave balance not loading”\n\n## Resolution Steps\n1. Confirm portal URL and that the user is using a supported browser.\n2. Ask user to clear cache/cookies or try an incognito window.\n3. Check SSO / MFA status and ensure HR application is assigned to the user.\n4. Verify user profile and employment status in the HR system.\n5. Check for known incidents; if none, reproduce issue via test account if possible.\n6. Log any error codes and screenshots; raise to HR application support if needed.\n\n## When to Escalate\n- Multiple users reporting same portal issue.\n- Payroll or benefits information unavailable near cut-off dates.\n- Security or data privacy errors.\n\n## Related Articles\n- HR System Access Guide (HRIS / Oracle)\n- HR Data Privacy and Sensitive Information Requests\n- Submitting Leave Requests\n\n\n",
+    "escalation_notes": "- Multiple users reporting same portal issue.\n- Payroll or benefits information unavailable near cut-off dates.\n- Security or data privacy errors.",
+    "tags": [
+      "hr_support",
+      "hr",
+      "portal",
+      "troubleshooting"
+    ],
+    "path": "hr_support/HR Portal Troubleshooting.md"
+  },
+  {
+    "id": "hr_support.hr_reports_and_data_extract_requests",
+    "category": "HR Support",
+    "title": "HR Reports and Data Extract Requests",
+    "summary": "Providing HR reports or data extracts to authorised stakeholders.",
+    "content": "# HR Reports and Data Extract Requests\n\n**Category:** HR Support  \n\n## Description\nProviding HR reports or data extracts to authorised stakeholders.\n\n## Typical Ticket Patterns\n- “Need list of starters/leavers for last month”\n- “Manager headcount report requested”\n- “Export of HR data for audit”\n\n## Resolution Steps\n1. Validate requester’s role and legal basis for accessing HR data.\n2. Identify required fields, date ranges, and format (CSV, PDF, dashboard).\n3. Use HR reporting tools to generate the report; apply standard filters.\n4. Remove unnecessary personally identifiable information where possible.\n5. Deliver report via approved secure channels and log recipients.\n\n## When to Escalate\n- Requests for sensitive data (salary, performance, health).\n- External regulators or legal discovery requests.\n- Large or recurring reporting requirements that need automation.\n\n## Related Articles\n- HR Data Privacy and Sensitive Information Requests\n- Time Sheet Submission and Correction\n- Employee Offboarding IT Checklist\n\n\n",
+    "escalation_notes": "- Requests for sensitive data (salary, performance, health).\n- External regulators or legal discovery requests.\n- Large or recurring reporting requirements that need automation.",
+    "tags": [
+      "hr_support",
+      "hr",
+      "reports",
+      "and",
+      "data",
+      "extract",
+      "requests"
+    ],
+    "path": "hr_support/HR Reports and Data Extract Requests.md"
+  },
+  {
+    "id": "hr_support.hr_system_access_guide_hris_oracle",
+    "category": "HR Support",
+    "title": "HR System Access Guide (HRIS / Oracle)",
+    "summary": "Granting and managing access to core HR systems (e.g., HRIS, Oracle, SAP HR).",
+    "content": "# HR System Access Guide (HRIS / Oracle)\n\n**Category:** HR Support  \n\n## Description\nGranting and managing access to core HR systems (e.g., HRIS, Oracle, SAP HR).\n\n## Typical Ticket Patterns\n- “Cannot log in to HR system”\n- “Need HR reporting role”\n- “New manager cannot approve leave in Oracle”\n\n## Resolution Steps\n1. Confirm user's employment status, role, and manager from HR.\n2. Map requested rights to standard HR role profiles (employee, manager, HR staff).\n3. Submit or approve access change in HR system admin tool.\n4. Ask user to log out of SSO and back in to refresh permissions.\n5. Validate that key tasks (time entry, leave approval, HR reporting) now work.\n6. Update ticket with final access profile and any exceptions.\n\n## When to Escalate\n- Requests for custom or non-standard HR roles.\n- Conflicting instructions from HR and manager.\n- HR system incidents or performance issues affecting many users.\n\n## Related Articles\n- HR Portal Troubleshooting\n- Time Sheet Submission and Correction\n- HR Reports and Data Extract Requests\n\n\n",
+    "escalation_notes": "- Requests for custom or non-standard HR roles.\n- Conflicting instructions from HR and manager.\n- HR system incidents or performance issues affecting many users.",
+    "tags": [
+      "hr_support",
+      "hr",
+      "system",
+      "access",
+      "guide",
+      "hris",
+      "oracle"
+    ],
+    "path": "hr_support/HR System Access Guide (HRIS Oracle).md"
+  },
+  {
+    "id": "hr_support.new_employee_onboarding_it_checklist",
+    "category": "HR Support",
+    "title": "New Employee Onboarding IT Checklist",
+    "summary": "Ensuring new starters have the correct accounts, equipment, and access on day one.",
+    "content": "# New Employee Onboarding IT Checklist\n\n**Category:** HR Support  \n\n## Description\nEnsuring new starters have the correct accounts, equipment, and access on day one.\n\n## Typical Ticket Patterns\n- “New starter not set up in system”\n- “No access to HR portal or email”\n- “Equipment not ready for start date”\n\n## Resolution Steps\n1. Verify start date and role from the HR onboarding request.\n2. Confirm core accounts (AD/email/SSO) have been created with the right department and manager.\n3. Provision standard hardware kit and confirm shipping or pickup details.\n4. Assign default application, HR system, and folder access based on role profile.\n5. Test login to email, HR portal, and time-reporting before handover.\n6. Share “Getting Started” instructions with the manager and user.\n7. Update ticket with completed steps and remaining follow-ups.\n\n## When to Escalate\n- Start date has arrived and core access is still missing.\n- Conflicting information between HR and hiring manager.\n- Special regulatory or privileged roles requiring additional approvals.\n\n## Related Articles\n- HR System Access Guide (HRIS / Oracle)\n- Submitting Leave Requests\n- Role Changes and Project Assignments\n\n\n",
+    "escalation_notes": "- Start date has arrived and core access is still missing.\n- Conflicting information between HR and hiring manager.\n- Special regulatory or privileged roles requiring additional approvals.",
+    "tags": [
+      "hr_support",
+      "new",
+      "employee",
+      "onboarding",
+      "it",
+      "checklist"
+    ],
+    "path": "hr_support/New Employee Onboarding IT Checklist.md"
+  },
+  {
+    "id": "hr_support.probation_promotion_and_role_change_it_updates",
+    "category": "HR Support",
+    "title": "Probation, Promotion and Role Change IT Updates",
+    "summary": "Updating IT access and systems when an employee passes probation, is promoted, or changes role.",
+    "content": "# Probation, Promotion and Role Change IT Updates\n\n**Category:** HR Support  \n\n## Description\nUpdating IT access and systems when an employee passes probation, is promoted, or changes role.\n\n## Typical Ticket Patterns\n- “Employee passed probation – update access”\n- “Moved from contractor to permanent”\n- “Promoted to manager, needs new permissions”\n\n## Resolution Steps\n1. Confirm HR has recorded the change and effective date.\n2. Map new role to standard IT access profile.\n3. Add or remove applications, distribution lists, and HR permissions.\n4. Validate new permissions with the user and manager.\n5. Remove temporary or probationary access that is no longer required.\n\n## When to Escalate\n- Disagreement over what access is appropriate.\n- Promotions involving sensitive systems (finance, HR, security).\n- System sync failures between HR and IT directories.\n\n## Related Articles\n- Updating Personal or Role Information\n- HR System Access Guide (HRIS / Oracle)\n- Role Changes and Project Assignments\n\n\n",
+    "escalation_notes": "- Disagreement over what access is appropriate.\n- Promotions involving sensitive systems (finance, HR, security).\n- System sync failures between HR and IT directories.",
+    "tags": [
+      "hr_support",
+      "probation",
+      "promotion",
+      "and",
+      "role",
+      "change",
+      "it",
+      "updates"
+    ],
+    "path": "hr_support/Probation Promotion and Role Change IT Updates.md"
+  },
+  {
+    "id": "hr_support.restricted_area_or_building_access_requests",
+    "category": "HR Support",
+    "title": "Restricted Area or Building Access Requests",
+    "summary": "Requests for card access to specific buildings, zones, or secure rooms.",
+    "content": "# Restricted Area or Building Access Requests\n\n**Category:** HR Support  \n\n## Description\nRequests for card access to specific buildings, zones, or secure rooms.\n\n## Typical Ticket Patterns\n- “Badge not working at new office”\n- “Need access to secure lab”\n- “Turnstile denies entry”\n\n## Resolution Steps\n1. Confirm role, manager approval, and reason for access.\n2. Check user status in physical access control system.\n3. Assign appropriate access profile and time schedule.\n4. Ask user to test badge at required entry points.\n5. Log access level changes for audit.\n\n## When to Escalate\n- Security incidents or lost/stolen badges.\n- Access to high-risk areas (data centres, labs).\n- Conflicts between requested access and security policy.\n\n## Related Articles\n- Administrative Rights Request Flow\n- HR Data Privacy and Sensitive Information Requests\n- IT Support for Internal Projects\n\n\n",
+    "escalation_notes": "- Security incidents or lost/stolen badges.\n- Access to high-risk areas (data centres, labs).\n- Conflicts between requested access and security policy.",
+    "tags": [
+      "hr_support",
+      "restricted",
+      "area",
+      "or",
+      "building",
+      "access",
+      "requests"
+    ],
+    "path": "hr_support/Restricted Area or Building Access Requests.md"
+  },
+  {
+    "id": "hr_support.submitting_leave_requests",
+    "category": "HR Support",
+    "title": "Submitting Leave Requests",
+    "summary": "Helping employees raise and track vacation, sick leave, and other absence requests.",
+    "content": "# Submitting Leave Requests\n\n**Category:** HR Support  \n\n## Description\nHelping employees raise and track vacation, sick leave, and other absence requests.\n\n## Typical Ticket Patterns\n- “Cannot submit vacation request”\n- “Leave request stuck in pending”\n- “Manager cannot approve my leave”\n\n## Resolution Steps\n1. Verify that the user and manager have active HR portal access.\n2. Confirm leave type, dates, and any policy constraints (notice period, balance).\n3. Walk through the leave request steps in the HR portal and compare with screenshots.\n4. Check workflow assignments and manager hierarchy; correct if misconfigured.\n5. Resubmit or re-route stuck requests and confirm new status.\n6. Advise user on how to view balances and history.\n\n## When to Escalate\n- Approval workflow errors that cannot be corrected by IT.\n- Policy exceptions or overlapping leave disputes.\n- HR system outage affecting leave approvals.\n\n## Related Articles\n- Updating Personal or Role Information\n- Time Sheet Submission and Correction\n- HR System Access Guide (HRIS / Oracle)\n\n\n",
+    "escalation_notes": "- Approval workflow errors that cannot be corrected by IT.\n- Policy exceptions or overlapping leave disputes.\n- HR system outage affecting leave approvals.",
+    "tags": [
+      "hr_support",
+      "submitting",
+      "leave",
+      "requests"
+    ],
+    "path": "hr_support/Submitting Leave Requests.md"
+  },
+  {
+    "id": "hr_support.time_sheet_submission_and_correction",
+    "category": "HR Support",
+    "title": "Time Sheet Submission and Correction",
+    "summary": "Issues with entering, submitting, or correcting hours worked in the time-reporting system.",
+    "content": "# Time Sheet Submission and Correction\n\n**Category:** HR Support  \n\n## Description\nIssues with entering, submitting, or correcting hours worked in the time-reporting system.\n\n## Typical Ticket Patterns\n- “Cannot submit my timesheet”\n- “Time entry screen blank”\n- “Incorrect hours submitted – need to amend”\n\n## Resolution Steps\n1. Confirm the correct time-reporting system and period (week, month).\n2. Check that the user is assigned to the correct cost centre/project.\n3. Validate that the timesheet is open for editing and not locked by payroll.\n4. Guide the user through correcting entries or raise a request for admin correction.\n5. Confirm the recalculated totals and approval status.\n\n## When to Escalate\n- Pay has already been processed with incorrect hours.\n- Timesheet workflow errors affecting multiple users.\n- Role or project assignments missing in HR data.\n\n## Related Articles\n- HR System Access Guide (HRIS / Oracle)\n- HR Reports and Data Extract Requests\n- Expense Claims and Reimbursements\n\n\n",
+    "escalation_notes": "- Pay has already been processed with incorrect hours.\n- Timesheet workflow errors affecting multiple users.\n- Role or project assignments missing in HR data.",
+    "tags": [
+      "hr_support",
+      "time",
+      "sheet",
+      "submission",
+      "and",
+      "correction"
+    ],
+    "path": "hr_support/Time Sheet Submission and Correction.md"
+  },
+  {
+    "id": "hr_support.updating_personal_or_role_information",
+    "category": "HR Support",
+    "title": "Updating Personal or Role Information",
+    "summary": "Changes to name, contact details, department, manager, or job title that impact IT systems.",
+    "content": "# Updating Personal or Role Information\n\n**Category:** HR Support  \n\n## Description\nChanges to name, contact details, department, manager, or job title that impact IT systems.\n\n## Typical Ticket Patterns\n- “Surname changed after marriage”\n- “New manager not shown in system”\n- “Role changed from contractor to employee”\n\n## Resolution Steps\n1. Confirm HR has received and approved the underlying change (e.g., name change, promotion).\n2. Validate that HR master data has been updated correctly.\n3. Sync changes to downstream systems (AD, email display name, distribution lists).\n4. Ensure reporting lines and approval workflows are updated.\n5. Notify the user and manager once all systems show the correct details.\n\n## When to Escalate\n- Conflicting information between HR and payroll systems.\n- Frequent sync failures for this user or department.\n- Sensitive changes (e.g., legal name, gender markers) needing privacy review.\n\n## Related Articles\n- New Employee Onboarding IT Checklist\n- Employee Offboarding IT Checklist\n- Probation, Promotion and Role Change IT Updates\n\n\n",
+    "escalation_notes": "- Conflicting information between HR and payroll systems.\n- Frequent sync failures for this user or department.\n- Sensitive changes (e.g., legal name, gender markers) needing privacy review.",
+    "tags": [
+      "hr_support",
+      "updating",
+      "personal",
+      "or",
+      "role",
+      "information"
+    ],
+    "path": "hr_support/Updating Personal or Role Information.md"
+  },
+  {
+    "id": "internal_project.data_access_and_security_for_project_teams",
+    "category": "Internal Project",
+    "title": "Data Access and Security for Project Teams",
+    "summary": "Ensuring project teams can access required data sets while complying with security and privacy rules.",
+    "content": "# Data Access and Security for Project Teams\n\n**Category:** Internal Project  \n\n## Description\nEnsuring project teams can access required data sets while complying with security and privacy rules.\n\n## Typical Ticket Patterns\n- “Need dataset for analytics project”\n- “Cannot access data warehouse table”\n- “Request for production logs”\n\n## Resolution Steps\n1. Confirm data owner and purpose of use.\n2. Classify requested data (public, internal, confidential, personal).\n3. Choose appropriate access method (read-only views, masked data, anonymised extracts).\n4. Apply access via roles or views and log approvals.\n5. Review access regularly and remove when project ends.\n\n## When to Escalate\n- Requests for sensitive or personal data.\n- Cross-region or cross-tenant data transfers.\n- Conflicts between project needs and data-protection policies.\n\n## Related Articles\n- HR Data Privacy and Sensitive Information Requests\n- HR Reports and Data Extract Requests\n- Archive and Long-Term Storage Practices\n\n\n\n============================================================\nCATEGORY: Administrative rights (6 articles)\n============================================================\n\n",
+    "escalation_notes": "- Requests for sensitive or personal data.\n- Cross-region or cross-tenant data transfers.\n- Conflicts between project needs and data-protection policies.",
+    "tags": [
+      "internal_project",
+      "data",
+      "access",
+      "and",
+      "security",
+      "for",
+      "project",
+      "teams"
+    ],
+    "path": "internal_project/Data Access and Security for Project Teams.md"
+  },
+  {
+    "id": "internal_project.it_support_for_internal_projects",
+    "category": "Internal Project",
+    "title": "IT Support for Internal Projects",
+    "summary": "Defining how IT supports internal projects with environments, tooling, and incident handling.",
+    "content": "# IT Support for Internal Projects\n\n**Category:** Internal Project  \n\n## Description\nDefining how IT supports internal projects with environments, tooling, and incident handling.\n\n## Typical Ticket Patterns\n- “New internal project needs IT setup”\n- “Who supports project environment?”\n- “Escalation path for project issues”\n\n## Resolution Steps\n1. Confirm project sponsor, manager, and expected duration.\n2. Identify required systems (repositories, CI/CD, databases, test/stage).\n3. Assign a primary IT contact or support group.\n4. Define support hours, incident severity, and escalation contacts.\n5. Document project setup and support model in a shared location.\n\n## When to Escalate\n- Projects with external clients or regulatory impact.\n- Cross-department dependencies not clearly owned.\n- Large infrastructure or security design changes.\n\n## Related Articles\n- Project IT Resource Requirements\n- System Deployment Checklist\n- Test and Staging Environment Setup\n\n\n",
+    "escalation_notes": "- Projects with external clients or regulatory impact.\n- Cross-department dependencies not clearly owned.\n- Large infrastructure or security design changes.",
+    "tags": [
+      "internal_project",
+      "it",
+      "support",
+      "for",
+      "internal",
+      "projects"
+    ],
+    "path": "internal_project/IT Support for Internal Projects.md"
+  },
+  {
+    "id": "internal_project.project_it_resource_requirements",
+    "category": "Internal Project",
+    "title": "Project IT Resource Requirements",
+    "summary": "Capturing the infrastructure and tooling needs of a new internal project.",
+    "content": "# Project IT Resource Requirements\n\n**Category:** Internal Project  \n\n## Description\nCapturing the infrastructure and tooling needs of a new internal project.\n\n## Typical Ticket Patterns\n- “Need VM and database for project”\n- “Request for test environment and storage”\n- “Need CI/CD pipeline for new app”\n\n## Resolution Steps\n1. Collect basic project details: stack, environments (dev/test/prod), users.\n2. Estimate compute, storage, and network requirements.\n3. Map requirements to standard platforms (cloud, on-prem, shared services).\n4. Raise necessary provisioning requests and track completion.\n5. Share resource overview and access details with the project team.\n\n## When to Escalate\n- Non-standard technology stacks or external hosting.\n- Significant cost or capacity impact.\n- Security or data-classification concerns.\n\n## Related Articles\n- Test and Staging Environment Setup\n- Archive and Long-Term Storage Practices\n- Data Access and Security for Project Teams\n\n\n",
+    "escalation_notes": "- Non-standard technology stacks or external hosting.\n- Significant cost or capacity impact.\n- Security or data-classification concerns.",
+    "tags": [
+      "internal_project",
+      "project",
+      "it",
+      "resource",
+      "requirements"
+    ],
+    "path": "internal_project/Project IT Resource Requirements.md"
+  },
+  {
+    "id": "internal_project.role_changes_and_project_assignments",
+    "category": "Internal Project",
+    "title": "Role Changes and Project Assignments",
+    "summary": "Adjusting access when staff join, leave, or change roles within a project.",
+    "content": "# Role Changes and Project Assignments\n\n**Category:** Internal Project  \n\n## Description\nAdjusting access when staff join, leave, or change roles within a project.\n\n## Typical Ticket Patterns\n- “Add developer to project X”\n- “Remove user from internal project”\n- “Promote user to project lead role”\n\n## Resolution Steps\n1. Verify project membership change with project manager.\n2. Update relevant groups (source control, ticketing, environments).\n3. Remove access for users leaving the project and adjust shared credentials.\n4. Confirm new permissions allow required tasks, but no unnecessary admin rights.\n5. Document changes in project access log.\n\n## When to Escalate\n- Access to production or sensitive data.\n- Disagreements over who should have what level of access.\n- Large project team changes during critical milestones.\n\n## Related Articles\n- Access Request Flow (New, Modify, Remove)\n- Admin Rights Review and Recertification\n- Data Access and Security for Project Teams\n\n\n",
+    "escalation_notes": "- Access to production or sensitive data.\n- Disagreements over who should have what level of access.\n- Large project team changes during critical milestones.",
+    "tags": [
+      "internal_project",
+      "role",
+      "changes",
+      "and",
+      "project",
+      "assignments"
+    ],
+    "path": "internal_project/Role Changes and Project Assignments.md"
+  },
+  {
+    "id": "internal_project.system_deployment_checklist",
+    "category": "Internal Project",
+    "title": "System Deployment Checklist",
+    "summary": "Checklist for deploying new internal systems or major releases into production.",
+    "content": "# System Deployment Checklist\n\n**Category:** Internal Project  \n\n## Description\nChecklist for deploying new internal systems or major releases into production.\n\n## Typical Ticket Patterns\n- “Go-live for internal app”\n- “Production deployment for version X”\n- “Pre-deployment checks”\n\n## Resolution Steps\n1. Confirm change request, approvals, and maintenance window.\n2. Validate backup/rollback plan and test coverage.\n3. Ensure monitoring, logging, and alerting are configured.\n4. Execute deployment steps or support dev team during deployment.\n5. Run smoke tests and confirm key user journeys function.\n6. Document deployment outcome and any follow-up tasks.\n\n## When to Escalate\n- Deployment failures causing outages.\n- Security issues identified during deployment.\n- Go-lives involving external customers or regulators.\n\n## Related Articles\n- Test and Staging Environment Setup\n- Network Connectivity Troubleshooting (Workstations)\n- Unsupported Issues and Escalation Matrix\n\n\n",
+    "escalation_notes": "- Deployment failures causing outages.\n- Security issues identified during deployment.\n- Go-lives involving external customers or regulators.",
+    "tags": [
+      "internal_project",
+      "system",
+      "deployment",
+      "checklist"
+    ],
+    "path": "internal_project/System Deployment Checklist.md"
+  },
+  {
+    "id": "internal_project.test_and_staging_environment_setup",
+    "category": "Internal Project",
+    "title": "Test and Staging Environment Setup",
+    "summary": "Creating and maintaining non-production environments for testing and UAT.",
+    "content": "# Test and Staging Environment Setup\n\n**Category:** Internal Project  \n\n## Description\nCreating and maintaining non-production environments for testing and UAT.\n\n## Typical Ticket Patterns\n- “Need staging environment cloned from prod”\n- “UAT environment not in sync”\n- “Test DB refresh request”\n\n## Resolution Steps\n1. Clarify environment purpose (dev, QA, UAT, performance).\n2. Define data requirements (anonymised vs production clone) and security controls.\n3. Provision infrastructure and apply configuration matching production as closely as allowed.\n4. Set up regular refresh schedule and access controls.\n5. Document environment endpoints and access instructions for the team.\n\n## When to Escalate\n- Need for production data in test environments.\n- High performance or load-testing requirements.\n- Complex multi-system integration environments.\n\n## Related Articles\n- Project IT Resource Requirements\n- Data Access and Security for Project Teams\n- System Deployment Checklist\n\n\n",
+    "escalation_notes": "- Need for production data in test environments.\n- High performance or load-testing requirements.\n- Complex multi-system integration environments.",
+    "tags": [
+      "internal_project",
+      "test",
+      "and",
+      "staging",
+      "environment",
+      "setup"
+    ],
+    "path": "internal_project/Test and Staging Environment Setup.md"
+  },
+  {
+    "id": "miscellaneous.email_formatting_and_signature_problems",
+    "category": "Miscellaneous",
+    "title": "Email Formatting and Signature Problems",
+    "summary": "Issues with email templates, signatures, fonts, and general formatting.",
+    "content": "# Email Formatting and Signature Problems\n\n**Category:** Miscellaneous  \n\n## Description\nIssues with email templates, signatures, fonts, and general formatting.\n\n## Typical Ticket Patterns\n- “Email signature missing / wrong”\n- “Text size changes after sending”\n- “Template looks different to recipients”\n\n## Resolution Steps\n1. Confirm email client and version (web, desktop, mobile).\n2. Apply standard corporate signature template or policy.\n3. Check formatting settings (HTML vs plain text) and fonts.\n4. Send test email internally and externally to compare.\n5. Update guidance to user on copy-pasting from other documents.\n\n## When to Escalate\n- Compliance-related content missing (disclaimers, legal text).\n- Global template or branding issues.\n- Problems only affecting specific distribution groups.\n\n## Related Articles\n- Email Access and Configuration\n- General Troubleshooting Guide\n- Unsupported Issues and Escalation Matrix\n\n\n",
+    "escalation_notes": "- Compliance-related content missing (disclaimers, legal text).\n- Global template or branding issues.\n- Problems only affecting specific distribution groups.",
+    "tags": [
+      "miscellaneous",
+      "email",
+      "formatting",
+      "and",
+      "signature",
+      "problems"
+    ],
+    "path": "miscellaneous/Email Formatting and Signature Problems.md"
+  },
+  {
+    "id": "miscellaneous.general_troubleshooting_guide",
+    "category": "Miscellaneous",
+    "title": "General Troubleshooting Guide",
+    "summary": "Baseline steps for common IT issues when no specific KB article applies.",
+    "content": "# General Troubleshooting Guide\n\n**Category:** Miscellaneous  \n\n## Description\nBaseline steps for common IT issues when no specific KB article applies.\n\n## Typical Ticket Patterns\n- “System not working – no details”\n- “Random error message”\n- “User cannot describe exact problem”\n\n## Resolution Steps\n1. Clarify symptoms, scope (one user vs many), and recent changes.\n2. Ask user to restart affected application or device.\n3. Check networking, login status, and basic resource usage.\n4. Look for known incidents or outages.\n5. If issue becomes specific (e.g., access, storage, hardware), redirect to relevant KB/queue.\n\n## When to Escalate\n- Repeated “general” tickets from same system or location.\n- Signs of wider incident (multiple users, same error).\n- Safety or data-loss risk.\n\n## Related Articles\n- Incorrect Assignment or Misrouted Tickets\n- Unsupported Issues and Escalation Matrix\n- Network Connectivity Troubleshooting (Workstations)\n\n\n",
+    "escalation_notes": "- Repeated “general” tickets from same system or location.\n- Signs of wider incident (multiple users, same error).\n- Safety or data-loss risk.",
+    "tags": [
+      "miscellaneous",
+      "general",
+      "troubleshooting",
+      "guide"
+    ],
+    "path": "miscellaneous/General Troubleshooting Guide.md"
+  },
+  {
+    "id": "miscellaneous.how_to_guidance_and_user_education_requests",
+    "category": "Miscellaneous",
+    "title": "“How-To” Guidance and User Education Requests",
+    "summary": "Requests that are primarily about learning how to use an existing tool rather than fixing an incident.",
+    "content": "# “How-To” Guidance and User Education Requests\n\n**Category:** Miscellaneous  \n\n## Description\nRequests that are primarily about learning how to use an existing tool rather than fixing an incident.\n\n## Typical Ticket Patterns\n- “How do I share a file in OneDrive?”\n- “Best way to set up a team site?”\n- “How can I schedule recurring meetings?”\n\n## Resolution Steps\n1. Confirm that the tool is functioning correctly (no incident).\n2. Provide short, task-focused instructions or links to existing guides.\n3. Where questions recur, propose updated FAQ or quick-reference guides.\n4. Encourage use of training resources, webinars, or e-learning.\n5. Tag ticket as “how-to” for reporting.\n\n## When to Escalate\n- Requests for formal training for whole teams.\n- Gaps in documentation that need product owner support.\n- Tools with frequent how-to issues that may require UX or process changes.\n\n## Related Articles\n- General Troubleshooting Guide\n- Folder Structure Standards for Teams and Projects\n- HR Portal Troubleshooting\n",
+    "escalation_notes": "- Requests for formal training for whole teams.\n- Gaps in documentation that need product owner support.\n- Tools with frequent how-to issues that may require UX or process changes.",
+    "tags": [
+      "miscellaneous",
+      "how",
+      "to",
+      "guidance",
+      "and",
+      "user",
+      "education",
+      "requests"
+    ],
+    "path": "miscellaneous/How-To Guidance and User Education Requests.md"
+  },
+  {
+    "id": "miscellaneous.incorrect_assignment_or_misrouted_tickets",
+    "category": "Miscellaneous",
+    "title": "Incorrect Assignment or Misrouted Tickets",
+    "summary": "Tickets opened in the wrong queue or category.",
+    "content": "# Incorrect Assignment or Misrouted Tickets\n\n**Category:** Miscellaneous  \n\n## Description\nTickets opened in the wrong queue or category.\n\n## Typical Ticket Patterns\n- “This should go to HR, not IT”\n- “Ticket in wrong team’s backlog”\n- “Mis-categorised as hardware instead of access”\n\n## Resolution Steps\n1. Review ticket description and determine correct category/owner.\n2. Update ticket category, priority, and routing group.\n3. Add a brief note explaining the reassignment.\n4. If pattern emerges (same form mis-routing), raise improvement request to service management.\n5. Track reassignment metrics for reporting.\n\n## When to Escalate\n- Critical tickets delayed due to repeated mis-routing.\n- Workflow or form design causing systemic errors.\n- Disputes between teams about ownership.\n\n## Related Articles\n- General Troubleshooting Guide\n- Unsupported Issues and Escalation Matrix\n- Non-IT Requests and Redirection\n\n\n",
+    "escalation_notes": "- Critical tickets delayed due to repeated mis-routing.\n- Workflow or form design causing systemic errors.\n- Disputes between teams about ownership.",
+    "tags": [
+      "miscellaneous",
+      "incorrect",
+      "assignment",
+      "or",
+      "misrouted",
+      "tickets"
+    ],
+    "path": "miscellaneous/Incorrect Assignment or Misrouted Tickets.md"
+  },
+  {
+    "id": "miscellaneous.non_it_requests_and_redirection",
+    "category": "Miscellaneous",
+    "title": "Non-IT Requests and Redirection",
+    "summary": "Requests that belong to HR, Facilities, Finance, or other non-IT departments.",
+    "content": "# Non-IT Requests and Redirection\n\n**Category:** Miscellaneous  \n\n## Description\nRequests that belong to HR, Facilities, Finance, or other non-IT departments.\n\n## Typical Ticket Patterns\n- “Question about payslip”\n- “Office move / seating request”\n- “Catering or events queries”\n\n## Resolution Steps\n1. Identify which department owns the request.\n2. Reassign or close the ticket with clear instructions on where to submit.\n3. Provide relevant contact details or portal links.\n4. If many such tickets appear, propose a new category or portal form to service management.\n5. Keep a note of common non-IT topics for FAQ creation.\n\n## When to Escalate\n- Sensitive HR or Finance topics incorrectly routed to IT.\n- Repeated mis-routing due to portal design.\n- Complaints about lack of visibility after redirection.\n\n## Related Articles\n- Incorrect Assignment or Misrouted Tickets\n- Unsupported Issues and Escalation Matrix\n- General Troubleshooting Guide\n\n\n",
+    "escalation_notes": "- Sensitive HR or Finance topics incorrectly routed to IT.\n- Repeated mis-routing due to portal design.\n- Complaints about lack of visibility after redirection.",
+    "tags": [
+      "miscellaneous",
+      "non",
+      "it",
+      "requests",
+      "and",
+      "redirection"
+    ],
+    "path": "miscellaneous/Non-IT Requests and Redirection.md"
+  },
+  {
+    "id": "miscellaneous.report_generation_and_template_issues",
+    "category": "Miscellaneous",
+    "title": "Report Generation and Template Issues",
+    "summary": "Problems creating or exporting reports from line-of-business systems.",
+    "content": "# Report Generation and Template Issues\n\n**Category:** Miscellaneous  \n\n## Description\nProblems creating or exporting reports from line-of-business systems.\n\n## Typical Ticket Patterns\n- “Export to Excel not working”\n- “Report shows wrong columns”\n- “Cannot schedule weekly report”\n\n## Resolution Steps\n1. Confirm the exact report, filters, and export format.\n2. Attempt to reproduce issue using a test or admin account.\n3. Check user permissions for reporting modules.\n4. Clear browser cache or test in alternate browser if web-based.\n5. Log any errors and coordinate with application owner for fixes.\n\n## When to Escalate\n- Finance or regulatory reports affected.\n- Report engine errors impacting many users.\n- Complex report design changes requested.\n\n## Related Articles\n- HR Reports and Data Extract Requests\n- General Troubleshooting Guide\n- Unsupported Issues and Escalation Matrix\n\n\n",
+    "escalation_notes": "- Finance or regulatory reports affected.\n- Report engine errors impacting many users.\n- Complex report design changes requested.",
+    "tags": [
+      "miscellaneous",
+      "report",
+      "generation",
+      "and",
+      "template",
+      "issues"
+    ],
+    "path": "miscellaneous/Report Generation and Template Issues.md"
+  },
+  {
+    "id": "miscellaneous.software_installation_guide",
+    "category": "Miscellaneous",
+    "title": "Software Installation Guide",
+    "summary": "How users request and install standard, approved software on corporate devices.",
+    "content": "# Software Installation Guide\n\n**Category:** Miscellaneous  \n\n## Description\nHow users request and install standard, approved software on corporate devices.\n\n## Typical Ticket Patterns\n- “Need to install application X”\n- “Install failing with permission error”\n- “Unsure if tool is approved”\n\n## Resolution Steps\n1. Confirm software is on the approved list; if not, route to security/procurement.\n2. Check user’s admin rights or installation permissions.\n3. Use corporate software centre, package manager, or remote deployment where available.\n4. Capture and troubleshoot installation error codes if failure occurs.\n5. Confirm application runs and user understands support boundaries.\n\n## When to Escalate\n- Non-approved software requests.\n- Installation impacting system stability.\n- License or procurement issues.\n\n## Related Articles\n- Software Licensing and Subscription Requests\n- Local Admin Rights Policy\n- Unsupported Issues and Escalation Matrix\n\n\n",
+    "escalation_notes": "- Non-approved software requests.\n- Installation impacting system stability.\n- License or procurement issues.",
+    "tags": [
+      "miscellaneous",
+      "software",
+      "installation",
+      "guide"
+    ],
+    "path": "miscellaneous/Software Installation Guide.md"
+  },
+  {
+    "id": "miscellaneous.unsupported_issues_and_escalation_matrix",
+    "category": "Miscellaneous",
+    "title": "Unsupported Issues and Escalation Matrix",
+    "summary": "Clarifies which requests are out of scope for IT and how they should be redirected.",
+    "content": "# Unsupported Issues and Escalation Matrix\n\n**Category:** Miscellaneous  \n\n## Description\nClarifies which requests are out of scope for IT and how they should be redirected.\n\n## Typical Ticket Patterns\n- “Personal device support”\n- “Home internet/router issues”\n- “Non-corporate software”\n\n## Resolution Steps\n1. Identify whether request relates to corporate assets or services.\n2. If out of scope, politely explain support boundaries.\n3. Provide guidance for self-help or appropriate external vendor.\n4. For borderline cases, seek approval from IT manager.\n5. Record out-of-scope categorisation for reporting.\n\n## When to Escalate\n- Disagreements about scope between IT and business.\n- High-risk or security-related issues on personal devices.\n- Repeated unsupported requests from the same user or team.\n\n## Related Articles\n- General Troubleshooting Guide\n- Non-IT Requests and Redirection\n- Temporary Admin Access for Troubleshooting\n\n\n",
+    "escalation_notes": "- Disagreements about scope between IT and business.\n- High-risk or security-related issues on personal devices.\n- Repeated unsupported requests from the same user or team.",
+    "tags": [
+      "miscellaneous",
+      "unsupported",
+      "issues",
+      "and",
+      "escalation",
+      "matrix"
+    ],
+    "path": "miscellaneous/Unsupported Issues and Escalation Matrix.md"
+  },
+  {
+    "id": "purchase.budget_approval_and_cost_allocation",
+    "category": "Purchase",
+    "title": "Budget Approval and Cost Allocation",
+    "summary": "Ensuring IT purchases are correctly budgeted and allocated to the right cost centres.",
+    "content": "# Budget Approval and Cost Allocation\n\n**Category:** Purchase  \n\n## Description\nEnsuring IT purchases are correctly budgeted and allocated to the right cost centres.\n\n## Typical Ticket Patterns\n- “Need approval code for IT purchase”\n- “Charge wrong cost centre”\n- “Need to split costs across projects”\n\n## Resolution Steps\n1. Confirm requesting department and cost centre.\n2. Validate that budget is available for the purchase.\n3. Apply correct GL codes and project codes in procurement system.\n4. Coordinate with finance if charges need to be moved or split.\n5. Document final allocation in ticket and PO notes.\n\n## When to Escalate\n- Budget exceeded or unavailable.\n- Cross-department cost disputes.\n- Large project or capital expenditure approval.\n\n## Related Articles\n- IT Equipment Procurement Policy\n- Purchase Order Workflow\n- Expense Claims and Reimbursements\n\n\n\n============================================================\nCATEGORY: Internal Project (6 articles)\n============================================================\n\n",
+    "escalation_notes": "- Budget exceeded or unavailable.\n- Cross-department cost disputes.\n- Large project or capital expenditure approval.",
+    "tags": [
+      "purchase",
+      "budget",
+      "approval",
+      "and",
+      "cost",
+      "allocation"
+    ],
+    "path": "purchase/Budget Approval and Cost Allocation.md"
+  },
+  {
+    "id": "purchase.emergency_purchase_and_replacement_process",
+    "category": "Purchase",
+    "title": "Emergency Purchase and Replacement Process",
+    "summary": "Fast-track process for urgent replacements or purchases due to critical failures.",
+    "content": "# Emergency Purchase and Replacement Process\n\n**Category:** Purchase  \n\n## Description\nFast-track process for urgent replacements or purchases due to critical failures.\n\n## Typical Ticket Patterns\n- “Laptop lost/stolen – need immediate replacement”\n- “Critical equipment failure during go-live”\n- “Urgent purchase needed for outage”\n\n## Resolution Steps\n1. Confirm the incident severity and business impact.\n2. Check for available spare equipment before new purchase.\n3. Obtain expedited approval from duty manager or incident commander.\n4. Arrange same-day or next-day shipping/collection with vendor or local stock.\n5. Record reason for emergency purchase and follow up with normal procurement reconciliation.\n\n## When to Escalate\n- Security incidents (lost/stolen devices).\n- Major incidents with widespread impact.\n- Purchases above emergency spend thresholds.\n\n## Related Articles\n- Hardware Replacement Process\n- Tracking Orders and Deliveries\n- IT Equipment Procurement Policy\n\n\n",
+    "escalation_notes": "- Security incidents (lost/stolen devices).\n- Major incidents with widespread impact.\n- Purchases above emergency spend thresholds.",
+    "tags": [
+      "purchase",
+      "emergency",
+      "and",
+      "replacement",
+      "process"
+    ],
+    "path": "purchase/Emergency Purchase and Replacement Process.md"
+  },
+  {
+    "id": "purchase.it_equipment_procurement_policy",
+    "category": "Purchase",
+    "title": "IT Equipment Procurement Policy",
+    "summary": "High-level rules for purchasing standard IT equipment (laptops, monitors, peripherals).",
+    "content": "# IT Equipment Procurement Policy\n\n**Category:** Purchase  \n\n## Description\nHigh-level rules for purchasing standard IT equipment (laptops, monitors, peripherals).\n\n## Typical Ticket Patterns\n- “Can I order my own laptop?”\n- “What is the standard model?”\n- “Need approval rules for equipment”\n\n## Resolution Steps\n1. Describe approved hardware catalogue and standard models by role.\n2. Explain who can approve new equipment (manager, budget owner, IT).\n3. Clarify purchase channels (service portal, procurement system).\n4. Outline lead times and refresh cycle guidelines.\n5. Link to detailed procedures for ordering and replacements.\n\n## When to Escalate\n- Requests for non-standard or custom equipment.\n- Exceptions to budget or refresh policy.\n- Bulk or project-specific orders.\n\n## Related Articles\n- Requesting New Hardware\n- Budget Approval and Cost Allocation\n- Hardware Replacement Process\n\n\n",
+    "escalation_notes": "- Requests for non-standard or custom equipment.\n- Exceptions to budget or refresh policy.\n- Bulk or project-specific orders.",
+    "tags": [
+      "purchase",
+      "it",
+      "equipment",
+      "procurement",
+      "policy"
+    ],
+    "path": "purchase/IT Equipment Procurement Policy.md"
+  },
+  {
+    "id": "purchase.purchase_order_workflow",
+    "category": "Purchase",
+    "title": "Purchase Order Workflow",
+    "summary": "How IT and business users create, approve, and track purchase orders (POs) for IT items.",
+    "content": "# Purchase Order Workflow\n\n**Category:** Purchase  \n\n## Description\nHow IT and business users create, approve, and track purchase orders (POs) for IT items.\n\n## Typical Ticket Patterns\n- “PO stuck in pending state”\n- “Cannot add IT item to PO”\n- “Need PO number for vendor”\n\n## Resolution Steps\n1. Verify requester has access to procurement system.\n2. Check PO status (draft, awaiting approval, approved, closed).\n3. Ensure correct cost centre, GL code, and vendor are selected.\n4. Guide user through fixing validation errors and resubmitting.\n5. Confirm PO approval and share PO number with requester.\n\n## When to Escalate\n- System-wide procurement outages.\n- POs failing due to budget or policy blocks.\n- Urgent purchases blocked near critical deadlines.\n\n## Related Articles\n- Vendor Quotation and Approval Steps\n- Budget Approval and Cost Allocation\n- Tracking Orders and Deliveries\n\n\n",
+    "escalation_notes": "- System-wide procurement outages.\n- POs failing due to budget or policy blocks.\n- Urgent purchases blocked near critical deadlines.",
+    "tags": [
+      "purchase",
+      "order",
+      "workflow"
+    ],
+    "path": "purchase/Purchase Order Workflow.md"
+  },
+  {
+    "id": "purchase.requesting_new_hardware",
+    "category": "Purchase",
+    "title": "Requesting New Hardware",
+    "summary": "Step-by-step workflow for users to request new laptops, monitors, or peripherals.",
+    "content": "# Requesting New Hardware\n\n**Category:** Purchase  \n\n## Description\nStep-by-step workflow for users to request new laptops, monitors, or peripherals.\n\n## Typical Ticket Patterns\n- “Need new monitor”\n- “Request for laptop for new starter”\n- “Broken headset – need replacement”\n\n## Resolution Steps\n1. Confirm business justification (new hire, break/fix, upgrade).\n2. Check eligibility against refresh cycle and asset records.\n3. Select standard model and accessories from the approved catalogue.\n4. Raise purchase or allocation request in procurement system.\n5. Provide ETA and shipping/collection details to the user.\n\n## When to Escalate\n- Non-standard hardware requested for specific projects.\n- High-value purchases or bulk orders.\n- Inventory shortages or long lead times.\n\n## Related Articles\n- IT Equipment Procurement Policy\n- Hardware Replacement Process\n- Emergency Purchase and Replacement Process\n\n\n",
+    "escalation_notes": "- Non-standard hardware requested for specific projects.\n- High-value purchases or bulk orders.\n- Inventory shortages or long lead times.",
+    "tags": [
+      "purchase",
+      "requesting",
+      "new",
+      "hardware"
+    ],
+    "path": "purchase/Requesting New Hardware.md"
+  },
+  {
+    "id": "purchase.software_licensing_and_subscription_requests",
+    "category": "Purchase",
+    "title": "Software Licensing and Subscription Requests",
+    "summary": "Requests for new or additional software licenses and SaaS subscriptions.",
+    "content": "# Software Licensing and Subscription Requests\n\n**Category:** Purchase  \n\n## Description\nRequests for new or additional software licenses and SaaS subscriptions.\n\n## Typical Ticket Patterns\n- “Need new Adobe license”\n- “Additional Jira seat required”\n- “Renew SaaS subscription”\n\n## Resolution Steps\n1. Confirm software is approved and supported by IT.\n2. Check existing unused licenses or subscriptions before purchasing new ones.\n3. Validate business justification and number of seats required.\n4. Raise purchase or allocation request and update license inventory.\n5. Provide installation or access instructions once license is assigned.\n\n## When to Escalate\n- New SaaS tools not yet vetted by security/legal.\n- Enterprise-level contracts or renewals.\n- License shortfalls impacting compliance.\n\n## Related Articles\n- Software Installation Guide\n- Budget Approval and Cost Allocation\n- Vendor Quotation and Approval Steps\n\n\n",
+    "escalation_notes": "- New SaaS tools not yet vetted by security/legal.\n- Enterprise-level contracts or renewals.\n- License shortfalls impacting compliance.",
+    "tags": [
+      "purchase",
+      "software",
+      "licensing",
+      "and",
+      "subscription",
+      "requests"
+    ],
+    "path": "purchase/Software Licensing and Subscription Requests.md"
+  },
+  {
+    "id": "purchase.tracking_orders_and_deliveries",
+    "category": "Purchase",
+    "title": "Tracking Orders and Deliveries",
+    "summary": "Helping users track status of hardware and software orders after approval.",
+    "content": "# Tracking Orders and Deliveries\n\n**Category:** Purchase  \n\n## Description\nHelping users track status of hardware and software orders after approval.\n\n## Typical Ticket Patterns\n- “Where is my laptop?”\n- “Order shipped but not received”\n- “Need courier tracking details”\n\n## Resolution Steps\n1. Look up PO or order number and current status.\n2. Retrieve courier tracking information if available.\n3. Confirm shipping address and contact information with user.\n4. Escalate delayed shipments to vendor or logistics team.\n5. Update ticket with ETA and delivery confirmation.\n\n## When to Escalate\n- Lost shipments or repeated delivery failures.\n- Critical go-live or new-starter timelines.\n- Damaged goods on arrival.\n\n## Related Articles\n- Purchase Order Workflow\n- Emergency Purchase and Replacement Process\n- IT Equipment Procurement Policy\n\n\n",
+    "escalation_notes": "- Lost shipments or repeated delivery failures.\n- Critical go-live or new-starter timelines.\n- Damaged goods on arrival.",
+    "tags": [
+      "purchase",
+      "tracking",
+      "orders",
+      "and",
+      "deliveries"
+    ],
+    "path": "purchase/Tracking Orders and Deliveries.md"
+  },
+  {
+    "id": "purchase.vendor_quotation_and_approval_steps",
+    "category": "Purchase",
+    "title": "Vendor Quotation and Approval Steps",
+    "summary": "Handling quotes from vendors and converting them into approved purchases.",
+    "content": "# Vendor Quotation and Approval Steps\n\n**Category:** Purchase  \n\n## Description\nHandling quotes from vendors and converting them into approved purchases.\n\n## Typical Ticket Patterns\n- “Vendor provided quote – what next?”\n- “Multiple quotes to compare”\n- “Need approval for non-standard device”\n\n## Resolution Steps\n1. Ensure vendor is approved or on-boarded in procurement system.\n2. Validate that items on the quote match IT standards or note exceptions.\n3. Attach quote to purchase request or PO.\n4. Route for approval based on value and cost centre.\n5. Notify vendor once PO is raised and approved.\n\n## When to Escalate\n- New or unapproved vendors.\n- High-value purchases requiring senior approval.\n- Legal or security reviews of new equipment/software.\n\n## Related Articles\n- IT Equipment Procurement Policy\n- Software Licensing and Subscription Requests\n- Budget Approval and Cost Allocation\n\n\n",
+    "escalation_notes": "- New or unapproved vendors.\n- High-value purchases requiring senior approval.\n- Legal or security reviews of new equipment/software.",
+    "tags": [
+      "purchase",
+      "vendor",
+      "quotation",
+      "and",
+      "approval",
+      "steps"
+    ],
+    "path": "purchase/Vendor Quotation and Approval Steps.md"
+  },
+  {
+    "id": "storage.archive_and_long_term_storage_practices",
+    "category": "Storage",
+    "title": "Archive and Long-Term Storage Practices",
+    "summary": "Guidance on archiving inactive data while controlling storage costs and complying with retention rules.",
+    "content": "# Archive and Long-Term Storage Practices\n\n**Category:** Storage  \n\n## Description\nGuidance on archiving inactive data while controlling storage costs and complying with retention rules.\n\n## Typical Ticket Patterns\n- “Where should old project files be stored?”\n- “Need to archive data before deletion”\n- “Cold storage for compliance”\n\n## Resolution Steps\n1. Determine data type, size, and required retention duration.\n2. Choose appropriate archive location (archive share, cloud cold storage, email archive).\n3. Move data following encryption and labelling policies.\n4. Register archived data with the owning team and set review dates.\n5. Document archive location and access controls in the ticket.\n\n## When to Escalate\n- Regulatory retention requirements (e.g., financial, healthcare).\n- Very large data sets requiring special handling.\n- Cross-region or cross-tenant archive moves.\n\n## Related Articles\n- Storage Quota Management\n- Backup and Restore Guidelines\n- HR Reports and Data Extract Requests\n\n\n",
+    "escalation_notes": "- Regulatory retention requirements (e.g., financial, healthcare).\n- Very large data sets requiring special handling.\n- Cross-region or cross-tenant archive moves.",
+    "tags": [
+      "storage",
+      "archive",
+      "and",
+      "long",
+      "term",
+      "practices"
+    ],
+    "path": "storage/Archive and Long-Term Storage Practices.md"
+  },
+  {
+    "id": "storage.backup_and_restore_guidelines",
+    "category": "Storage",
+    "title": "Backup and Restore Guidelines",
+    "summary": "How user data is backed up and restored across mailboxes, home drives, and cloud storage.",
+    "content": "# Backup and Restore Guidelines\n\n**Category:** Storage  \n\n## Description\nHow user data is backed up and restored across mailboxes, home drives, and cloud storage.\n\n## Typical Ticket Patterns\n- “Need to restore deleted folder”\n- “File overwritten by accident”\n- “Recover mailbox items from last month”\n\n## Resolution Steps\n1. Identify storage system (file server, SharePoint, OneDrive, mailbox).\n2. Check backup/retention policy for that system.\n3. Locate the relevant restore point or version (date/time).\n4. Restore content to a temporary location and notify user.\n5. Ask user to confirm restored data before deleting temporary copies.\n\n## When to Escalate\n- Legal holds or investigations involving restored data.\n- Bulk restores for large projects or departments.\n- Backup job failures affecting multiple systems.\n\n## Related Articles\n- Recovering Deleted Files from Shared Drives\n- Archive and Long-Term Storage Practices\n- Employee Offboarding IT Checklist\n\n\n",
+    "escalation_notes": "- Legal holds or investigations involving restored data.\n- Bulk restores for large projects or departments.\n- Backup job failures affecting multiple systems.",
+    "tags": [
+      "storage",
+      "backup",
+      "and",
+      "restore",
+      "guidelines"
+    ],
+    "path": "storage/Backup and Restore Guidelines.md"
+  },
+  {
+    "id": "storage.file_permissions_management",
+    "category": "Storage",
+    "title": "File Permissions Management",
+    "summary": "Correcting and maintaining file/folder permissions on shared storage.",
+    "content": "# File Permissions Management\n\n**Category:** Storage  \n\n## Description\nCorrecting and maintaining file/folder permissions on shared storage.\n\n## Typical Ticket Patterns\n- “User can see folder but cannot save”\n- “Need read-only access for external vendor”\n- “Can’t remove someone from project folder”\n\n## Resolution Steps\n1. Confirm path, parent folder, and business owner.\n2. Review current ACLs or permission groups.\n3. Apply least-privilege changes (add/remove specific rights or groups).\n4. Ensure inheritance settings are correct to avoid breaking other folders.\n5. Ask user to re-test from their normal workstation.\n\n## When to Escalate\n- Large nested structures with complex inheritance.\n- Requests impacting external or cross-company access.\n- Accidental exposure of sensitive data.\n\n## Related Articles\n- Shared Drive Access Procedure\n- Shared Folder Access Guide\n- HR Data Privacy and Sensitive Information Requests\n\n\n",
+    "escalation_notes": "- Large nested structures with complex inheritance.\n- Requests impacting external or cross-company access.\n- Accidental exposure of sensitive data.",
+    "tags": [
+      "storage",
+      "file",
+      "permissions",
+      "management"
+    ],
+    "path": "storage/File Permissions Management.md"
+  },
+  {
+    "id": "storage.folder_structure_standards_for_teams_and_projects",
+    "category": "Storage",
+    "title": "Folder Structure Standards for Teams and Projects",
+    "summary": "Recommended patterns for how teams should organise files and folders on shared drives and SharePoint.",
+    "content": "# Folder Structure Standards for Teams and Projects\n\n**Category:** Storage  \n\n## Description\nRecommended patterns for how teams should organise files and folders on shared drives and SharePoint.\n\n## Typical Ticket Patterns\n- “Team folder is confusing and duplicated”\n- “Unsure where to store project documents”\n- “Need guidance on new site structure”\n\n## Resolution Steps\n1. Provide standard folder templates (e.g., _01-Admin, 02-Working, 03-Archive_).\n2. Encourage separation of personal, team, and project data.\n3. Align permissions with structure (e.g., confidential vs general folders).\n4. Assist requester in restructuring existing content when necessary.\n5. Document agreed structure and share with team.\n\n## When to Escalate\n- Large reorganisations affecting many users.\n- Structures involving sensitive or regulated data.\n- Conflicting requirements between departments.\n\n## Related Articles\n- Shared Drive Access Procedure\n- File Permissions Management\n- Archive and Long-Term Storage Practices\n\n\n\n============================================================\nCATEGORY: Purchase (8 articles)\n============================================================\n\n",
+    "escalation_notes": "- Large reorganisations affecting many users.\n- Structures involving sensitive or regulated data.\n- Conflicting requirements between departments.",
+    "tags": [
+      "storage",
+      "folder",
+      "structure",
+      "standards",
+      "for",
+      "teams",
+      "and",
+      "projects"
+    ],
+    "path": "storage/Folder Structure Standards for Teams and Projects.md"
+  },
+  {
+    "id": "storage.onedrive_and_sharepoint_troubleshooting",
+    "category": "Storage",
+    "title": "OneDrive and SharePoint Troubleshooting",
+    "summary": "Sync, access, and performance issues with OneDrive and SharePoint document libraries.",
+    "content": "# OneDrive and SharePoint Troubleshooting\n\n**Category:** Storage  \n\n## Description\nSync, access, and performance issues with OneDrive and SharePoint document libraries.\n\n## Typical Ticket Patterns\n- “OneDrive not syncing”\n- “Cannot open SharePoint files”\n- “Sync conflicts in team site”\n\n## Resolution Steps\n1. Confirm user can access Microsoft 365/SSO portal.\n2. Check OneDrive sync client status; re-sign in or reset if necessary.\n3. Verify SharePoint permissions on the affected library or folder.\n4. Resolve sync conflicts by renaming or consolidating files.\n5. Test web access vs synced folder to isolate client vs service issues.\n\n## When to Escalate\n- Service-wide incident affecting many users.\n- Data loss or version history issues.\n- Sites used for regulated or confidential data.\n\n## Related Articles\n- Backup and Restore Guidelines\n- Storage Quota Management\n- File Permissions Management\n\n\n",
+    "escalation_notes": "- Service-wide incident affecting many users.\n- Data loss or version history issues.\n- Sites used for regulated or confidential data.",
+    "tags": [
+      "storage",
+      "onedrive",
+      "and",
+      "sharepoint",
+      "troubleshooting"
+    ],
+    "path": "storage/OneDrive and SharePoint Troubleshooting.md"
+  },
+  {
+    "id": "storage.recovering_deleted_files_from_shared_drives",
+    "category": "Storage",
+    "title": "Recovering Deleted Files from Shared Drives",
+    "summary": "Recovering recently deleted files from shared drives or network folders.",
+    "content": "# Recovering Deleted Files from Shared Drives\n\n**Category:** Storage  \n\n## Description\nRecovering recently deleted files from shared drives or network folders.\n\n## Typical Ticket Patterns\n- “Accidentally deleted project folder”\n- “File missing from shared drive”\n- “Need to restore yesterday’s changes”\n\n## Resolution Steps\n1. Confirm folder path and approximate deletion time.\n2. Check recycle bin or snapshot functionality on the file server/NAS.\n3. Restore specific files or folders from the relevant snapshot.\n4. Place restored items in a clearly named “_Restored_<date>” folder.\n5. Advise users to review and reorganize restored content.\n\n## When to Escalate\n- Deleted content older than standard retention.\n- Multiple deletions across different paths (possible malware/ransomware).\n- Recovery requiring offsite or tape backups.\n\n## Related Articles\n- Backup and Restore Guidelines\n- File Permissions Management\n- Archive and Long-Term Storage Practices\n\n\n",
+    "escalation_notes": "- Deleted content older than standard retention.\n- Multiple deletions across different paths (possible malware/ransomware).\n- Recovery requiring offsite or tape backups.",
+    "tags": [
+      "storage",
+      "recovering",
+      "deleted",
+      "files",
+      "from",
+      "shared",
+      "drives"
+    ],
+    "path": "storage/Recovering Deleted Files from Shared Drives.md"
+  },
+  {
+    "id": "storage.shared_drive_access_procedure",
+    "category": "Storage",
+    "title": "Shared Drive Access Procedure",
+    "summary": "Granting and managing access to on-prem or network file shares.",
+    "content": "# Shared Drive Access Procedure\n\n**Category:** Storage  \n\n## Description\nGranting and managing access to on-prem or network file shares.\n\n## Typical Ticket Patterns\n- “Need access to X:\\\\ drive”\n- “Cannot map shared drive”\n- “Access denied on shared folder”\n\n## Resolution Steps\n1. Confirm share path and owning team.\n2. Validate manager/data owner approval.\n3. Add user to appropriate AD or NAS group and update permissions.\n4. Guide user to map the drive or confirm automatic mapping via login script.\n5. Ask user to log off/on and test access.\n\n## When to Escalate\n- Sensitive shares (finance, HR, legal).\n- Whole team suddenly loses share access.\n- NAS or file server outage suspected.\n\n## Related Articles\n- File Permissions Management\n- Shared Folder Access Guide\n- Storage Quota Management\n\n\n",
+    "escalation_notes": "- Sensitive shares (finance, HR, legal).\n- Whole team suddenly loses share access.\n- NAS or file server outage suspected.",
+    "tags": [
+      "storage",
+      "shared",
+      "drive",
+      "access",
+      "procedure"
+    ],
+    "path": "storage/Shared Drive Access Procedure.md"
+  },
+  {
+    "id": "storage.storage_quota_management",
+    "category": "Storage",
+    "title": "Storage Quota Management",
+    "summary": "Managing capacity limits on mailboxes, home drives, and shared storage.",
+    "content": "# Storage Quota Management\n\n**Category:** Storage  \n\n## Description\nManaging capacity limits on mailboxes, home drives, and shared storage.\n\n## Typical Ticket Patterns\n- “Out of space on network drive”\n- “Quota exceeded message”\n- “Cannot upload files to SharePoint”\n\n## Resolution Steps\n1. Identify which storage system is affected (mailbox, home drive, SharePoint, OneDrive).\n2. Check current usage against assigned quota.\n3. Help user clean up old or redundant data using retention guidelines.\n4. For justified cases, request quota increase from storage owner.\n5. Document reason for any quota change and set review date if needed.\n\n## When to Escalate\n- Business-critical systems hitting capacity.\n- Regulatory or retention constraints limiting deletion.\n- Large projects requiring temporary storage boosts.\n\n## Related Articles\n- Mailbox Quota and Full Mailbox Issues\n- Backup and Restore Guidelines\n- Archive and Long-Term Storage Practices\n\n\n",
+    "escalation_notes": "- Business-critical systems hitting capacity.\n- Regulatory or retention constraints limiting deletion.\n- Large projects requiring temporary storage boosts.",
+    "tags": [
+      "storage",
+      "quota",
+      "management"
+    ],
+    "path": "storage/Storage Quota Management.md"
+  }
+]
