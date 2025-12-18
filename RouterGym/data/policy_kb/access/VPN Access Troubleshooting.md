@@ -1,26 +1,31 @@
-﻿# VPN Access Troubleshooting
+# VPN Access Troubleshooting
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving VPN Access Troubleshooting scenarios in the IT service desk context.
+Problems connecting to corporate VPN or accessing internal resources over VPN.
 
-## Common Symptoms
-- Users report that VPN Access Troubleshooting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference VPN Access Troubleshooting without a clear owner.
+## Typical Ticket Patterns
+- “VPN client stuck on connecting”
+- “Connected but cannot reach internal sites”
+- “VPN login failed – certificate error”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for VPN Access Troubleshooting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for VPN Access Troubleshooting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm user has VPN entitlement in access system.
+2. Check network connectivity (home internet, Wi-Fi quality).
+3. Review VPN client logs for common errors (credentials, certificate, tunnel).
+4. Ask user to restart device and try a different network if possible.
+5. Update VPN client and root certificates where required.
+6. For split tunnel setups, verify DNS and routing configuration.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Many users unable to connect to VPN.
+- Site-to-site or firewall issues suspected.
+- Access to regulated or high-risk environments.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Remote Access RDP Troubleshooting
+- Network Connectivity Troubleshooting (Workstations)
+- Two-Factor Authentication (2FA) Setup and Issues
+
 

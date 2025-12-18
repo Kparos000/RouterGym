@@ -1,26 +1,30 @@
-﻿# Shared Folder Access Guide
+# Shared Folder Access Guide
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Shared Folder Access Guide scenarios in the IT service desk context.
+Requests to access shared drives or project folders used by a team or application.
 
-## Common Symptoms
-- Users report that Shared Folder Access Guide is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Shared Folder Access Guide without a clear owner.
+## Typical Ticket Patterns
+- “Cannot open shared folder on server”
+- “Need access to team drive”
+- “Access denied to project documents”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Shared Folder Access Guide.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Shared Folder Access Guide (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm folder path and owning team or application.
+2. Validate manager or data owner approval for access.
+3. Add user to the appropriate AD group or permissions ACL.
+4. Ask user to log off and back on or reconnect mapped drive.
+5. Verify read/write access as requested; avoid full control unless required.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Sensitive folders (finance, HR, legal).
+- Many users lose access after system or migration changes.
+- Permissions inheritance issues affecting nested folders.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Shared Drive Access Procedure
+- File Permissions Management
+- Storage Quota Management
+
 

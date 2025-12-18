@@ -1,26 +1,30 @@
-﻿# Backup and Restore Guidelines
+# Backup and Restore Guidelines
+
+**Category:** Storage  
 
 ## Description
-Guidance for resolving Backup and Restore Guidelines scenarios in the IT service desk context.
+How user data is backed up and restored across mailboxes, home drives, and cloud storage.
 
-## Common Symptoms
-- Users report that Backup and Restore Guidelines is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Backup and Restore Guidelines without a clear owner.
+## Typical Ticket Patterns
+- “Need to restore deleted folder”
+- “File overwritten by accident”
+- “Recover mailbox items from last month”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Backup and Restore Guidelines.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Backup and Restore Guidelines (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Identify storage system (file server, SharePoint, OneDrive, mailbox).
+2. Check backup/retention policy for that system.
+3. Locate the relevant restore point or version (date/time).
+4. Restore content to a temporary location and notify user.
+5. Ask user to confirm restored data before deleting temporary copies.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Legal holds or investigations involving restored data.
+- Bulk restores for large projects or departments.
+- Backup job failures affecting multiple systems.
 
 ## Related Articles
-- Storage Quota Management.md
-- File Permissions Management.md
-- Backup and Restore Guidelines.md
+- Recovering Deleted Files from Shared Drives
+- Archive and Long-Term Storage Practices
+- Employee Offboarding IT Checklist
+
 

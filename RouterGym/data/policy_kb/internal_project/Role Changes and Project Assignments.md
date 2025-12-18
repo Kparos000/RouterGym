@@ -1,26 +1,30 @@
-﻿# Role Changes and Project Assignments
+# Role Changes and Project Assignments
+
+**Category:** Internal Project  
 
 ## Description
-Guidance for resolving Role Changes and Project Assignments scenarios in the IT service desk context.
+Adjusting access when staff join, leave, or change roles within a project.
 
-## Common Symptoms
-- Users report that Role Changes and Project Assignments is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Role Changes and Project Assignments without a clear owner.
+## Typical Ticket Patterns
+- “Add developer to project X”
+- “Remove user from internal project”
+- “Promote user to project lead role”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Role Changes and Project Assignments.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Role Changes and Project Assignments (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify project membership change with project manager.
+2. Update relevant groups (source control, ticketing, environments).
+3. Remove access for users leaving the project and adjust shared credentials.
+4. Confirm new permissions allow required tasks, but no unnecessary admin rights.
+5. Document changes in project access log.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Access to production or sensitive data.
+- Disagreements over who should have what level of access.
+- Large project team changes during critical milestones.
 
 ## Related Articles
-- Project IT Resource Requirements.md
-- Role Changes and Project Assignments.md
-- System Deployment Checklist.md
+- Access Request Flow (New, Modify, Remove)
+- Admin Rights Review and Recertification
+- Data Access and Security for Project Teams
+
 

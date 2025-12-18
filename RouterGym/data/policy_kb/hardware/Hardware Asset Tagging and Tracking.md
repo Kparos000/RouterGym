@@ -1,26 +1,31 @@
-﻿# Hardware Asset Tagging and Tracking
+# Hardware Asset Tagging and Tracking
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Hardware Asset Tagging and Tracking scenarios in the IT service desk context.
+How IT tracks physical devices (laptops, monitors, docks, printers) using asset tags.
 
-## Common Symptoms
-- Users report that Hardware Asset Tagging and Tracking is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Hardware Asset Tagging and Tracking without a clear owner.
+## Typical Ticket Patterns
+- “Asset tag not in system”
+- “Device assigned to wrong user”
+- “Need asset details for audit”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Hardware Asset Tagging and Tracking.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Hardware Asset Tagging and Tracking (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify physical asset tag and serial number on the device.
+2. Search the asset database by tag, serial, and hostname.
+3. Correct ownership and location fields if the asset has moved or been reassigned.
+4. For new devices, create a record with model, serial, tag, assigned user, and warranty info.
+5. For retired devices, ensure they are marked decommissioned with disposal details.
+6. Confirm inventory is updated and attach screenshots or audit evidence to the ticket.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Asset discrepancies impacting audit or compliance.
+- Suspected lost or stolen equipment.
+- Large differences between physical and recorded inventory.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Hardware Replacement Process
+- Warranty and Repair Escalation
+- Admin Rights Review and Recertification
+
 

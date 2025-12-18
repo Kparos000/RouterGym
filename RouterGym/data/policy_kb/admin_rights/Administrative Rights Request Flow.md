@@ -1,26 +1,30 @@
-﻿# Administrative Rights Request Flow
+# Administrative Rights Request Flow
+
+**Category:** Administrative rights  
 
 ## Description
-Guidance for resolving Administrative Rights Request Flow scenarios in the IT service desk context.
+Workflow for granting local admin or elevated application rights.
 
-## Common Symptoms
-- Users report that Administrative Rights Request Flow is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Administrative Rights Request Flow without a clear owner.
+## Typical Ticket Patterns
+- “Need admin rights to install tools”
+- “Developer access to system files”
+- “Temporary admin for troubleshooting”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Administrative Rights Request Flow.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Administrative Rights Request Flow (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm request comes from the user’s manager or system owner.
+2. Validate business justification and duration of access.
+3. Map request to standard admin profiles (local admin, app admin, database admin).
+4. Apply rights using approved tools; avoid shared admin accounts where possible.
+5. Document scope, duration, and approvals in the ticket.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Requests for domain admin or global privileges.
+- Conflicts with security policy or audit findings.
+- Repeated admin requests from same user/team.
 
 ## Related Articles
-- Administrative Rights Request Flow.md
-- Local Admin Rights Policy.md
-- Privileged Account Usage Guidelines.md
+- Local Admin Rights Policy
+- Temporary Admin Access for Troubleshooting
+- Admin Rights Review and Recertification
+
 

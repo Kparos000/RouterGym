@@ -1,26 +1,30 @@
-﻿# Two-Factor Authentication Guide
+# Two-Factor Authentication (2FA) Setup and Issues
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Two-Factor Authentication Guide scenarios in the IT service desk context.
+Enrolling users in 2FA (e.g., authenticator app, SMS, hardware token) and fixing related issues.
 
-## Common Symptoms
-- Users report that Two-Factor Authentication Guide is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Two-Factor Authentication Guide without a clear owner.
+## Typical Ticket Patterns
+- “New phone, lost 2FA codes”
+- “Authenticator app not working”
+- “2FA challenge not received”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Two-Factor Authentication Guide.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Two-Factor Authentication Guide (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify user identity using backup verification methods.
+2. Check their 2FA status in the identity provider or security portal.
+3. Reset 2FA and guide user through re-enrollment on their device.
+4. Confirm time sync on mobile device if using TOTP apps.
+5. Validate login to at least one key application after setup.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Repeated 2FA failures or suspected man-in-the-middle attacks.
+- Missing or malfunctioning hardware tokens for critical users.
+- IdP-wide 2FA delivery problems (e.g., SMS provider outage).
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Password Reset Procedure
+- SSO Login Problems
+- VPN Access Troubleshooting
+
 

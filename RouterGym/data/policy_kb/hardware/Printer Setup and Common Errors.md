@@ -1,26 +1,32 @@
-﻿# Printer Setup and Common Errors
+# Printer Setup and Common Errors
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Printer Setup and Common Errors scenarios in the IT service desk context.
+Issues installing, selecting, or printing to network or local printers.
 
-## Common Symptoms
-- Users report that Printer Setup and Common Errors is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Printer Setup and Common Errors without a clear owner.
+## Typical Ticket Patterns
+- “Cannot print to office printer”
+- “Printer offline / not responding”
+- “Wrong default printer used”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Printer Setup and Common Errors.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Printer Setup and Common Errors (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm user’s location and assigned printer; verify printer power and network status.
+2. Check if others can print to the same device; if not, log as a wider incident.
+3. Remove stale printer queues and re-add the correct printer from the corporate list.
+4. Ensure correct printer driver and default settings are applied.
+5. Clear stuck jobs from the user’s print queue and the server queue if needed.
+6. Print a test page from the user’s device and directly from the printer console.
+7. Document steps and confirm the user can print successful test documents.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Multiple users unable to print to the same device.
+- Hardware error codes (paper jams, fuser errors) that require onsite/vendor support.
+- Secure or high-volume print devices in critical locations.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Network Connectivity Troubleshooting (Workstations)
+- Storage Quota Management
+- Hardware Replacement Process
+
 

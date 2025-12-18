@@ -1,26 +1,30 @@
-﻿# Storage Quota Management
+# Storage Quota Management
+
+**Category:** Storage  
 
 ## Description
-Guidance for resolving Storage Quota Management scenarios in the IT service desk context.
+Managing capacity limits on mailboxes, home drives, and shared storage.
 
-## Common Symptoms
-- Users report that Storage Quota Management is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Storage Quota Management without a clear owner.
+## Typical Ticket Patterns
+- “Out of space on network drive”
+- “Quota exceeded message”
+- “Cannot upload files to SharePoint”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Storage Quota Management.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Storage Quota Management (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Identify which storage system is affected (mailbox, home drive, SharePoint, OneDrive).
+2. Check current usage against assigned quota.
+3. Help user clean up old or redundant data using retention guidelines.
+4. For justified cases, request quota increase from storage owner.
+5. Document reason for any quota change and set review date if needed.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Business-critical systems hitting capacity.
+- Regulatory or retention constraints limiting deletion.
+- Large projects requiring temporary storage boosts.
 
 ## Related Articles
-- Storage Quota Management.md
-- File Permissions Management.md
-- Backup and Restore Guidelines.md
+- Mailbox Quota and Full Mailbox Issues
+- Backup and Restore Guidelines
+- Archive and Long-Term Storage Practices
+
 

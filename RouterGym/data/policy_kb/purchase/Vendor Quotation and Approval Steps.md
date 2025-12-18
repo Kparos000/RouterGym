@@ -1,26 +1,30 @@
-﻿# Vendor Quotation and Approval Steps
+# Vendor Quotation and Approval Steps
+
+**Category:** Purchase  
 
 ## Description
-Guidance for resolving Vendor Quotation and Approval Steps scenarios in the IT service desk context.
+Handling quotes from vendors and converting them into approved purchases.
 
-## Common Symptoms
-- Users report that Vendor Quotation and Approval Steps is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Vendor Quotation and Approval Steps without a clear owner.
+## Typical Ticket Patterns
+- “Vendor provided quote – what next?”
+- “Multiple quotes to compare”
+- “Need approval for non-standard device”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Vendor Quotation and Approval Steps.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Vendor Quotation and Approval Steps (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Ensure vendor is approved or on-boarded in procurement system.
+2. Validate that items on the quote match IT standards or note exceptions.
+3. Attach quote to purchase request or PO.
+4. Route for approval based on value and cost centre.
+5. Notify vendor once PO is raised and approved.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- New or unapproved vendors.
+- High-value purchases requiring senior approval.
+- Legal or security reviews of new equipment/software.
 
 ## Related Articles
-- IT Equipment Procurement Policy.md
-- Vendor Quotation and Approval Steps.md
-- Requesting New Hardware.md
+- IT Equipment Procurement Policy
+- Software Licensing and Subscription Requests
+- Budget Approval and Cost Allocation
+
 

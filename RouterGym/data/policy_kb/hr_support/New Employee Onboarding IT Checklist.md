@@ -1,26 +1,32 @@
-﻿# New Employee Onboarding IT Checklist
+# New Employee Onboarding IT Checklist
+
+**Category:** HR Support  
 
 ## Description
-Guidance for resolving New Employee Onboarding IT Checklist scenarios in the IT service desk context.
+Ensuring new starters have the correct accounts, equipment, and access on day one.
 
-## Common Symptoms
-- Users report that New Employee Onboarding IT Checklist is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference New Employee Onboarding IT Checklist without a clear owner.
+## Typical Ticket Patterns
+- “New starter not set up in system”
+- “No access to HR portal or email”
+- “Equipment not ready for start date”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for New Employee Onboarding IT Checklist.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for New Employee Onboarding IT Checklist (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify start date and role from the HR onboarding request.
+2. Confirm core accounts (AD/email/SSO) have been created with the right department and manager.
+3. Provision standard hardware kit and confirm shipping or pickup details.
+4. Assign default application, HR system, and folder access based on role profile.
+5. Test login to email, HR portal, and time-reporting before handover.
+6. Share “Getting Started” instructions with the manager and user.
+7. Update ticket with completed steps and remaining follow-ups.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Start date has arrived and core access is still missing.
+- Conflicting information between HR and hiring manager.
+- Special regulatory or privileged roles requiring additional approvals.
 
 ## Related Articles
-- HR System Access Guide.md
-- HR Portal Troubleshooting.md
-- Employee Offboarding IT Checklist.md
+- HR System Access Guide (HRIS / Oracle)
+- Submitting Leave Requests
+- Role Changes and Project Assignments
+
 

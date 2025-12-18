@@ -1,26 +1,31 @@
-﻿# HR Portal Troubleshooting
+# HR Portal Troubleshooting
+
+**Category:** HR Support  
 
 ## Description
-Guidance for resolving HR Portal Troubleshooting scenarios in the IT service desk context.
+Fixing login or navigation issues in the HR self-service portal.
 
-## Common Symptoms
-- Users report that HR Portal Troubleshooting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference HR Portal Troubleshooting without a clear owner.
+## Typical Ticket Patterns
+- “Error after logging into HR portal”
+- “Cannot see my payslips”
+- “Leave balance not loading”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for HR Portal Troubleshooting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for HR Portal Troubleshooting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm portal URL and that the user is using a supported browser.
+2. Ask user to clear cache/cookies or try an incognito window.
+3. Check SSO / MFA status and ensure HR application is assigned to the user.
+4. Verify user profile and employment status in the HR system.
+5. Check for known incidents; if none, reproduce issue via test account if possible.
+6. Log any error codes and screenshots; raise to HR application support if needed.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Multiple users reporting same portal issue.
+- Payroll or benefits information unavailable near cut-off dates.
+- Security or data privacy errors.
 
 ## Related Articles
-- HR System Access Guide.md
-- HR Portal Troubleshooting.md
-- Employee Offboarding IT Checklist.md
+- HR System Access Guide (HRIS / Oracle)
+- HR Data Privacy and Sensitive Information Requests
+- Submitting Leave Requests
+
 

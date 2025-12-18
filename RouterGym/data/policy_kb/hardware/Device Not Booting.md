@@ -1,26 +1,32 @@
-﻿# Device Not Booting
+# Device Not Booting
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Device Not Booting scenarios in the IT service desk context.
+User’s laptop or desktop will not power on or will not pass the initial boot screen.
 
-## Common Symptoms
-- Users report that Device Not Booting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Device Not Booting without a clear owner.
+## Typical Ticket Patterns
+- “Laptop won’t turn on / black screen”
+- “PC stuck on vendor logo”
+- “No response when pressing power button”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Device Not Booting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Device Not Booting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm the device, power adapter, and dock are connected to a known-good outlet.
+2. Ask the user to remove external peripherals (USB drives, docking station, monitors) and retry.
+3. Perform a forced power cycle (hold power button 10–15 seconds) and then power on again.
+4. Check for indicator lights, fan noise, or beeps; record any error messages on screen.
+5. If the device boots into recovery or diagnostics, run the hardware test and capture codes.
+6. If disk or memory issues are reported, follow the Hardware Replacement Process to swap parts.
+7. Document all steps and outcomes in the ticket.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Device fails vendor diagnostics or cannot reach BIOS/UEFI.
+- Critical user (e.g., executive, frontline) without backup hardware.
+- Suspected physical damage, liquid damage, or data-recovery needed.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Laptop Power and Battery Diagnostics
+- Blue Screen or System Crash Recovery
+- Hardware Replacement Process
+
 

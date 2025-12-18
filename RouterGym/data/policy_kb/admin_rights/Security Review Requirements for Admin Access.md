@@ -1,26 +1,30 @@
-﻿# Security Review Requirements for Admin Access
+# Security Review Requirements for Admin Access
+
+**Category:** Administrative rights  
 
 ## Description
-Guidance for resolving Security Review Requirements for Admin Access scenarios in the IT service desk context.
+Security checks required before granting high-risk admin access.
 
-## Common Symptoms
-- Users report that Security Review Requirements for Admin Access is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Security Review Requirements for Admin Access without a clear owner.
+## Typical Ticket Patterns
+- “Security review for new admin group”
+- “Need approval for elevated rights”
+- “Audit findings about admin access”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Security Review Requirements for Admin Access.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Security Review Requirements for Admin Access (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Identify system, scope, and purpose of requested admin access.
+2. Confirm risk assessment and segregation of duties requirements.
+3. Ensure background checks or training are complete where required.
+4. Obtain approvals from security, compliance, and system owner.
+5. Document review outcomes and any compensating controls.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Requests conflict with security standards.
+- Critical infrastructure or regulatory systems.
+- Repeat findings from previous audits.
 
 ## Related Articles
-- Administrative Rights Request Flow.md
-- Local Admin Rights Policy.md
-- Privileged Account Usage Guidelines.md
+- Privileged Account Usage Guidelines
+- Administrative Rights Request Flow
+- Admin Rights Review and Recertification
+
 

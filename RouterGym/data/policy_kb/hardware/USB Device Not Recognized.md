@@ -1,26 +1,32 @@
-﻿# USB Device Not Recognized
+# USB Device Not Recognized
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving USB Device Not Recognized scenarios in the IT service desk context.
+System fails to detect or mount USB drives, smartcards, cameras, or other USB devices.
 
-## Common Symptoms
-- Users report that USB Device Not Recognized is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference USB Device Not Recognized without a clear owner.
+## Typical Ticket Patterns
+- “USB stick not showing up”
+- “Unknown USB device” warnings
+- “Smartcard not detected”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for USB Device Not Recognized.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for USB Device Not Recognized (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Test the USB device on another known-good machine if possible.
+2. On the user’s device, try a different USB port and check Device Manager/System Info for errors.
+3. Remove ghost/unrecognized USB entries and rescan for hardware changes.
+4. Confirm corporate policy allows the device type (e.g., external storage may be blocked).
+5. If allowed but blocked, check security software logs and apply exceptions as per policy.
+6. For smartcards, ensure correct middleware/driver is installed and up-to-date.
+7. Document the final working state or reason for blocking.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Corporate security tools are blocking a business-critical device.
+- Data recovery is required from a failing USB device.
+- Multiple users report USB issues after a recent OS update.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- File Permissions Management
+- Hardware Replacement Process
+- Privileged Account Usage Guidelines
+
 

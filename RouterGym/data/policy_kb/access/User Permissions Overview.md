@@ -1,26 +1,35 @@
-﻿# User Permissions Overview
+# User Permissions Overview
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving User Permissions Overview scenarios in the IT service desk context.
+Reference guide explaining standard permission models for common systems.
 
-## Common Symptoms
-- Users report that User Permissions Overview is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference User Permissions Overview without a clear owner.
+## Typical Ticket Patterns
+- “What permissions should a new analyst get?”
+- “Difference between read and contribute in SharePoint?”
+- “Why can’t I delete files in this folder?”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for User Permissions Overview.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for User Permissions Overview (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Document common role profiles per system (e.g., employee, manager, admin).
+2. Explain how group-based access, least privilege, and separation of duties are applied.
+3. Provide examples of what each role can and cannot do.
+4. Link to detailed policies for privileged accounts and admin rights.
+5. Use this guide to answer general permission questions in tickets.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Requests to deviate from standard roles.
+- Conflicts between business needs and security standards.
+- New systems without defined permission models.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Access Request Flow (New, Modify, Remove)
+- Administrative Rights Request Flow
+- Privileged Account Usage Guidelines
+
+
+
+============================================================
+CATEGORY: Storage (8 articles)
+============================================================
 

@@ -1,26 +1,30 @@
-﻿# Updating Personal or Role Information
+# Updating Personal or Role Information
+
+**Category:** HR Support  
 
 ## Description
-Guidance for resolving Updating Personal or Role Information scenarios in the IT service desk context.
+Changes to name, contact details, department, manager, or job title that impact IT systems.
 
-## Common Symptoms
-- Users report that Updating Personal or Role Information is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Updating Personal or Role Information without a clear owner.
+## Typical Ticket Patterns
+- “Surname changed after marriage”
+- “New manager not shown in system”
+- “Role changed from contractor to employee”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Updating Personal or Role Information.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Updating Personal or Role Information (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm HR has received and approved the underlying change (e.g., name change, promotion).
+2. Validate that HR master data has been updated correctly.
+3. Sync changes to downstream systems (AD, email display name, distribution lists).
+4. Ensure reporting lines and approval workflows are updated.
+5. Notify the user and manager once all systems show the correct details.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Conflicting information between HR and payroll systems.
+- Frequent sync failures for this user or department.
+- Sensitive changes (e.g., legal name, gender markers) needing privacy review.
 
 ## Related Articles
-- HR System Access Guide.md
-- HR Portal Troubleshooting.md
-- Employee Offboarding IT Checklist.md
+- New Employee Onboarding IT Checklist
+- Employee Offboarding IT Checklist
+- Probation, Promotion and Role Change IT Updates
+
 

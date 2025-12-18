@@ -1,26 +1,32 @@
-﻿# Workstation Performance Problems
+# Workstation Performance Problems (Slow / Freezing)
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Workstation Performance Problems scenarios in the IT service desk context.
+User reports their workstation is slow, freezing, or unresponsive during normal tasks.
 
-## Common Symptoms
-- Users report that Workstation Performance Problems is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Workstation Performance Problems without a clear owner.
+## Typical Ticket Patterns
+- “Laptop is very slow”
+- “Applications keep freezing”
+- “CPU at 100%”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Workstation Performance Problems.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Workstation Performance Problems (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm symptoms (slow login, app slowness, network slowness) and frequency.
+2. Check available disk space, RAM use, and CPU utilisation; close unnecessary background tasks.
+3. Run malware and health checks as per security policy.
+4. Ensure OS and key drivers are up-to-date; install pending performance or firmware updates.
+5. For persistent issues, test with a clean profile or safe mode.
+6. If hardware is older than refresh threshold or fails diagnostics, recommend replacement.
+7. Document root cause and remediation (software vs hardware vs profile).
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Repeated hangs or blue screens after OS repair.
+- Critical users unable to work for more than 30 minutes due to performance.
+- Performance issues correlated with a new global deployment.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Blue Screen or System Crash Recovery
+- Laptop Overheating and Fan Noise
+- Hardware Replacement Process
+
 

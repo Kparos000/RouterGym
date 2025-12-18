@@ -1,26 +1,30 @@
-﻿# SSO Login Problems
+# SSO Login Problems
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving SSO Login Problems scenarios in the IT service desk context.
+Issues logging into applications that use single sign-on (SSO) and corporate identity provider.
 
-## Common Symptoms
-- Users report that SSO Login Problems is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference SSO Login Problems without a clear owner.
+## Typical Ticket Patterns
+- “SSO loop when logging into app”
+- “Stuck on sign-in page”
+- “SSO works for email but not for Confluence”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for SSO Login Problems.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for SSO Login Problems (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm user can log into primary SSO portal.
+2. Check if the specific application is assigned to the user in the SSO admin console.
+3. Ask user to clear browser cache, try another browser, or use incognito.
+4. Review error codes or SSO logs; verify attributes (email, username, groups) match app expectations.
+5. Re-sync user or groups if mapping is incorrect; test again.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Many users affected for the same app.
+- IdP or federation outage suspected.
+- Applications used for business-critical workflows.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Two-Factor Authentication (2FA) Setup and Issues
+- Access Request Flow (New, Modify, Remove)
+- HR Portal Troubleshooting
+
 

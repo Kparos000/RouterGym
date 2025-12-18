@@ -1,26 +1,30 @@
-﻿# Remote Access RDP Troubleshooting
+# Remote Access RDP Troubleshooting
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Remote Access RDP Troubleshooting scenarios in the IT service desk context.
+Users cannot connect to remote desktops or servers via RDP or similar tools.
 
-## Common Symptoms
-- Users report that Remote Access RDP Troubleshooting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Remote Access RDP Troubleshooting without a clear owner.
+## Typical Ticket Patterns
+- “RDP connection failed”
+- “Remote desktop black screen”
+- “Cannot reach office PC from home”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Remote Access RDP Troubleshooting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Remote Access RDP Troubleshooting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm RDP target is powered on and reachable on the network/VPN.
+2. Verify user is in the correct remote access/desktop groups.
+3. Check firewall rules and RDP configuration on target machine.
+4. Ask user to test from another device or network if feasible.
+5. Review logs for failed logins or network errors; update client as needed.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Many users cannot reach the same host or farm.
+- Critical servers affected.
+- Security concerns (excessive failed logins or suspected brute-force).
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- VPN Access Troubleshooting
+- Access Request Flow (New, Modify, Remove)
+- Administrative Rights Request Flow
+
 

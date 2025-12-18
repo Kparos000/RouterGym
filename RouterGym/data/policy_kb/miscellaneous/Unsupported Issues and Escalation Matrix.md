@@ -1,26 +1,30 @@
-﻿# Unsupported Issues and Escalation Matrix
+# Unsupported Issues and Escalation Matrix
+
+**Category:** Miscellaneous  
 
 ## Description
-Guidance for resolving Unsupported Issues and Escalation Matrix scenarios in the IT service desk context.
+Clarifies which requests are out of scope for IT and how they should be redirected.
 
-## Common Symptoms
-- Users report that Unsupported Issues and Escalation Matrix is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Unsupported Issues and Escalation Matrix without a clear owner.
+## Typical Ticket Patterns
+- “Personal device support”
+- “Home internet/router issues”
+- “Non-corporate software”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Unsupported Issues and Escalation Matrix.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Unsupported Issues and Escalation Matrix (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Identify whether request relates to corporate assets or services.
+2. If out of scope, politely explain support boundaries.
+3. Provide guidance for self-help or appropriate external vendor.
+4. For borderline cases, seek approval from IT manager.
+5. Record out-of-scope categorisation for reporting.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Disagreements about scope between IT and business.
+- High-risk or security-related issues on personal devices.
+- Repeated unsupported requests from the same user or team.
 
 ## Related Articles
-- General Troubleshooting Guide.md
-- Software Installation Guide.md
-- Unsupported Issues and Escalation Matrix.md
+- General Troubleshooting Guide
+- Non-IT Requests and Redirection
+- Temporary Admin Access for Troubleshooting
+
 

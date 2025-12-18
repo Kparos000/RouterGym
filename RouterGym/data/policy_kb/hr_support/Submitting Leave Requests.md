@@ -1,26 +1,31 @@
-﻿# Submitting Leave Requests
+# Submitting Leave Requests
+
+**Category:** HR Support  
 
 ## Description
-Guidance for resolving Submitting Leave Requests scenarios in the IT service desk context.
+Helping employees raise and track vacation, sick leave, and other absence requests.
 
-## Common Symptoms
-- Users report that Submitting Leave Requests is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Submitting Leave Requests without a clear owner.
+## Typical Ticket Patterns
+- “Cannot submit vacation request”
+- “Leave request stuck in pending”
+- “Manager cannot approve my leave”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Submitting Leave Requests.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Submitting Leave Requests (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify that the user and manager have active HR portal access.
+2. Confirm leave type, dates, and any policy constraints (notice period, balance).
+3. Walk through the leave request steps in the HR portal and compare with screenshots.
+4. Check workflow assignments and manager hierarchy; correct if misconfigured.
+5. Resubmit or re-route stuck requests and confirm new status.
+6. Advise user on how to view balances and history.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Approval workflow errors that cannot be corrected by IT.
+- Policy exceptions or overlapping leave disputes.
+- HR system outage affecting leave approvals.
 
 ## Related Articles
-- HR System Access Guide.md
-- HR Portal Troubleshooting.md
-- Employee Offboarding IT Checklist.md
+- Updating Personal or Role Information
+- Time Sheet Submission and Correction
+- HR System Access Guide (HRIS / Oracle)
+
 

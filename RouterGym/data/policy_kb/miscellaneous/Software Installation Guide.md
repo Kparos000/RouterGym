@@ -1,26 +1,30 @@
-﻿# Software Installation Guide
+# Software Installation Guide
+
+**Category:** Miscellaneous  
 
 ## Description
-Guidance for resolving Software Installation Guide scenarios in the IT service desk context.
+How users request and install standard, approved software on corporate devices.
 
-## Common Symptoms
-- Users report that Software Installation Guide is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Software Installation Guide without a clear owner.
+## Typical Ticket Patterns
+- “Need to install application X”
+- “Install failing with permission error”
+- “Unsure if tool is approved”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Software Installation Guide.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Software Installation Guide (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm software is on the approved list; if not, route to security/procurement.
+2. Check user’s admin rights or installation permissions.
+3. Use corporate software centre, package manager, or remote deployment where available.
+4. Capture and troubleshoot installation error codes if failure occurs.
+5. Confirm application runs and user understands support boundaries.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Non-approved software requests.
+- Installation impacting system stability.
+- License or procurement issues.
 
 ## Related Articles
-- General Troubleshooting Guide.md
-- Software Installation Guide.md
-- Unsupported Issues and Escalation Matrix.md
+- Software Licensing and Subscription Requests
+- Local Admin Rights Policy
+- Unsupported Issues and Escalation Matrix
+
 

@@ -1,26 +1,32 @@
-﻿# Employee Offboarding IT Checklist
+# Employee Offboarding IT Checklist
+
+**Category:** HR Support  
 
 ## Description
-Guidance for resolving Employee Offboarding IT Checklist scenarios in the IT service desk context.
+Standard steps when an employee leaves the organisation (resignation or termination).
 
-## Common Symptoms
-- Users report that Employee Offboarding IT Checklist is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Employee Offboarding IT Checklist without a clear owner.
+## Typical Ticket Patterns
+- “Employee leaving – disable access”
+- “Leaver processing request”
+- “Need mail forwarding for leaver”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Employee Offboarding IT Checklist.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Employee Offboarding IT Checklist (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm last working day and offboarding type (resignation, end of contract, termination).
+2. Schedule account disablement aligned with HR and legal requirements.
+3. Arrange laptop/equipment return and update asset inventory.
+4. Configure mailbox forwarding or delegate access as per HR instructions.
+5. Remove access to HR systems, shared drives, and applications.
+6. Archive user data (email, OneDrive, project folders) according to retention policy.
+7. Document completion steps and confirm with HR.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Termination with immediate access removal required.
+- Legal hold or ongoing investigation involving user data.
+- Equipment not returned within policy timeline.
 
 ## Related Articles
-- HR System Access Guide.md
-- HR Portal Troubleshooting.md
-- Employee Offboarding IT Checklist.md
+- Backup and Restore Guidelines
+- Storage Quota Management
+- HR Data Privacy and Sensitive Information Requests
+
 

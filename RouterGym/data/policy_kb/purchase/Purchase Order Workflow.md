@@ -1,26 +1,30 @@
-﻿# Purchase Order Workflow
+# Purchase Order Workflow
+
+**Category:** Purchase  
 
 ## Description
-Guidance for resolving Purchase Order Workflow scenarios in the IT service desk context.
+How IT and business users create, approve, and track purchase orders (POs) for IT items.
 
-## Common Symptoms
-- Users report that Purchase Order Workflow is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Purchase Order Workflow without a clear owner.
+## Typical Ticket Patterns
+- “PO stuck in pending state”
+- “Cannot add IT item to PO”
+- “Need PO number for vendor”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Purchase Order Workflow.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Purchase Order Workflow (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify requester has access to procurement system.
+2. Check PO status (draft, awaiting approval, approved, closed).
+3. Ensure correct cost centre, GL code, and vendor are selected.
+4. Guide user through fixing validation errors and resubmitting.
+5. Confirm PO approval and share PO number with requester.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- System-wide procurement outages.
+- POs failing due to budget or policy blocks.
+- Urgent purchases blocked near critical deadlines.
 
 ## Related Articles
-- IT Equipment Procurement Policy.md
-- Vendor Quotation and Approval Steps.md
-- Requesting New Hardware.md
+- Vendor Quotation and Approval Steps
+- Budget Approval and Cost Allocation
+- Tracking Orders and Deliveries
+
 

@@ -1,26 +1,32 @@
-﻿# Laptop Power and Battery Diagnostics
+# Laptop Power and Battery Diagnostics
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Laptop Power and Battery Diagnostics scenarios in the IT service desk context.
+Laptops that power off unexpectedly, do not charge, or have rapidly draining batteries.
 
-## Common Symptoms
-- Users report that Laptop Power and Battery Diagnostics is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Laptop Power and Battery Diagnostics without a clear owner.
+## Typical Ticket Patterns
+- “Laptop battery drains in an hour”
+- “Charging light not on”
+- “Device turns off when disconnected from power”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Laptop Power and Battery Diagnostics.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Laptop Power and Battery Diagnostics (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm user is using an approved power adapter and cable; test with a known-good adapter if available.
+2. Check OS battery status and health report (e.g., Windows battery report or vendor tool).
+3. Ensure power plan is set to “Balanced” or corporate standard, not performance-throttling or custom.
+4. Update BIOS/firmware and power-management drivers if versions are outdated.
+5. Run vendor battery diagnostics and capture results.
+6. If battery health is below policy threshold or diagnostics fail, log details and initiate replacement.
+7. Educate user on charging habits and proper shutdown/sleep usage.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Battery or power adapter shows physical damage or overheating.
+- Repeated power failures after adapter and battery replacement.
+- Firmware update failures.
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Device Not Booting
+- Workstation Performance Problems
+- Warranty and Repair Escalation
+
 

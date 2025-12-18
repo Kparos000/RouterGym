@@ -1,26 +1,30 @@
-﻿# Report Generation and Template Issues
+# Report Generation and Template Issues
+
+**Category:** Miscellaneous  
 
 ## Description
-Guidance for resolving Report Generation and Template Issues scenarios in the IT service desk context.
+Problems creating or exporting reports from line-of-business systems.
 
-## Common Symptoms
-- Users report that Report Generation and Template Issues is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Report Generation and Template Issues without a clear owner.
+## Typical Ticket Patterns
+- “Export to Excel not working”
+- “Report shows wrong columns”
+- “Cannot schedule weekly report”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Report Generation and Template Issues.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Report Generation and Template Issues (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm the exact report, filters, and export format.
+2. Attempt to reproduce issue using a test or admin account.
+3. Check user permissions for reporting modules.
+4. Clear browser cache or test in alternate browser if web-based.
+5. Log any errors and coordinate with application owner for fixes.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Finance or regulatory reports affected.
+- Report engine errors impacting many users.
+- Complex report design changes requested.
 
 ## Related Articles
-- General Troubleshooting Guide.md
-- Software Installation Guide.md
-- Unsupported Issues and Escalation Matrix.md
+- HR Reports and Data Extract Requests
+- General Troubleshooting Guide
+- Unsupported Issues and Escalation Matrix
+
 

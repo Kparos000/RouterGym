@@ -1,26 +1,30 @@
-﻿# IT Equipment Procurement Policy
+# IT Equipment Procurement Policy
+
+**Category:** Purchase  
 
 ## Description
-Guidance for resolving IT Equipment Procurement Policy scenarios in the IT service desk context.
+High-level rules for purchasing standard IT equipment (laptops, monitors, peripherals).
 
-## Common Symptoms
-- Users report that IT Equipment Procurement Policy is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference IT Equipment Procurement Policy without a clear owner.
+## Typical Ticket Patterns
+- “Can I order my own laptop?”
+- “What is the standard model?”
+- “Need approval rules for equipment”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for IT Equipment Procurement Policy.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for IT Equipment Procurement Policy (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Describe approved hardware catalogue and standard models by role.
+2. Explain who can approve new equipment (manager, budget owner, IT).
+3. Clarify purchase channels (service portal, procurement system).
+4. Outline lead times and refresh cycle guidelines.
+5. Link to detailed procedures for ordering and replacements.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Requests for non-standard or custom equipment.
+- Exceptions to budget or refresh policy.
+- Bulk or project-specific orders.
 
 ## Related Articles
-- IT Equipment Procurement Policy.md
-- Vendor Quotation and Approval Steps.md
-- Requesting New Hardware.md
+- Requesting New Hardware
+- Budget Approval and Cost Allocation
+- Hardware Replacement Process
+
 

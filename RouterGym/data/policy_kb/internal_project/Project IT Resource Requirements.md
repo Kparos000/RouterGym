@@ -1,26 +1,30 @@
-﻿# Project IT Resource Requirements
+# Project IT Resource Requirements
+
+**Category:** Internal Project  
 
 ## Description
-Guidance for resolving Project IT Resource Requirements scenarios in the IT service desk context.
+Capturing the infrastructure and tooling needs of a new internal project.
 
-## Common Symptoms
-- Users report that Project IT Resource Requirements is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Project IT Resource Requirements without a clear owner.
+## Typical Ticket Patterns
+- “Need VM and database for project”
+- “Request for test environment and storage”
+- “Need CI/CD pipeline for new app”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Project IT Resource Requirements.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Project IT Resource Requirements (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Collect basic project details: stack, environments (dev/test/prod), users.
+2. Estimate compute, storage, and network requirements.
+3. Map requirements to standard platforms (cloud, on-prem, shared services).
+4. Raise necessary provisioning requests and track completion.
+5. Share resource overview and access details with the project team.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Non-standard technology stacks or external hosting.
+- Significant cost or capacity impact.
+- Security or data-classification concerns.
 
 ## Related Articles
-- Project IT Resource Requirements.md
-- Role Changes and Project Assignments.md
-- System Deployment Checklist.md
+- Test and Staging Environment Setup
+- Archive and Long-Term Storage Practices
+- Data Access and Security for Project Teams
+
 

@@ -1,26 +1,30 @@
-﻿# OneDrive and SharePoint Troubleshooting
+# OneDrive and SharePoint Troubleshooting
+
+**Category:** Storage  
 
 ## Description
-Guidance for resolving OneDrive and SharePoint Troubleshooting scenarios in the IT service desk context.
+Sync, access, and performance issues with OneDrive and SharePoint document libraries.
 
-## Common Symptoms
-- Users report that OneDrive and SharePoint Troubleshooting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference OneDrive and SharePoint Troubleshooting without a clear owner.
+## Typical Ticket Patterns
+- “OneDrive not syncing”
+- “Cannot open SharePoint files”
+- “Sync conflicts in team site”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for OneDrive and SharePoint Troubleshooting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for OneDrive and SharePoint Troubleshooting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm user can access Microsoft 365/SSO portal.
+2. Check OneDrive sync client status; re-sign in or reset if necessary.
+3. Verify SharePoint permissions on the affected library or folder.
+4. Resolve sync conflicts by renaming or consolidating files.
+5. Test web access vs synced folder to isolate client vs service issues.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Service-wide incident affecting many users.
+- Data loss or version history issues.
+- Sites used for regulated or confidential data.
 
 ## Related Articles
-- Storage Quota Management.md
-- File Permissions Management.md
-- Backup and Restore Guidelines.md
+- Backup and Restore Guidelines
+- Storage Quota Management
+- File Permissions Management
+
 

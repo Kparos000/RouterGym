@@ -1,26 +1,31 @@
-﻿# System Deployment Checklist
+# System Deployment Checklist
+
+**Category:** Internal Project  
 
 ## Description
-Guidance for resolving System Deployment Checklist scenarios in the IT service desk context.
+Checklist for deploying new internal systems or major releases into production.
 
-## Common Symptoms
-- Users report that System Deployment Checklist is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference System Deployment Checklist without a clear owner.
+## Typical Ticket Patterns
+- “Go-live for internal app”
+- “Production deployment for version X”
+- “Pre-deployment checks”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for System Deployment Checklist.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for System Deployment Checklist (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm change request, approvals, and maintenance window.
+2. Validate backup/rollback plan and test coverage.
+3. Ensure monitoring, logging, and alerting are configured.
+4. Execute deployment steps or support dev team during deployment.
+5. Run smoke tests and confirm key user journeys function.
+6. Document deployment outcome and any follow-up tasks.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Deployment failures causing outages.
+- Security issues identified during deployment.
+- Go-lives involving external customers or regulators.
 
 ## Related Articles
-- Project IT Resource Requirements.md
-- Role Changes and Project Assignments.md
-- System Deployment Checklist.md
+- Test and Staging Environment Setup
+- Network Connectivity Troubleshooting (Workstations)
+- Unsupported Issues and Escalation Matrix
+
 

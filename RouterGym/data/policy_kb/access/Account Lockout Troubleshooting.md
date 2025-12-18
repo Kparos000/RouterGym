@@ -1,26 +1,30 @@
-﻿# Account Lockout Troubleshooting
+# Account Lockout Troubleshooting
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Account Lockout Troubleshooting scenarios in the IT service desk context.
+Resolving lockouts caused by repeated failed logins or cached credentials.
 
-## Common Symptoms
-- Users report that Account Lockout Troubleshooting is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Account Lockout Troubleshooting without a clear owner.
+## Typical Ticket Patterns
+- “Account locked every morning”
+- “Too many failed login attempts”
+- “Cannot unlock with self-service”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Account Lockout Troubleshooting.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Account Lockout Troubleshooting (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify user identity and confirm which account is locked.
+2. Unlock the account in AD or target system.
+3. Identify possible sources of repeated failures (mobile devices, mapped drives, old sessions, VPN).
+4. Ask user to update saved credentials on all devices and restart sessions.
+5. Monitor for re-lock within 24 hours and advise user to change password if suspicion remains.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Multiple accounts locked simultaneously (possible attack).
+- User suspects credentials were exposed.
+- Lockouts persist after full credential refresh.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Password Reset Procedure
+- SSO Login Problems
+- VPN Access Troubleshooting
+
 

@@ -1,26 +1,31 @@
-﻿# Access Request Flow (New-Modify-Remove)
+# Access Request Flow (New, Modify, Remove)
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Access Request Flow (New-Modify-Remove) scenarios in the IT service desk context.
+Standard workflow for creating, changing, or removing user access to systems (e.g., Git, Jira, Confluence, line-of-business apps).
 
-## Common Symptoms
-- Users report that Access Request Flow (New-Modify-Remove) is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Access Request Flow (New-Modify-Remove) without a clear owner.
+## Typical Ticket Patterns
+- “Need access to Confluence / Git repo”
+- “Please add user to project group”
+- “Remove access for leaver”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Access Request Flow (New-Modify-Remove).
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Access Request Flow (New-Modify-Remove) (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify requester identity and approval (manager or system owner).
+2. Identify exact system, group, or repository required and role level.
+3. Check for existing access to avoid duplicates.
+4. Apply change via IAM tool, AD group, or application admin console.
+5. Ask user to log off and back in to refresh permissions.
+6. Confirm access works for key actions; update ticket with groups/roles applied.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Requests for elevated or production access.
+- Conflicting approvals or unclear ownership.
+- Bulk access changes for projects or migrations.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- User Permissions Overview
+- Administrative Rights Request Flow
+- HR System Access Guide (HRIS / Oracle)
+
 

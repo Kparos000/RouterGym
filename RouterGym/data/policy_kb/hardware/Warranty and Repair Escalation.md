@@ -1,26 +1,31 @@
-﻿# Warranty and Repair Escalation
+# Warranty and Repair Escalation
+
+**Category:** Hardware  
 
 ## Description
-Guidance for resolving Warranty and Repair Escalation scenarios in the IT service desk context.
+Managing vendor repairs and warranty claims for faulty hardware.
 
-## Common Symptoms
-- Users report that Warranty and Repair Escalation is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Warranty and Repair Escalation without a clear owner.
+## Typical Ticket Patterns
+- “Laptop still under warranty but failing diagnostics”
+- “Need repair authorization”
+- “Broken screen / keyboard / hinges”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Warranty and Repair Escalation.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Warranty and Repair Escalation (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm asset ownership, serial, and warranty status in asset system or vendor portal.
+2. Attach diagnostic results, photos, and error codes to the ticket.
+3. Log a case with the hardware vendor, including user location and urgency.
+4. Coordinate shipment or onsite technician visit with the user and vendor.
+5. Track repair progress and provide temporary device where possible.
+6. Update ticket with repair reference, ETA, and final completion details.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Vendor misses SLA or repeatedly delays repair.
+- Business-critical roles left without functional equipment.
+- Safety concerns (e.g., overheating battery, exposed wiring).
 
 ## Related Articles
-- Hardware Replacement Process.md
-- Warranty and Repair Escalation.md
-- Peripheral Device Issues.md
+- Hardware Replacement Process
+- Laptop Power and Battery Diagnostics
+- Device Not Booting
+
 

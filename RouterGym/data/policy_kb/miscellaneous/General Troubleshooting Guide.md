@@ -1,26 +1,30 @@
-﻿# General Troubleshooting Guide
+# General Troubleshooting Guide
+
+**Category:** Miscellaneous  
 
 ## Description
-Guidance for resolving General Troubleshooting Guide scenarios in the IT service desk context.
+Baseline steps for common IT issues when no specific KB article applies.
 
-## Common Symptoms
-- Users report that General Troubleshooting Guide is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference General Troubleshooting Guide without a clear owner.
+## Typical Ticket Patterns
+- “System not working – no details”
+- “Random error message”
+- “User cannot describe exact problem”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for General Troubleshooting Guide.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for General Troubleshooting Guide (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Clarify symptoms, scope (one user vs many), and recent changes.
+2. Ask user to restart affected application or device.
+3. Check networking, login status, and basic resource usage.
+4. Look for known incidents or outages.
+5. If issue becomes specific (e.g., access, storage, hardware), redirect to relevant KB/queue.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Repeated “general” tickets from same system or location.
+- Signs of wider incident (multiple users, same error).
+- Safety or data-loss risk.
 
 ## Related Articles
-- General Troubleshooting Guide.md
-- Software Installation Guide.md
-- Unsupported Issues and Escalation Matrix.md
+- Incorrect Assignment or Misrouted Tickets
+- Unsupported Issues and Escalation Matrix
+- Network Connectivity Troubleshooting (Workstations)
+
 

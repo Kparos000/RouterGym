@@ -1,26 +1,30 @@
-﻿# Email Formatting and Signature Problems
+# Email Formatting and Signature Problems
+
+**Category:** Miscellaneous  
 
 ## Description
-Guidance for resolving Email Formatting and Signature Problems scenarios in the IT service desk context.
+Issues with email templates, signatures, fonts, and general formatting.
 
-## Common Symptoms
-- Users report that Email Formatting and Signature Problems is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Email Formatting and Signature Problems without a clear owner.
+## Typical Ticket Patterns
+- “Email signature missing / wrong”
+- “Text size changes after sending”
+- “Template looks different to recipients”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Email Formatting and Signature Problems.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Email Formatting and Signature Problems (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm email client and version (web, desktop, mobile).
+2. Apply standard corporate signature template or policy.
+3. Check formatting settings (HTML vs plain text) and fonts.
+4. Send test email internally and externally to compare.
+5. Update guidance to user on copy-pasting from other documents.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Compliance-related content missing (disclaimers, legal text).
+- Global template or branding issues.
+- Problems only affecting specific distribution groups.
 
 ## Related Articles
-- General Troubleshooting Guide.md
-- Software Installation Guide.md
-- Unsupported Issues and Escalation Matrix.md
+- Email Access and Configuration
+- General Troubleshooting Guide
+- Unsupported Issues and Escalation Matrix
+
 

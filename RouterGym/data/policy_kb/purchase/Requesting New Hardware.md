@@ -1,26 +1,30 @@
-﻿# Requesting New Hardware
+# Requesting New Hardware
+
+**Category:** Purchase  
 
 ## Description
-Guidance for resolving Requesting New Hardware scenarios in the IT service desk context.
+Step-by-step workflow for users to request new laptops, monitors, or peripherals.
 
-## Common Symptoms
-- Users report that Requesting New Hardware is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Requesting New Hardware without a clear owner.
+## Typical Ticket Patterns
+- “Need new monitor”
+- “Request for laptop for new starter”
+- “Broken headset – need replacement”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Requesting New Hardware.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Requesting New Hardware (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Confirm business justification (new hire, break/fix, upgrade).
+2. Check eligibility against refresh cycle and asset records.
+3. Select standard model and accessories from the approved catalogue.
+4. Raise purchase or allocation request in procurement system.
+5. Provide ETA and shipping/collection details to the user.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Non-standard hardware requested for specific projects.
+- High-value purchases or bulk orders.
+- Inventory shortages or long lead times.
 
 ## Related Articles
-- IT Equipment Procurement Policy.md
-- Vendor Quotation and Approval Steps.md
-- Requesting New Hardware.md
+- IT Equipment Procurement Policy
+- Hardware Replacement Process
+- Emergency Purchase and Replacement Process
+
 

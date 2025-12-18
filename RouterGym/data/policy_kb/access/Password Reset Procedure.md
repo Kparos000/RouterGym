@@ -1,26 +1,31 @@
-﻿# Password Reset Procedure
+# Password Reset Procedure
+
+**Category:** Access  
 
 ## Description
-Guidance for resolving Password Reset Procedure scenarios in the IT service desk context.
+Resetting user passwords for AD, email, VPN, and primary business applications.
 
-## Common Symptoms
-- Users report that Password Reset Procedure is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Password Reset Procedure without a clear owner.
+## Typical Ticket Patterns
+- “Forgot my password”
+- “Password expired over the weekend”
+- “Account locked after too many attempts”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Password Reset Procedure.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Password Reset Procedure (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Verify user identity using approved security checks.
+2. Confirm which system password requires reset.
+3. Use official password reset tooling (self-service or service desk) to generate a new password or unlock.
+4. Ensure password meets complexity and history requirements.
+5. Ask user to log into primary device and test SSO into key applications.
+6. Remind user of self-service options for future resets where available.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Suspicious account activity or potential compromise.
+- Multiple users reporting password failures for one system.
+- Self-service reset platform outage.
 
 ## Related Articles
-- User Permissions Overview.md
-- SSO Login Problems.md
-- Two-Factor Authentication Guide.md
+- Account Lockout Troubleshooting
+- SSO Login Problems
+- Two-Factor Authentication (2FA) Setup and Issues
+
 

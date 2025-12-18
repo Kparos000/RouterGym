@@ -1,26 +1,30 @@
-﻿# Privileged Account Usage Guidelines
+# Privileged Account Usage Guidelines
+
+**Category:** Administrative rights  
 
 ## Description
-Guidance for resolving Privileged Account Usage Guidelines scenarios in the IT service desk context.
+Rules for using privileged accounts (server admin, database admin, security tools).
 
-## Common Symptoms
-- Users report that Privileged Account Usage Guidelines is failing or unavailable.
-- Expected access or behavior is blocked after a recent change.
-- Multiple tickets reference Privileged Account Usage Guidelines without a clear owner.
+## Typical Ticket Patterns
+- “Which account should I use for this task?”
+- “Need runbook for admin tasks”
+- “Shared admin credentials question”
 
 ## Resolution Steps
-1. Review the ticket details, scope, and business impact for Privileged Account Usage Guidelines.
-2. Verify user/account state, connectivity, and recent changes tied to the request.
-2. Apply the standard fix for Privileged Account Usage Guidelines (reset, reconfigure, or reissue access) and document the action.
-2. Test with the requester; update the ticket with outcome and any follow-up tasks.
+1. Clarify which privileged accounts exist for the system in question.
+2. Explain that admin accounts are for admin tasks only, not day-to-day usage.
+3. Require multi-factor authentication and session logging where supported.
+4. Direct users to standard runbooks for common admin actions.
+5. Record privileged actions in change/incident records where appropriate.
 
 ## When to Escalate
-- Issue repeats after standard fix or impacts multiple users.
-- Security/compliance risk is suspected or admin rights are required.
-- Underlying service dependency is degraded (directory, network, or core app).
+- Shared credentials discovered without proper control.
+- High-risk changes without approvals.
+- Suspected misuse of admin privileges.
 
 ## Related Articles
-- Administrative Rights Request Flow.md
-- Local Admin Rights Policy.md
-- Privileged Account Usage Guidelines.md
+- Security Review Requirements for Admin Access
+- Admin Rights Review and Recertification
+- Data Access and Security for Project Teams
+
 
