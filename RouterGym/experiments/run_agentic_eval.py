@@ -14,8 +14,9 @@ from RouterGym.data.tickets.dataset_loader import load_dataset
 
 def run_agentic_eval(
     ticket_limit: Optional[int],
-    router_name: str,
-    context_mode: str,
+    router_mode: str,
+    memory_mode: str,
+    model_name: str,
     output_path: Path,
 ) -> None:
     """Run the agentic pipeline over tickets and write results as JSONL."""
@@ -27,15 +28,16 @@ def run_agentic_eval(
     count = 0
     with output_path.open("w", encoding="utf-8") as fh:
         for idx, row in df.iterrows():
-            ticket_text = str(row["text"])
+            ticket: Dict[str, Any] = {"text": str(row["text"]), "ticket_id": int(idx)}
             result: Dict[str, Any] = run_ticket_pipeline(
-                ticket_text=ticket_text,
-                router_name=router_name,
-                context_mode=context_mode,
+                ticket=ticket,
+                model_name=model_name,
+                memory_mode=memory_mode,
+                router_mode=router_mode,
             )
             validated = validate_agent_output(result)
             # Add lightweight metadata for downstream analysis.
-            validated["ticket_id"] = int(idx)
+            validated["ticket_id"] = str(idx)
             validated["gold_label"] = row.get("label")
             fh.write(json.dumps(validated, ensure_ascii=False) + "\n")
             count += 1
@@ -45,15 +47,22 @@ def run_agentic_eval(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run agentic pipeline over tickets and emit AgentOutput JSONL.")
     parser.add_argument("--ticket-limit", type=int, default=None, help="Limit number of tickets (optional).")
-    parser.add_argument("--router-name", type=str, default="slm_dominant", help="Router strategy name.")
-    parser.add_argument("--context-mode", type=str, default="none", help="Context mode (e.g., none, rag_dense).")
-    parser.add_argument("--output-path", type=Path, required=True, help="Path to write JSONL results.")
+    parser.add_argument("--router-mode", type=str, default="manual", help="Router strategy name (recorded only).")
+    parser.add_argument("--memory-mode", type=str, default="none", help="Context mode (none, rag_dense, rag_bm25, rag_hybrid).")
+    parser.add_argument("--model-name", type=str, default="slm1", help="Model name (slm1/slm2/llm1/llm2).")
+    parser.add_argument(
+        "--output-path",
+        type=Path,
+        default=Path("RouterGym/results/experiments/agentic_eval.jsonl"),
+        help="Path to write JSONL results.",
+    )
     args = parser.parse_args()
 
     run_agentic_eval(
         ticket_limit=args.ticket_limit,
-        router_name=args.router_name,
-        context_mode=args.context_mode,
+        router_mode=args.router_mode,
+        memory_mode=args.memory_mode,
+        model_name=args.model_name,
         output_path=args.output_path,
     )
 

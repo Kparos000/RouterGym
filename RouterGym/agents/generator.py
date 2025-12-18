@@ -5,13 +5,15 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
-from RouterGym.contracts.schema_contract import SchemaContract
-from RouterGym.engines.model_registry import get_repair_model
+from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, SchemaContract
+from RouterGym.engines.model_registry import get_repair_model, load_models
 from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonicalize_label
+from RouterGym.memory import get_memory_class
+from RouterGym.memory.base import MemoryRetrieval
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -31,6 +33,17 @@ def get_confidence_bucket(conf: float) -> str:
     if conf >= CONFIDENCE_MEDIUM_THRESHOLD:
         return "medium"
     return "low"
+
+
+def _dedupe_preserve(items: Iterable[str]) -> List[str]:
+    seen = set()
+    ordered: List[str] = []
+    for item in items:
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered
 
 def classification_instruction() -> str:
     """High-quality instruction prompt for ticket classification with hard boundaries and examples."""
@@ -91,6 +104,18 @@ def _call_model(model: Any, prompt: str) -> str:
     return str(output)
 
 
+def _parse_model_output(text: str) -> Dict[str, Any]:
+    """Parse model output into a dict if possible, otherwise empty dict."""
+    contract = JSONContract()
+    ok, parsed = contract.validate(text)
+    if ok and isinstance(parsed, dict):
+        return parsed
+    fragment = _extract_json_fragment(text)
+    if isinstance(fragment, dict):
+        return fragment
+    return {}
+
+
 def _extract_json_fragment(text: str) -> Any:
     """Try to extract a JSON object substring from arbitrary text."""
     if not isinstance(text, str):
@@ -144,12 +169,35 @@ def _ensure_minimum_fields(data: Dict[str, str]) -> Dict[str, str]:
     }
 
 
-def build_prompt(ticket_text: str, kb_snippets: List[str]) -> str:
-    """Construct a prompt with KB references."""
-    prompt_parts = [ticket_text.strip()]
-    for idx, snippet in enumerate(kb_snippets, start=1):
-        prompt_parts.append(f"### KB Reference {idx}:\n> {snippet.strip()}")
-    prompt_parts.append("Respond with JSON containing: final_answer, reasoning.")
+def build_prompt(
+    ticket_text: str,
+    kb_snippets: List[str],
+    classifier_label: str = "",
+    confidence_bucket: str = "",
+    memory_mode: str = "none",
+) -> str:
+    """Construct a prompt with KB references and schema guidance for AgentOutput."""
+    prompt_parts = [f"Ticket:\n{ticket_text.strip()}" if ticket_text else "Ticket: (missing)"]
+    if classifier_label:
+        prompt_parts.append(
+            f"Classifier prediction: {classifier_label} (confidence bucket: {confidence_bucket or 'unknown'})"
+        )
+    if kb_snippets:
+        for idx, snippet in enumerate(kb_snippets, start=1):
+            prompt_parts.append(f"### KB Reference {idx}:\n> {snippet.strip()}")
+        prompt_parts.append("KB snippets are internal policies; treat them as primary references.")
+    else:
+        prompt_parts.append("No KB context provided; rely on ticket details and best practices.")
+    prompt_parts.append(f"Memory mode: {memory_mode}")
+    prompt_parts.append(
+        "Respond with STRICT JSON for AgentOutput fields: ticket_id, original_query, rewritten_query, "
+        "topic_group, model_name, router_mode, classifier_label, classifier_confidence, "
+        "classifier_confidence_bucket, memory_mode, kb_policy_ids (list), kb_categories (list), "
+        "final_answer, resolution_steps (list of strings), reasoning, escalation_flags "
+        "{needs_human, needs_llm_escalation, policy_gap}, metrics {latency_ms, total_input_tokens, "
+        "total_output_tokens, total_cost_usd}."
+    )
+    prompt_parts.append("Return JSON only without extra text.")
     return "\n\n".join([p for p in prompt_parts if p])
 
 
@@ -407,69 +455,125 @@ class ResponseGenerator:
 
 
 def run_ticket_pipeline(
-    ticket_text: str,
-    router_name: str = "slm_dominant",
-    context_mode: str = "none",
+    ticket: Dict[str, Any],
+    model_name: str,
+    memory_mode: str,
+    router_mode: str = "manual",
+    max_retries: int = 2,
 ) -> Dict[str, Any]:
-    """Minimal pipeline skeleton: encode -> classify via calibrated encoder -> assemble AgentOutput payload."""
-    classifier = EncoderClassifier(head_mode="auto", use_lexical_prior=True)
-    start = time.perf_counter()
-    probabilities = classifier.predict_proba(ticket_text)
-    latency_ms = (time.perf_counter() - start) * 1000.0
-    category = max(probabilities, key=probabilities.__getitem__)
-    classifier_confidence = float(probabilities.get(category, 0.0))
-    confidence_bucket = get_confidence_bucket(classifier_confidence)
+    """Run Classify -> Retrieve -> Respond for a single ticket."""
 
-    if router_name == "llm_first":
-        model_used = "llm1"
-    elif router_name == "hybrid_specialist":
-        model_used = "slm1"
-    else:
-        model_used = "slm1"
+    if memory_mode not in ALLOWED_CONTEXT_MODES:
+        raise ValueError(f"Unsupported memory_mode {memory_mode}; allowed: {sorted(ALLOWED_CONTEXT_MODES)}")
 
-    reasoning = (
-        f"Classified as {category} with confidence {classifier_confidence:.3f} using {classifier.backend_name}. "
-        f"Router '{router_name}' selected model '{model_used}'. Resolution steps not yet generated in this skeleton."
+    text = str(ticket.get("text") or ticket.get("Document") or ticket.get("document") or "").strip()
+    if not text:
+        raise ValueError("Ticket text is empty")
+    ticket_id = ticket.get("ticket_id") or ticket.get("id") or ticket.get("ticketid") or ""
+    ticket_id = str(ticket_id) if ticket_id is not None else ""
+
+    t_start = time.perf_counter()
+
+    # 1) Classification via calibrated encoder
+    classifier = EncoderClassifier(head_mode="calibrated", use_lexical_prior=True)
+    classify_start = time.perf_counter()
+    probabilities = classifier.predict_proba(text)
+    classify_latency = (time.perf_counter() - classify_start) * 1000.0
+    classifier_label = max(probabilities, key=probabilities.__getitem__)
+    classifier_confidence = float(probabilities.get(classifier_label, 0.0))
+    classifier_confidence_bucket = get_confidence_bucket(classifier_confidence)
+
+    # 2) Retrieval based on memory_mode
+    mem_cls = get_memory_class(memory_mode)
+    if mem_cls is None:
+        raise ValueError(f"Unknown memory backend for mode {memory_mode}")
+    memory = mem_cls()
+    try:
+        memory.load(ticket)
+    except Exception:
+        pass
+    retrieval: MemoryRetrieval = memory.retrieve(text)
+    snippets = []
+    if isinstance(retrieval.retrieval_metadata, dict):
+        meta_snippets = retrieval.retrieval_metadata.get("snippets", [])
+        if isinstance(meta_snippets, list):
+            snippets = [s for s in meta_snippets if isinstance(s, dict)]
+    kb_policy_ids = _dedupe_preserve(str(s.get("policy_id", "")) for s in snippets if s.get("policy_id"))
+    kb_categories = _dedupe_preserve(str(s.get("category", "")) for s in snippets if s.get("category"))
+    kb_texts = [str(s.get("text", "")) for s in snippets if s.get("text")]
+
+    # 3) Build prompt and call model
+    prompt = build_prompt(
+        ticket_text=text,
+        kb_snippets=kb_texts,
+        classifier_label=classifier_label,
+        confidence_bucket=classifier_confidence_bucket,
+        memory_mode=memory_mode,
     )
-    kb_policy_ids: List[str] = []
-    kb_categories: List[str] = []
-    metrics_latency = float(latency_ms)
 
+    models = load_models(sanity=True, slm_subset=[model_name])
+    model = models.get(model_name)
+    if model is None:
+        raise RuntimeError(f"Model '{model_name}' is not available; check model registry or subset filter.")
+
+    parsed_output: Dict[str, Any] = {}
+    raw_output = ""
+    for attempt in range(max_retries):
+        raw_output = _call_model(model, prompt)
+        parsed_output = _parse_model_output(raw_output)
+        try:
+            validate_agent_output({"original_query": text, **parsed_output})
+            break
+        except Exception:
+            if attempt == max_retries - 1:
+                parsed_output = {}
+            continue
+
+    total_latency_ms = (time.perf_counter() - t_start) * 1000.0
+
+    # 4) Assemble AgentOutput and validate
+    resolution_steps = parsed_output.get("resolution_steps", [])
+    if not isinstance(resolution_steps, list):
+        resolution_steps = []
+    default_reasoning = (
+        parsed_output.get("reasoning", "")
+        or f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
+    )
+    default_answer = parsed_output.get("final_answer", "") or "No valid answer produced"
     payload: Dict[str, Any] = {
-        "ticket_id": "",
-        "original_query": ticket_text,
-        "rewritten_query": ticket_text,
-        "topic_group": category,
-        "model_name": model_used,
-        "router_mode": router_name,
-        "classifier_label": category,
+        "ticket_id": ticket_id,
+        "original_query": text,
+        "rewritten_query": parsed_output.get("rewritten_query", text),
+        "topic_group": classifier_label,
+        "model_name": model_name,
+        "router_mode": router_mode,
+        "classifier_label": classifier_label,
         "classifier_confidence": classifier_confidence,
-        "classifier_confidence_bucket": confidence_bucket,
+        "classifier_confidence_bucket": classifier_confidence_bucket,
         "classifier_backend": classifier.backend_name,
         "classification": {
-            "label": category,
+            "label": classifier_label,
             "confidence": classifier_confidence,
-            "confidence_bucket": confidence_bucket,
+            "confidence_bucket": classifier_confidence_bucket,
         },
-        "router_name": router_name,
-        "model_used": model_used,
-        "context_mode": context_mode,
-        "memory_mode": context_mode,
+        "memory_mode": memory_mode,
+        "context_mode": memory_mode,
         "kb_policy_ids": kb_policy_ids,
         "kb_categories": kb_categories,
-        "resolution_steps": [],
-        "final_answer": "Resolution steps not yet generated in this skeleton.",
-        "reasoning": reasoning,
-        "escalation_flags": {
-            "needs_human": False,
-            "needs_llm_escalation": False,
-            "policy_gap": False,
-        },
+        "resolution_steps": resolution_steps,
+        "final_answer": default_answer,
+        "reasoning": default_reasoning,
+        "escalation_flags": parsed_output.get(
+            "escalation_flags",
+            {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False},
+        ),
         "metrics": {
-            "latency_ms": metrics_latency,
+            "latency_ms": total_latency_ms,
             "total_input_tokens": 0,
             "total_output_tokens": 0,
             "total_cost_usd": 0.0,
+            # Optional: add classification latency for debugging
+            "classification_latency_ms": classify_latency,
         },
     }
     return validate_agent_output(payload)

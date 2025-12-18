@@ -91,7 +91,24 @@ class DummyEncoderClassifier:
 
 def test_run_ticket_pipeline(monkeypatch):
     monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
-    result = gen.run_ticket_pipeline("simple hardware test ticket text")
+    # Stub model registry to avoid real network calls.
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "final_answer": "answer",
+                    "reasoning": "reason",
+                    "resolution_steps": ["step1"],
+                }
+            )
+
+    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "simple hardware test ticket text"},
+        model_name="slm1",
+        memory_mode="none",
+    )
     assert result["original_query"] == "simple hardware test ticket text"
     assert result["rewritten_query"] == "simple hardware test ticket text"
     assert result["topic_group"] in CANONICAL_LABELS
