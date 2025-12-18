@@ -43,3 +43,9 @@ RouterGym/results/experiments/*.csv
 RouterGym/results/run_metadata.csv
 RouterGym/results/train_metadata.csv
 RouterGym/results/results.csv
+
+# Local KB dumps (not needed in repo)
+kb_dump.txt
+newkb_dump.txt
+RouterGym/data/policy_kb/kb_dump.txt
+RouterGym/data/policy_kb/newkb_dump.txt
