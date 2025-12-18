@@ -381,12 +381,20 @@ class ResponseGenerator:
             if kb_section
             else "No KB context provided; rely only on the ticket and best practices."
         )
+        schema_hint = (
+            "Output STRICT JSON with fields: ticket_id, original_query, rewritten_query, topic_group, model_name, "
+            "router_mode, classifier_label, classifier_confidence, classifier_confidence_bucket, memory_mode, "
+            "kb_policy_ids (list), kb_categories (list), final_answer, resolution_steps (list of strings), "
+            "reasoning, escalation_flags {needs_human, needs_llm_escalation, policy_gap}, metrics "
+            "{latency_ms, total_input_tokens, total_output_tokens, total_cost_usd}."
+        )
         parts = [
             base_text,
             memory_section,
             "\n\n".join(kb_section) if kb_section else "",
             kb_intro,
-            "### Respond with JSON containing final_answer and reasoning.",
+            schema_hint,
+            "### Respond with JSON only.",
         ]
         return "\n\n".join([p for p in parts if p])
 
@@ -425,11 +433,15 @@ def run_ticket_pipeline(
     )
     kb_policy_ids: List[str] = []
     kb_categories: List[str] = []
+    metrics_latency = float(latency_ms)
 
     payload: Dict[str, Any] = {
+        "ticket_id": "",
         "original_query": ticket_text,
         "rewritten_query": ticket_text,
-        "category": category,
+        "topic_group": category,
+        "model_name": model_used,
+        "router_mode": router_name,
         "classifier_label": category,
         "classifier_confidence": classifier_confidence,
         "classifier_confidence_bucket": confidence_bucket,
@@ -446,18 +458,18 @@ def run_ticket_pipeline(
         "kb_policy_ids": kb_policy_ids,
         "kb_categories": kb_categories,
         "resolution_steps": [],
+        "final_answer": "Resolution steps not yet generated in this skeleton.",
         "reasoning": reasoning,
-        "escalation": {
-            "agent_escalation": False,
-            "human_escalation": False,
-            "reasons": [],
+        "escalation_flags": {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
         },
         "metrics": {
-            "latency_ms": float(latency_ms),
-            "prompt_tokens": None,
-            "completion_tokens": None,
-            "total_tokens": None,
-            "cost_usd": None,
+            "latency_ms": metrics_latency,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cost_usd": 0.0,
         },
     }
     return validate_agent_output(payload)

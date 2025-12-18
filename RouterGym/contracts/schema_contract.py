@@ -9,11 +9,10 @@ from RouterGym.label_space import CANONICAL_LABEL_SET, canonicalize_label
 ALLOWED_CONTEXT_MODES = {"none", "rag_dense", "rag_bm25", "rag_hybrid"}
 ALLOWED_CONFIDENCE_BUCKETS = {"high", "medium", "low"}
 _METRIC_FIELDS = {
-    "latency_ms": (float, int, type(None)),
-    "prompt_tokens": (int, type(None)),
-    "completion_tokens": (int, type(None)),
-    "total_tokens": (int, type(None)),
-    "cost_usd": (float, int, type(None)),
+    "latency_ms": (float, int),
+    "total_input_tokens": (int, float),
+    "total_output_tokens": (int, float),
+    "total_cost_usd": (float, int),
 }
 
 
@@ -57,20 +56,25 @@ class AgentOutputSchema:
     required_string_fields = {
         "original_query",
         "rewritten_query",
-        "category",
+        "topic_group",
+        "model_name",
+        "router_mode",
         "classifier_label",
         "classifier_confidence_bucket",
         "classifier_backend",
-        "router_name",
-        "model_used",
-        "context_mode",
+        "memory_mode",
         "reasoning",
+        "final_answer",
     }
 
     def validate(self, json_obj: Dict[str, Any]) -> Tuple[bool, List[str]]:
         errors: List[str] = []
         if not isinstance(json_obj, dict):
             return False, ["Output is not a JSON object"]
+
+        if "ticket_id" in json_obj and json_obj.get("ticket_id") is not None:
+            if not isinstance(json_obj["ticket_id"], str):
+                errors.append("ticket_id must be a string when provided")
 
         for field in self.required_string_fields:
             if field not in json_obj:
@@ -83,16 +87,12 @@ class AgentOutputSchema:
             if not value.strip():
                 errors.append(f"Field {field} is empty")
 
-        if "category" in json_obj:
-            try:
-                json_obj["category"] = canonicalize_label(json_obj["category"])
-            except RuntimeError:
-                errors.append("Field category is not in the allowed label set")
-        if "classifier_label" in json_obj:
-            try:
-                json_obj["classifier_label"] = canonicalize_label(json_obj["classifier_label"])
-            except RuntimeError:
-                errors.append("Field classifier_label is not in the allowed label set")
+        for label_field in ("topic_group", "classifier_label"):
+            if label_field in json_obj:
+                try:
+                    json_obj[label_field] = canonicalize_label(json_obj[label_field])
+                except RuntimeError:
+                    errors.append(f"Field {label_field} is not in the allowed label set")
         if "classifier_confidence_bucket" in json_obj:
             bucket = json_obj.get("classifier_confidence_bucket")
             if bucket and isinstance(bucket, str) and bucket not in ALLOWED_CONFIDENCE_BUCKETS:
@@ -117,61 +117,47 @@ class AgentOutputSchema:
             if not isinstance(mem_mode, str) or mem_mode not in ALLOWED_CONTEXT_MODES:
                 errors.append(f"memory_mode must be one of {sorted(ALLOWED_CONTEXT_MODES)} or None")
 
-        if "classification" not in json_obj:
-            errors.append("Missing field: classification")
-        else:
+        if "classification" in json_obj:
             cls = json_obj["classification"]
             if not isinstance(cls, dict):
                 errors.append("classification must be an object")
             else:
-                if "label" not in cls or not isinstance(cls.get("label"), str):
-                    errors.append("classification.label must be a string")
-                else:
+                if "label" in cls:
                     try:
                         cls["label"] = canonicalize_label(cls["label"])
                     except RuntimeError:
                         errors.append("classification.label is not in the allowed label set")
-                if "confidence" not in cls or not isinstance(cls.get("confidence"), (int, float)):
-                    errors.append("classification.confidence must be a number")
-                else:
-                    conf_val = float(cls["confidence"])
-                    if not (0.0 <= conf_val <= 1.0):
+                if "confidence" in cls:
+                    conf_val = cls.get("confidence", 0.0)
+                    if not isinstance(conf_val, (int, float)) or not (0.0 <= float(conf_val) <= 1.0):
                         errors.append("classification.confidence must be between 0 and 1")
-                if "confidence_bucket" not in cls or not isinstance(cls.get("confidence_bucket"), str):
-                    errors.append("classification.confidence_bucket must be a string")
-                else:
+                if "confidence_bucket" in cls:
                     if cls["confidence_bucket"] not in ALLOWED_CONFIDENCE_BUCKETS:
                         errors.append(
                             f"classification.confidence_bucket must be one of {sorted(ALLOWED_CONFIDENCE_BUCKETS)}"
                         )
 
+        # resolution_steps
         if "resolution_steps" not in json_obj:
             errors.append("Missing field: resolution_steps")
         else:
             steps = json_obj["resolution_steps"]
-            if not isinstance(steps, list):
-                errors.append("resolution_steps must be a list")
-            elif not all(isinstance(s, str) for s in steps):
-                errors.append("resolution_steps must contain strings")
+            if not isinstance(steps, list) or not all(isinstance(s, str) for s in steps):
+                errors.append("resolution_steps must be a list of strings")
 
-        if "escalation" not in json_obj:
-            errors.append("Missing field: escalation")
+        # escalation flags
+        if "escalation_flags" not in json_obj:
+            errors.append("Missing field: escalation_flags")
         else:
-            esc = json_obj["escalation"]
+            esc = json_obj["escalation_flags"]
             if not isinstance(esc, dict):
-                errors.append("escalation must be an object")
+                errors.append("escalation_flags must be an object")
             else:
-                for key in ("agent_escalation", "human_escalation"):
+                for key in ("needs_human", "needs_llm_escalation", "policy_gap"):
                     if key not in esc:
-                        errors.append(f"escalation missing field: {key}")
+                        errors.append(f"escalation_flags missing field: {key}")
                     elif not isinstance(esc[key], bool):
-                        errors.append(f"escalation field {key} must be a bool")
-                if "reasons" not in esc:
-                    errors.append("escalation missing field: reasons")
-                elif not isinstance(esc["reasons"], list) or not all(
-                    isinstance(r, str) for r in esc["reasons"]
-                ):
-                    errors.append("escalation.reasons must be a list of strings")
+                        errors.append(f"escalation_flags field {key} must be a bool")
 
         if "kb_policy_ids" in json_obj:
             ids = json_obj.get("kb_policy_ids")

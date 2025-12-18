@@ -94,11 +94,10 @@ def test_run_ticket_pipeline(monkeypatch):
     result = gen.run_ticket_pipeline("simple hardware test ticket text")
     assert result["original_query"] == "simple hardware test ticket text"
     assert result["rewritten_query"] == "simple hardware test ticket text"
-    assert result["category"] in CANONICAL_LABELS
+    assert result["topic_group"] in CANONICAL_LABELS
     assert result["classifier_label"] == result["classification"]["label"]
     assert isinstance(result["classifier_confidence_bucket"], str)
     assert result["classifier_backend"] == "encoder_calibrated"
-    assert result["context_mode"] == "none"
     assert result["memory_mode"] == "none"
     assert result["kb_policy_ids"] == []
     assert result["kb_categories"] == []
@@ -109,10 +108,10 @@ def test_run_ticket_pipeline(monkeypatch):
     assert cls["confidence_bucket"] in {"high", "medium", "low"}
     assert isinstance(result["resolution_steps"], list)
     assert result["resolution_steps"] == []
-    assert isinstance(result["escalation"]["agent_escalation"], bool)
-    assert isinstance(result["escalation"]["human_escalation"], bool)
+    assert "final_answer" in result and isinstance(result["final_answer"], str)
+    assert isinstance(result["escalation_flags"]["needs_human"], bool)
+    assert isinstance(result["escalation_flags"]["needs_llm_escalation"], bool)
+    assert isinstance(result["escalation_flags"]["policy_gap"], bool)
     assert isinstance(result["metrics"], dict)
-    assert "latency_ms" in result["metrics"]
-    assert isinstance(result["metrics"]["latency_ms"], float)
-    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "cost_usd"):
+    for key in ("latency_ms", "total_input_tokens", "total_output_tokens", "total_cost_usd"):
         assert key in result["metrics"]

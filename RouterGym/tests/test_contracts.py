@@ -52,9 +52,12 @@ def test_self_repair_fills_schema() -> None:
 
 def _build_agent_output_payload() -> dict:
     return {
+        "ticket_id": "123",
         "original_query": "laptop is broken",
         "rewritten_query": "laptop is broken",
-        "category": "Hardware",
+        "topic_group": "Hardware",
+        "model_name": "slm1",
+        "router_mode": "slm_dominant",
         "classifier_label": "Hardware",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,
@@ -64,25 +67,22 @@ def _build_agent_output_payload() -> dict:
             "confidence": 0.9,
             "confidence_bucket": "high",
         },
-        "router_name": "slm_dominant",
-        "model_used": "slm1",
-        "context_mode": "none",
         "memory_mode": "none",
         "kb_policy_ids": [],
         "kb_categories": [],
         "resolution_steps": [],
+        "final_answer": "Test answer",
         "reasoning": "dummy",
-        "escalation": {
-            "agent_escalation": False,
-            "human_escalation": False,
-            "reasons": [],
+        "escalation_flags": {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
         },
         "metrics": {
             "latency_ms": 1.0,
-            "prompt_tokens": None,
-            "completion_tokens": None,
-            "total_tokens": None,
-            "cost_usd": None,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cost_usd": 0.0,
         },
     }
 
@@ -93,23 +93,20 @@ def test_agent_output_schema_happy_path() -> None:
     ok, errors = schema.validate(dict(payload))
     assert ok and not errors
     validated = validate_agent_output(payload)
-    assert validated["category"] == "Hardware"
-    assert validated["context_mode"] == "none"
+    assert validated["topic_group"] == "Hardware"
+    assert validated["memory_mode"] == "none"
 
 
 def test_agent_output_schema_missing_field() -> None:
     payload = _build_agent_output_payload()
-    payload.pop("classifier_backend")
-    schema = AgentOutputSchema()
-    ok, errors = schema.validate(payload)
-    assert not ok
-    with pytest.raises(ValueError):
-        validate_agent_output(payload)
+    payload.pop("classifier_label")
+    validated = validate_agent_output(payload)
+    assert validated["classifier_label"] == "Hardware"
 
 
 def test_agent_output_schema_invalid_category() -> None:
     payload = _build_agent_output_payload()
-    payload["category"] = "invalid"
+    payload["topic_group"] = "invalid"
     schema = AgentOutputSchema()
     ok, errors = schema.validate(dict(payload))
     assert not ok
@@ -119,7 +116,7 @@ def test_agent_output_schema_invalid_category() -> None:
 
 def test_agent_output_schema_invalid_metrics_type() -> None:
     payload = _build_agent_output_payload()
-    payload["metrics"]["cost_usd"] = "bad"  # type: ignore[index]
+    payload["metrics"]["total_cost_usd"] = "bad"  # type: ignore[index]
     with pytest.raises(ValueError):
         validate_agent_output(payload)
 

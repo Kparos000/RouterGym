@@ -12,9 +12,12 @@ import RouterGym.experiments.run_agentic_eval as agentic
 
 def _fake_agent_output(category: str) -> Dict[str, Any]:
     return {
+        "ticket_id": "t1",
         "original_query": "text",
         "rewritten_query": "text",
-        "category": category,
+        "topic_group": category,
+        "model_name": "slm1",
+        "router_mode": "slm_dominant",
         "classifier_label": category,
         "classifier_confidence_bucket": "high",
         "classifier_backend": "encoder_calibrated",
@@ -24,21 +27,18 @@ def _fake_agent_output(category: str) -> Dict[str, Any]:
             "confidence": 0.9,
             "confidence_bucket": "high",
         },
-        "router_name": "slm_dominant",
-        "model_used": "slm1",
-        "context_mode": "none",
         "memory_mode": "none",
         "kb_policy_ids": [],
         "kb_categories": [],
         "resolution_steps": [],
+        "final_answer": "stub",
         "reasoning": "stub",
-        "escalation": {"agent_escalation": False, "human_escalation": False, "reasons": []},
+        "escalation_flags": {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False},
         "metrics": {
             "latency_ms": 1.0,
-            "prompt_tokens": None,
-            "completion_tokens": None,
-            "total_tokens": None,
-            "cost_usd": None,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cost_usd": 0.0,
         },
     }
 
@@ -74,6 +74,6 @@ def test_run_agentic_eval_writes_jsonl(monkeypatch: Any, tmp_path: Path) -> None
         obj = json.loads(line)
         # Validate core contract.
         validated = validate_agent_output(obj)
-        assert validated["category"] == "Hardware"
+        assert validated["topic_group"] == "Hardware"
         assert "ticket_id" in obj
         assert "gold_label" in obj
