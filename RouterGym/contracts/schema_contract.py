@@ -59,6 +59,7 @@ class AgentOutputSchema:
         "topic_group",
         "model_name",
         "router_mode",
+        "base_model_name",
         "classifier_label",
         "classifier_confidence_bucket",
         "classifier_backend",
@@ -185,6 +186,11 @@ class AgentOutputSchema:
                         continue
                     if not isinstance(metrics[field], allowed_types):
                         errors.append(f"metrics field {field} has wrong type")
+        if "escalation_model_name" in json_obj and json_obj.get("escalation_model_name") is not None:
+            if not isinstance(json_obj["escalation_model_name"], str):
+                errors.append("escalation_model_name must be a string when provided")
+        if "base_model_name" in json_obj and not isinstance(json_obj.get("base_model_name"), str):
+            errors.append("base_model_name must be a string")
 
         return len(errors) == 0, errors
 

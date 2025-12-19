@@ -106,8 +106,9 @@ def test_run_ticket_pipeline(monkeypatch):
 
     result = gen.run_ticket_pipeline(
         ticket={"text": "simple hardware test ticket text"},
-        model_name="slm1",
+        base_model_name="slm1",
         memory_mode="none",
+        router_mode="slm_only",
     )
     assert result["original_query"] == "simple hardware test ticket text"
     assert result["rewritten_query"] == "simple hardware test ticket text"
@@ -177,8 +178,9 @@ def test_run_ticket_pipeline_with_kb(monkeypatch):
 
     result = gen.run_ticket_pipeline(
         ticket={"text": "ticket with kb"},
-        model_name="slm1",
+        base_model_name="slm1",
         memory_mode="rag_dense",
+        router_mode="slm_only",
     )
 
     assert result["memory_mode"] == "rag_dense"

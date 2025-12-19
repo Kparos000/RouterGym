@@ -456,12 +456,13 @@ class ResponseGenerator:
 
 def run_ticket_pipeline(
     ticket: Dict[str, Any],
-    model_name: str,
+    router_mode: str,
     memory_mode: str,
-    router_mode: str = "manual",
+    base_model_name: str,
+    escalation_model_name: Optional[str] = None,
     max_retries: int = 2,
 ) -> Dict[str, Any]:
-    """Run Classify -> Retrieve -> Respond for a single ticket."""
+    """Run Classify -> Retrieve -> Respond for a single ticket with optional escalation."""
 
     if memory_mode not in ALLOWED_CONTEXT_MODES:
         raise ValueError(f"Unsupported memory_mode {memory_mode}; allowed: {sorted(ALLOWED_CONTEXT_MODES)}")
@@ -502,36 +503,67 @@ def run_ticket_pipeline(
     kb_categories = _dedupe_preserve(str(s.get("category", "")) for s in snippets if s.get("category"))
     kb_texts = [str(s.get("text", "")) for s in snippets if s.get("text")]
 
-    # 3) Build prompt and call model
-    prompt = build_prompt(
-        ticket_text=text,
-        kb_snippets=kb_texts,
-        classifier_label=classifier_label,
-        confidence_bucket=classifier_confidence_bucket,
-        memory_mode=memory_mode,
-    )
+    # Models: load both base and escalation if needed.
+    subset = [base_model_name]
+    if escalation_model_name:
+        subset.append(escalation_model_name)
+    models = load_models(sanity=True, slm_subset=subset)
+    base_model = models.get(base_model_name)
+    if base_model is None:
+        raise RuntimeError(f"Model '{base_model_name}' is not available; check model registry or subset filter.")
+    escalation_model = models.get(escalation_model_name) if escalation_model_name else None
 
-    models = load_models(sanity=True, slm_subset=[model_name])
-    model = models.get(model_name)
-    if model is None:
-        raise RuntimeError(f"Model '{model_name}' is not available; check model registry or subset filter.")
+    def _call_and_parse(model: Any) -> Dict[str, Any]:
+        prompt = build_prompt(
+            ticket_text=text,
+            kb_snippets=kb_texts,
+            classifier_label=classifier_label,
+            confidence_bucket=classifier_confidence_bucket,
+            memory_mode=memory_mode,
+        )
+        parsed_output: Dict[str, Any] = {}
+        for attempt in range(max_retries):
+            raw_output = _call_model(model, prompt)
+            parsed_output = _parse_model_output(raw_output)
+            try:
+                validate_agent_output({"original_query": text, **parsed_output})
+                break
+            except Exception:
+                if attempt == max_retries - 1:
+                    parsed_output = {}
+                continue
+        return parsed_output
 
-    parsed_output: Dict[str, Any] = {}
-    raw_output = ""
-    for attempt in range(max_retries):
-        raw_output = _call_model(model, prompt)
-        parsed_output = _parse_model_output(raw_output)
-        try:
-            validate_agent_output({"original_query": text, **parsed_output})
-            break
-        except Exception:
-            if attempt == max_retries - 1:
-                parsed_output = {}
-            continue
+    # Routing decision
+    chosen_model_name = base_model_name
+    parsed_output = _call_and_parse(base_model)
+    escalated = False
+    if router_mode == "slm_dominant":
+        if escalation_model is None:
+            raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
+        # Simple baseline escalation rule: low confidence OR low relevance OR empty output.
+        relevance = getattr(retrieval, "relevance_score", 0.0) or retrieval.relevance_score
+        needs_escalation = (
+            classifier_confidence_bucket == "low"
+            or relevance < 0.05
+            or not parsed_output.get("final_answer")
+        )
+        if needs_escalation:
+            parsed_output = _call_and_parse(escalation_model)  # type: ignore[arg-type]
+            chosen_model_name = escalation_model_name or base_model_name
+            escalated = True
+    elif router_mode == "llm_only":
+        chosen_model_name = base_model_name  # expected llm
+    elif router_mode == "slm_only":
+        chosen_model_name = base_model_name
+    elif router_mode == "hybrid_specialist":
+        # TODO: implement specialist gating; for now, use base_model_name as-is.
+        chosen_model_name = base_model_name
+    else:
+        chosen_model_name = base_model_name
 
     total_latency_ms = (time.perf_counter() - t_start) * 1000.0
 
-    # 4) Assemble AgentOutput and validate
     resolution_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(resolution_steps, list):
         resolution_steps = []
@@ -545,8 +577,10 @@ def run_ticket_pipeline(
         "original_query": text,
         "rewritten_query": parsed_output.get("rewritten_query", text),
         "topic_group": classifier_label,
-        "model_name": model_name,
+        "model_name": chosen_model_name,
         "router_mode": router_mode,
+        "base_model_name": base_model_name,
+        "escalation_model_name": escalation_model_name,
         "classifier_label": classifier_label,
         "classifier_confidence": classifier_confidence,
         "classifier_confidence_bucket": classifier_confidence_bucket,
@@ -565,7 +599,11 @@ def run_ticket_pipeline(
         "reasoning": default_reasoning,
         "escalation_flags": parsed_output.get(
             "escalation_flags",
-            {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False},
+            {
+                "needs_human": False,
+                "needs_llm_escalation": bool(escalated),
+                "policy_gap": False,
+            },
         ),
         "metrics": {
             "latency_ms": total_latency_ms,

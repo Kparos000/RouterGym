@@ -58,6 +58,8 @@ def _build_agent_output_payload() -> dict:
         "topic_group": "Hardware",
         "model_name": "slm1",
         "router_mode": "slm_dominant",
+        "base_model_name": "slm1",
+        "escalation_model_name": "llm1",
         "classifier_label": "Hardware",
         "classifier_backend": "encoder_calibrated",
         "classifier_confidence": 0.9,

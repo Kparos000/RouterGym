@@ -18,6 +18,7 @@ def run_agentic_eval(
     router_mode: str,
     memory_mode: str,
     model_name: str,
+    escalation_model: Optional[str],
     output_path: Path,
 ) -> None:
     """Run the agentic pipeline over tickets and write results as JSONL."""
@@ -32,9 +33,10 @@ def run_agentic_eval(
             ticket: Dict[str, Any] = {"text": str(row["text"]), "ticket_id": int(idx)}
             result: Dict[str, Any] = run_ticket_pipeline(
                 ticket=ticket,
-                model_name=model_name,
+                base_model_name=model_name,
                 memory_mode=memory_mode,
                 router_mode=router_mode,
+                escalation_model_name=escalation_model,
             )
             validated = validate_agent_output(result)
             # Add lightweight metadata for downstream analysis.
@@ -58,6 +60,12 @@ def main() -> None:
         default=Path("RouterGym/results/experiments/agentic_eval.jsonl"),
         help="Path to write JSONL results.",
     )
+    parser.add_argument(
+        "--escalation-model",
+        type=str,
+        default=None,
+        help="Optional escalation model name for slm_dominant routing (e.g., llm1 or llm2).",
+    )
     args = parser.parse_args()
 
     run_agentic_eval(
@@ -66,6 +74,7 @@ def main() -> None:
         router_mode=args.router_mode,
         memory_mode=args.memory_mode,
         model_name=args.model_name,
+        escalation_model=args.escalation_model,
         output_path=args.output_path,
     )
 

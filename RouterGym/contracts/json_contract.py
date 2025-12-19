@@ -34,6 +34,8 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
     data.setdefault("topic_group", data.get("category", data.get("classifier_label", "")))
     data.setdefault("model_name", data.get("model_used", ""))
     data.setdefault("router_mode", data.get("router_name", ""))
+    data.setdefault("base_model_name", data.get("base_model_name", data.get("model_name", "")))
+    data.setdefault("escalation_model_name", data.get("escalation_model_name"))
     data.setdefault("classifier_label", data.get("classification", {}).get("label", data.get("topic_group", "")))
     data.setdefault("classifier_confidence", data.get("classification", {}).get("confidence", 0.0))
     data.setdefault("classifier_confidence_bucket", data.get("classification", {}).get("confidence_bucket", "low"))
