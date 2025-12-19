@@ -138,7 +138,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
         tickets=tickets,
         kb_retriever=FakeKB(),
         limit=3,
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["rag_dense"],
         models=["llm1"],
         verbose=False,
@@ -167,7 +167,7 @@ def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
         tickets=[{"id": 1, "text": "hello"}],
         kb_retriever=FakeKB(),
         limit=1,
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["llm1"],
         verbose=False,
@@ -243,7 +243,7 @@ def test_encoder_grid_uses_calibrated_backend(monkeypatch: Any, tmp_path: Path) 
         tickets=tickets,
         kb_retriever=None,
         limit=1,
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["encoder"],
@@ -307,7 +307,7 @@ def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Pa
         tickets=tickets,
         kb_retriever=None,
         limit=1,
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["encoder"],
@@ -333,7 +333,7 @@ def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
 
     df = run_grid.run_full_grid(
         limit=1,
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1", "llm1"],
         force_llm=False,
@@ -347,14 +347,30 @@ def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
 
 
 def test_dimensions_constants() -> None:
-    assert run_grid.ROUTER_MODES == ["llm_first", "slm_dominant", "hybrid_specialist"]
-    assert run_grid.MEMORY_MODES_CANONICAL == ["none", "rag_dense", "rag_bm25", "rag_hybrid"]
+    assert len(run_grid.ROUTER_CONFIGS) == 9
+    assert run_grid.MEMORY_MODES_CANONICAL == ["none", "rag_bm25", "rag_dense", "rag_hybrid"]
     assert run_grid.CLASSIFIER_MODES == ["tfidf", "encoder", "slm_finetuned"]
     assert run_grid.MODEL_NAMES == ["slm1", "slm2", "llm1", "llm2"]
-    assert len(set(run_grid.ROUTER_MODES)) == len(run_grid.ROUTER_MODES)
     assert len(set(run_grid.MEMORY_MODES_CANONICAL)) == len(run_grid.MEMORY_MODES_CANONICAL)
     assert len(set(run_grid.CLASSIFIER_MODES)) == len(run_grid.CLASSIFIER_MODES)
     assert len(set(run_grid.MODEL_NAMES)) == len(run_grid.MODEL_NAMES)
+
+
+def test_router_configs_cartesian_product() -> None:
+    combos = []
+    for cfg in run_grid.ROUTER_CONFIGS:
+        for mem in run_grid.MEMORY_MODES_CANONICAL:
+            combos.append(
+                (
+                    cfg["router_mode"],
+                    cfg.get("base_model"),
+                    cfg.get("escalation_model"),
+                    mem,
+                )
+            )
+    assert len(combos) == 9 * 4
+    assert ("slm_dominant", "slm1", "llm1", "rag_dense") in combos
+    assert ("slm_only", "slm2", None, "none") in combos
 
 
 def test_smoke10_uses_ten_tickets(monkeypatch: Any, tmp_path: Path) -> None:
@@ -392,7 +408,7 @@ def test_smoke10_uses_ten_tickets(monkeypatch: Any, tmp_path: Path) -> None:
     df = run_grid.run_full_grid(
         tickets=tickets[:10],
         kb_retriever=FakeKB(),
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["tfidf"],
@@ -430,7 +446,7 @@ def test_ticket_slicing_and_output_path(tmp_path: Path, monkeypatch: Any) -> Non
     df_small = run_grid.run_full_grid(
         tickets=tickets,
         kb_retriever=FakeKB(),
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["tfidf"],
@@ -447,7 +463,7 @@ def test_ticket_slicing_and_output_path(tmp_path: Path, monkeypatch: Any) -> Non
     df_large = run_grid.run_full_grid(
         tickets=tickets,
         kb_retriever=FakeKB(),
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["tfidf"],

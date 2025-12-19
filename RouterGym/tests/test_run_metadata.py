@@ -36,7 +36,7 @@ def test_log_run_metadata_smoke(tmp_path: Path, monkeypatch: Any) -> None:
     df = run_grid.run_full_grid(
         tickets=tickets,
         kb_retriever=FakeKB(),
-        routers=["llm_first"],
+        routers=["slm_only"],
         memories=["none"],
         models=["slm1"],
         classifier_modes=["tfidf"],
