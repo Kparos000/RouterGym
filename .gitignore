@@ -49,3 +49,16 @@ kb_dump.txt
 newkb_dump.txt
 RouterGym/data/policy_kb/kb_dump.txt
 RouterGym/data/policy_kb/newkb_dump.txt
+
+# Coverage artifacts
+.coverage
+coverage.xml
+
+# Local model artifacts (retrained heads)
+RouterGym/classifiers/*.npz
+
+# Generated plots / figures
+RouterGym/results/figures/
+
+# Local scratch files
+10 tickets test result.txt
