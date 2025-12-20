@@ -42,10 +42,22 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
     data.setdefault("memory_mode", data.get("context_mode", "none"))
     data.setdefault("kb_policy_ids", [])
     data.setdefault("kb_categories", [])
-    data.setdefault(
+    esc = data.get(
         "escalation_flags",
-        {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False},
+        {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []},
     )
+    if not isinstance(esc, dict):
+        esc = {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []}
+    esc.setdefault("needs_human", False)
+    esc.setdefault("needs_llm_escalation", False)
+    esc.setdefault("policy_gap", False)
+    reasons = esc.get("reasons", [])
+    if reasons is None:
+        reasons = []
+    if not isinstance(reasons, list):
+        reasons = [str(reasons)]
+    esc["reasons"] = [str(r) for r in reasons]
+    data["escalation_flags"] = esc
     if "metrics" not in data:
         data["metrics"] = {
             "latency_ms": 0.0,

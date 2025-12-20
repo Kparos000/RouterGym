@@ -159,6 +159,9 @@ class AgentOutputSchema:
                         errors.append(f"escalation_flags missing field: {key}")
                     elif not isinstance(esc[key], bool):
                         errors.append(f"escalation_flags field {key} must be a bool")
+                if "reasons" in esc:
+                    if not isinstance(esc["reasons"], list) or not all(isinstance(r, str) for r in esc["reasons"]):
+                        errors.append("escalation_flags.reasons must be a list of strings")
 
         if "kb_policy_ids" in json_obj:
             ids = json_obj.get("kb_policy_ids")

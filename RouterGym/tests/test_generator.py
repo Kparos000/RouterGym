@@ -186,3 +186,128 @@ def test_run_ticket_pipeline_with_kb(monkeypatch):
     assert result["memory_mode"] == "rag_dense"
     assert result["kb_policy_ids"] == ["hardware.doc1"]
     assert result["kb_categories"] == ["Hardware"]
+
+
+def test_slm_dominant_escalates_with_reasons(monkeypatch):
+    class LowConfClassifier:
+        def __init__(self, *args, **kwargs):
+            self.backend_name = "encoder_calibrated"
+
+        def predict_proba(self, text: str):
+            probs = {label: 0.0 for label in CANONICAL_LABELS}
+            probs[CANONICAL_LABELS[0]] = 0.2
+            remaining = (1.0 - probs[CANONICAL_LABELS[0]]) / float(len(CANONICAL_LABELS) - 1)
+            for label in CANONICAL_LABELS[1:]:
+                probs[label] = remaining
+            return probs
+
+    from RouterGym.memory.base import MemoryBase, MemoryRetrieval  # type: ignore
+
+    class DummyMemory(MemoryBase):
+        def update(self, item, metadata=None):
+            return None
+
+        def summarize(self):
+            return "summary"
+
+        def retrieve(self, query=None):
+            return MemoryRetrieval(
+                retrieved_context="ctx",
+                retrieval_metadata={"mode": "rag_dense", "query": query or "", "snippets": []},
+                retrieval_cost_tokens=0,
+                relevance_score=0.0,
+                retrieval_latency_ms=1.0,
+            )
+
+    class BaseModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps({"final_answer": "short", "reasoning": "r", "resolution_steps": []})
+
+    class EscalationModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {"final_answer": "This is a longer detailed answer for the user", "reasoning": "rr", "resolution_steps": ["step1"]}
+            )
+
+    monkeypatch.setattr(gen, "EncoderClassifier", LowConfClassifier)
+    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": BaseModel(), "llm1": EscalationModel()})
+    monkeypatch.setattr(gen, "get_memory_class", lambda mode: DummyMemory)
+    monkeypatch.setattr(gen, "validate_agent_output", lambda payload: dict(payload))
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "ticket needing escalation"},
+        base_model_name="slm1",
+        escalation_model_name="llm1",
+        memory_mode="rag_dense",
+        router_mode="slm_dominant",
+    )
+
+    reasons = result["escalation_flags"]["reasons"]
+    assert result["model_name"] == "llm1"
+    assert result["escalation_flags"]["needs_llm_escalation"] is True
+    assert "low_confidence" in reasons
+    assert "weak_kb" in reasons
+    assert "short_answer" in reasons
+
+
+def test_slm_dominant_no_escalation(monkeypatch):
+    class HighConfClassifier:
+        def __init__(self, *args, **kwargs):
+            self.backend_name = "encoder_calibrated"
+
+        def predict_proba(self, text: str):
+            probs = {label: 0.0 for label in CANONICAL_LABELS}
+            probs[CANONICAL_LABELS[0]] = 0.9
+            remaining = (1.0 - probs[CANONICAL_LABELS[0]]) / float(len(CANONICAL_LABELS) - 1)
+            for label in CANONICAL_LABELS[1:]:
+                probs[label] = remaining
+            return probs
+
+    from RouterGym.memory.base import MemoryBase, MemoryRetrieval  # type: ignore
+
+    class DummyMemory(MemoryBase):
+        def update(self, item, metadata=None):
+            return None
+
+        def summarize(self):
+            return "summary"
+
+        def retrieve(self, query=None):
+            return MemoryRetrieval(
+                retrieved_context="ctx",
+                retrieval_metadata={"mode": "rag_dense", "query": query or "", "snippets": []},
+                retrieval_cost_tokens=0,
+                relevance_score=0.2,
+                retrieval_latency_ms=1.0,
+            )
+
+    class BaseModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "final_answer": "This is a sufficiently detailed answer with enough tokens to avoid escalation",
+                    "reasoning": "r",
+                    "resolution_steps": ["step1"],
+                }
+            )
+
+    monkeypatch.setattr(gen, "EncoderClassifier", HighConfClassifier)
+    monkeypatch.setattr(
+        gen,
+        "load_models",
+        lambda sanity=True, slm_subset=None: {"slm1": BaseModel(), "llm1": BaseModel()},
+    )
+    monkeypatch.setattr(gen, "get_memory_class", lambda mode: DummyMemory)
+    monkeypatch.setattr(gen, "validate_agent_output", lambda payload: dict(payload))
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "ticket with good SLM answer"},
+        base_model_name="slm1",
+        escalation_model_name="llm1",
+        memory_mode="rag_dense",
+        router_mode="slm_dominant",
+    )
+
+    assert result["model_name"] == "slm1"
+    assert result["escalation_flags"]["needs_llm_escalation"] is False
+    assert result["escalation_flags"]["reasons"] == []

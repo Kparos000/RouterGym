@@ -538,16 +538,37 @@ def run_ticket_pipeline(
     chosen_model_name = base_model_name
     parsed_output = _call_and_parse(base_model)
     escalated = False
+    escalation_reasons: List[str] = []
     if router_mode == "slm_dominant":
         if escalation_model is None:
             raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
-        # Simple baseline escalation rule: low confidence OR low relevance OR empty output.
         relevance = getattr(retrieval, "relevance_score", 0.0) or retrieval.relevance_score
-        needs_escalation = (
-            classifier_confidence_bucket == "low"
-            or relevance < 0.05
-            or not parsed_output.get("final_answer")
+        final_answer = str(parsed_output.get("final_answer", "") or "")
+        resolution_steps = parsed_output.get("resolution_steps", [])
+        if not isinstance(resolution_steps, list):
+            resolution_steps = []
+        low_confidence = classifier_confidence_bucket == "low"
+        weak_kb = relevance < 0.10
+        no_answer = not final_answer.strip()
+        no_steps = len(resolution_steps) == 0
+        answer_lower = final_answer.lower()
+        ai_disclaimer = any(
+            phrase in answer_lower for phrase in ("as an ai", "as a language model", "i cannot", "i'm unable", "i am unable")
         )
+        short_answer = len(final_answer.split()) < 10
+        if low_confidence:
+            escalation_reasons.append("low_confidence")
+        if weak_kb:
+            escalation_reasons.append("weak_kb")
+        if no_answer:
+            escalation_reasons.append("no_answer")
+        if no_steps:
+            escalation_reasons.append("no_steps")
+        if ai_disclaimer:
+            escalation_reasons.append("ai_disclaimer")
+        if short_answer:
+            escalation_reasons.append("short_answer")
+        needs_escalation = bool(escalation_reasons)
         if needs_escalation:
             parsed_output = _call_and_parse(escalation_model)  # type: ignore[arg-type]
             chosen_model_name = escalation_model_name or base_model_name
@@ -572,6 +593,14 @@ def run_ticket_pipeline(
         or f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
     )
     default_answer = parsed_output.get("final_answer", "") or "No valid answer produced"
+    parsed_escalation = parsed_output.get("escalation_flags") or {}
+    escalation_flags = {
+        "needs_human": bool(parsed_escalation.get("needs_human", False)),
+        "needs_llm_escalation": bool(escalated),
+        "policy_gap": bool(parsed_escalation.get("policy_gap", False)),
+        "reasons": escalation_reasons if escalated else [],
+    }
+
     payload: Dict[str, Any] = {
         "ticket_id": ticket_id,
         "original_query": text,
@@ -597,14 +626,7 @@ def run_ticket_pipeline(
         "resolution_steps": resolution_steps,
         "final_answer": default_answer,
         "reasoning": default_reasoning,
-        "escalation_flags": parsed_output.get(
-            "escalation_flags",
-            {
-                "needs_human": False,
-                "needs_llm_escalation": bool(escalated),
-                "policy_gap": False,
-            },
-        ),
+        "escalation_flags": escalation_flags,
         "metrics": {
             "latency_ms": total_latency_ms,
             "total_input_tokens": 0,

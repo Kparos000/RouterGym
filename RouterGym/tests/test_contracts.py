@@ -79,6 +79,7 @@ def _build_agent_output_payload() -> dict:
             "needs_human": False,
             "needs_llm_escalation": False,
             "policy_gap": False,
+            "reasons": [],
         },
         "metrics": {
             "latency_ms": 1.0,
@@ -132,3 +133,10 @@ def test_agent_output_schema_invalid_bucket() -> None:
     payload["classifier_confidence_bucket"] = "unknown"
     with pytest.raises(ValueError):
         validate_agent_output(payload)
+
+
+def test_agent_output_schema_escalation_reasons() -> None:
+    payload = _build_agent_output_payload()
+    payload["escalation_flags"]["reasons"] = ["low_confidence", "weak_kb"]
+    validated = validate_agent_output(payload)
+    assert validated["escalation_flags"]["reasons"] == ["low_confidence", "weak_kb"]
