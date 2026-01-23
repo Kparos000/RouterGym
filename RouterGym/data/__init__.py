@@ -1,9 +1,20 @@
 """Data loaders for RouterGym."""
 
-from RouterGym.data.tickets.dataset_loader import load_dataset
-from RouterGym.data.policy_kb.kb_loader import load_kb
+from __future__ import annotations
 
-__all__ = [
-    "load_dataset",
-    "load_kb",
-]
+from typing import Any
+
+
+def load_dataset(*args: Any, **kwargs: Any):
+    from RouterGym.data.tickets import dataset_loader
+
+    return dataset_loader.load_dataset(*args, **kwargs)
+
+
+def load_kb(*args: Any, **kwargs: Any):
+    from RouterGym.data.policy_kb import kb_loader
+
+    return kb_loader.load_kb(*args, **kwargs)
+
+
+__all__ = ["load_dataset", "load_kb"]
