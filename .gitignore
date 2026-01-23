@@ -60,5 +60,14 @@ RouterGym/classifiers/*.npz
 # Generated plots / figures
 RouterGym/results/figures/
 
+# Gold eval artifacts
+RouterGym/data/gold_eval/gold_eval.jsonl
+RouterGym/data/gold_eval/gold_eval_auto.jsonl
+RouterGym/data/gold_eval/gold_eval_review_queue.jsonl
+RouterGym/data/gold_eval/gold_eval_audit.json
+RouterGym/data/gold_eval/gold_eval_audit.txt
+RouterGym/data/gold_eval/gold_eval_samples.txt
+
 # Local scratch files
 10 tickets test result.txt
+router,memory,memory_mode,model,router_c.csv
