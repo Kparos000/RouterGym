@@ -71,3 +71,5 @@ RouterGym/data/gold_eval/gold_eval_samples.txt
 # Local scratch files
 10 tickets test result.txt
 router,memory,memory_mode,model,router_c.csv
+folders.txt
+project_folders.txt

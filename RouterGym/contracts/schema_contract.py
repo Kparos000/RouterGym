@@ -51,7 +51,12 @@ class SchemaContract:
 
 
 class AgentOutputSchema:
-    """Validate structured AgentOutput payloads for a single ticket."""
+    """Validate structured AgentOutput payloads for a single ticket.
+
+    The validator is intentionally permissive about additional fields so
+    downstream tooling can append audit or gold-scoring annotations
+    without breaking existing experiment runners.
+    """
 
     required_string_fields = {
         "original_query",

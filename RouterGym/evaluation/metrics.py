@@ -46,6 +46,11 @@ class MetricResult:
     accuracy: float | None = None
     faithfulness: float | None = None
     conversion: float | None = None
+    step_coverage_score: float | None = None
+    acceptance_criteria_alignment_score: float | None = None
+    escalation_correctness_score: float | None = None
+    policy_grounding_match_score: float | None = None
+    overall_gold_quality_score: float | None = None
 
 
 def _embed(texts: List[str]) -> np.ndarray:
@@ -169,7 +174,7 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))
     cost = estimate_cost_usd(model_used, str(prompt_text), str(output), reasoning)
 
-    return {
+    metrics = {
         "accuracy": acc,
         "groundedness": grounded,
         "schema_validity": schema_val,
@@ -177,6 +182,22 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
         "cost": cost,
         "faithfulness": faithful,
     }
+    gold_record = record.get("gold_record") or record.get("gold_reference")
+    if isinstance(gold_record, dict):
+        from RouterGym.evaluation.gold_scoring import score_record_against_gold
+
+        gold_scores = score_record_against_gold(record, gold_record).as_dict()
+        for field in (
+            "step_coverage_score",
+            "acceptance_criteria_alignment_score",
+            "escalation_correctness_score",
+            "policy_grounding_match_score",
+            "overall_gold_quality_score",
+        ):
+            value = gold_scores.get(field)
+            if isinstance(value, (int, float)):
+                metrics[field] = float(value)
+    return metrics
 
 
 def evaluate(outputs: Dict[str, Any]) -> MetricResult:
@@ -190,4 +211,9 @@ def evaluate(outputs: Dict[str, Any]) -> MetricResult:
         cost_usd=metrics["cost"],
         fallback_rate=outputs.get("fallback_rate"),
         faithfulness=metrics["faithfulness"],
+        step_coverage_score=metrics.get("step_coverage_score"),
+        acceptance_criteria_alignment_score=metrics.get("acceptance_criteria_alignment_score"),
+        escalation_correctness_score=metrics.get("escalation_correctness_score"),
+        policy_grounding_match_score=metrics.get("policy_grounding_match_score"),
+        overall_gold_quality_score=metrics.get("overall_gold_quality_score"),
     )

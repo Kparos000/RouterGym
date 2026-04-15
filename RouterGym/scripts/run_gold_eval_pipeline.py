@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -288,20 +287,32 @@ def _freeze_final(
     kb_index_sha: str,
     thresholds: Dict[str, Any],
 ) -> None:
-    final_path = output_dir / final_name
-    source_path = output_dir / "gold_eval_auto.jsonl"
-    shutil.copyfile(source_path, final_path)
+    from RouterGym.scripts.finalize_gold_eval import finalize_gold_files
 
-    meta = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "start": start,
-        "limit": limit,
-        "kb_index_size": kb_index_size,
-        "kb_index_sha256": kb_index_sha,
-        "thresholds": thresholds,
-        "git_commit_hash": _get_git_commit_hash(),
-    }
+    final_path = output_dir / final_name
+    metadata_path = output_dir / "gold_eval_final_metadata.json"
     meta_path = output_dir / f"{final_name}.meta.json"
+    _, meta = finalize_gold_files(
+        draft_path=output_dir / "gold_eval_auto.jsonl",
+        review_queue_path=output_dir / "gold_eval_review_queue.jsonl",
+        reviewed_path=(output_dir / "gold_eval_reviewed.jsonl") if (output_dir / "gold_eval_reviewed.jsonl").exists() else None,
+        output_path=final_path,
+        metadata_path=metadata_path,
+        allow_auto_approved=True,
+        legacy_metadata_path=meta_path,
+    )
+    meta.update(
+        {
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "start": start,
+            "limit": limit,
+            "kb_index_size": kb_index_size,
+            "kb_index_sha256": kb_index_sha,
+            "thresholds": thresholds,
+            "git_commit_hash": _get_git_commit_hash(),
+        }
+    )
+    _write_json(metadata_path, meta)
     _write_json(meta_path, meta)
 
 

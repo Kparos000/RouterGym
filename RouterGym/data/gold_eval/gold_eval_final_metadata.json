@@ -1,0 +1,63 @@
+{
+  "schema_version": "gold_eval_final/v1",
+  "frozen_at": "2026-04-15T13:47:34.350762+00:00",
+  "sample_count": 96,
+  "input_counts": {
+    "draft_records": 100,
+    "review_queue_records": 4,
+    "reviewed_records": 0
+  },
+  "included_counts": {
+    "auto_approved": 96,
+    "human_reviewed": 0
+  },
+  "excluded_count": 4,
+  "exclusions": [
+    {
+      "ticket_index": 14533,
+      "reason": "needs_human_review",
+      "review_reasons": [
+        "summary_missing",
+        "steps_count_out_of_range",
+        "empty_acceptance_criteria",
+        "kb_policies_missing"
+      ]
+    },
+    {
+      "ticket_index": 14583,
+      "reason": "needs_human_review",
+      "review_reasons": [
+        "summary_missing",
+        "steps_count_out_of_range",
+        "empty_acceptance_criteria",
+        "kb_policies_missing"
+      ]
+    },
+    {
+      "ticket_index": 14740,
+      "reason": "needs_human_review",
+      "review_reasons": [
+        "summary_missing",
+        "steps_count_out_of_range",
+        "empty_acceptance_criteria",
+        "kb_policies_missing"
+      ]
+    },
+    {
+      "ticket_index": 14775,
+      "reason": "needs_human_review",
+      "review_reasons": [
+        "summary_missing",
+        "steps_count_out_of_range",
+        "empty_acceptance_criteria",
+        "kb_policies_missing"
+      ]
+    }
+  ],
+  "input_files": {
+    "draft_path": "C:\\Users\\kparo\\AI projects\\RouterGym\\RouterGym\\data\\gold_eval\\gold_eval_auto.jsonl",
+    "review_queue_path": "C:\\Users\\kparo\\AI projects\\RouterGym\\RouterGym\\data\\gold_eval\\gold_eval_review_queue.jsonl",
+    "reviewed_path": ""
+  },
+  "output_file": "C:\\Users\\kparo\\AI projects\\RouterGym\\RouterGym\\data\\gold_eval\\gold_eval_final.jsonl"
+}
