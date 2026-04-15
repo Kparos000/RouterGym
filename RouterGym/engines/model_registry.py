@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import importlib
+import importlib.util
 import os
 from dataclasses import dataclass
 from os import PathLike
@@ -10,10 +12,6 @@ from typing import IO, Any, Callable, Dict, Optional
 
 from huggingface_hub import InferenceClient  # type: ignore
 
-try:
-    from RouterGym.engines.vllm_local import LocalVLLMEngine  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    LocalVLLMEngine = None  # type: ignore
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv as _load_dotenv  # type: ignore
 except Exception:  # pragma: no cover
@@ -28,10 +26,7 @@ except Exception:  # pragma: no cover
         return False
 DotenvCallable = Callable[..., bool]
 _dotenv_loader: DotenvCallable = _load_dotenv
-
-# Load environment variables from .env if present
-if callable(_dotenv_loader):
-    _dotenv_loader()
+_ENV_LOADED = False
 
 
 @dataclass
@@ -133,7 +128,18 @@ class RemoteInferenceEngine:
 
 
 def _get_token() -> Optional[str]:
+    _ensure_env_loaded()
     return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
+
+
+def _ensure_env_loaded() -> None:
+    """Load environment variables lazily to keep module import side-effect free."""
+    global _ENV_LOADED
+    if _ENV_LOADED:
+        return
+    if callable(_dotenv_loader):
+        _dotenv_loader()
+    _ENV_LOADED = True
 
 
 def get_model_backend() -> str:
@@ -142,6 +148,23 @@ def get_model_backend() -> str:
     if backend in {"vllm_local"}:
         return "vllm_local"
     return "hf_inference"
+
+
+def _get_local_vllm_engine_class():
+    """Import LocalVLLMEngine only when the backend is actually requested."""
+    try:
+        module = importlib.import_module("RouterGym.engines.vllm_local")
+    except Exception as exc:  # pragma: no cover - optional dependency
+        raise ImportError("vllm_local backend selected but vllm is not installed.") from exc
+    engine_cls = getattr(module, "LocalVLLMEngine", None)
+    if engine_cls is None:
+        raise ImportError("vllm_local backend selected but vllm is not installed.")
+    return engine_cls
+
+
+def has_local_vllm_backend() -> bool:
+    """Return whether the optional vLLM package appears importable."""
+    return importlib.util.find_spec("vllm") is not None
 
 
 def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]]) -> list[ModelEntry]:
@@ -183,13 +206,12 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
         llm_entries = _filter_entries(LLM_MODELS, None)
 
     if backend == "vllm_local":
-        if LocalVLLMEngine is None:
-            raise ImportError("vllm_local backend selected but vllm is not installed.")
+        local_vllm_engine = _get_local_vllm_engine_class()
         if not force_llm:
             for entry in slm_entries:
-                models[entry.name] = LocalVLLMEngine(entry.hf_id)
+                models[entry.name] = local_vllm_engine(entry.hf_id)
         for entry in llm_entries:
-            models[entry.name] = LocalVLLMEngine(entry.hf_id)
+            models[entry.name] = local_vllm_engine(entry.hf_id)
     else:  # hf_inference default
         if not force_llm:
             for entry in slm_entries:
@@ -205,10 +227,9 @@ def get_repair_model() -> RemoteInferenceEngine:
     token = _get_token()
     backend = get_model_backend()
     if backend == "vllm_local":
-        if LocalVLLMEngine is None:
-            raise ImportError("vllm_local backend selected but vllm is not installed.")
+        local_vllm_engine = _get_local_vllm_engine_class()
         target = LLM_MODELS.get("llm1") or LLM_MODELS.get("llm2")
-        return LocalVLLMEngine(target.hf_id if target else "unknown_llm")  # type: ignore[return-value]
+        return local_vllm_engine(target.hf_id if target else "unknown_llm")  # type: ignore[return-value]
     if "llm1" in LLM_MODELS:
         return _build_engine(LLM_MODELS["llm1"], token)
     return _build_engine(LLM_MODELS["llm2"], token)
@@ -221,4 +242,5 @@ __all__ = [
     "LLM_MODELS",
     "get_repair_model",
     "get_model_backend",
+    "has_local_vllm_backend",
 ]

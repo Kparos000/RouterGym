@@ -7,9 +7,26 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from RouterGym.agents.generator import run_ticket_pipeline
-from RouterGym.contracts.json_contract import validate_agent_output
-from RouterGym.data.tickets.dataset_loader import load_dataset
+
+def run_ticket_pipeline(*args: Any, **kwargs: Any):
+    """Lazy proxy to avoid importing the generator stack at module import time."""
+    from RouterGym.agents.generator import run_ticket_pipeline as _run_ticket_pipeline
+
+    return _run_ticket_pipeline(*args, **kwargs)
+
+
+def validate_agent_output(*args: Any, **kwargs: Any):
+    """Lazy proxy to avoid importing contracts at module import time."""
+    from RouterGym.contracts.json_contract import validate_agent_output as _validate_agent_output
+
+    return _validate_agent_output(*args, **kwargs)
+
+
+def load_dataset(*args: Any, **kwargs: Any):
+    """Lazy proxy to avoid importing pandas-backed loaders at module import time."""
+    from RouterGym.data.tickets.dataset_loader import load_dataset as _load_dataset
+
+    return _load_dataset(*args, **kwargs)
 
 
 def run_agentic_eval(

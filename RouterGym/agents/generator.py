@@ -7,16 +7,20 @@ import re
 import time
 from typing import Any, Dict, Iterable, List, Optional
 
-from RouterGym.classifiers.encoder_classifier import EncoderClassifier
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
 from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, SchemaContract
-from RouterGym.engines.model_registry import get_repair_model, load_models
 from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonicalize_label
-from RouterGym.memory import get_memory_class
-from RouterGym.memory.base import MemoryRetrieval
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
+
+# These names remain patchable for tests, but default to lazy import on first
+# runtime use so importing this module does not pull the full classifier/memory/
+# model stack into collection-time code paths.
+EncoderClassifier: Any = None
+get_memory_class: Any = None
+load_models: Any = None
+get_repair_model: Any = None
 
 CLASS_LABELS = CANONICAL_LABELS
 
@@ -359,7 +363,11 @@ class SelfRepair:
         """Attempt to fix bad output by re-prompting the strongest LLM."""
         json_contract = JSONContract()
         try:
-            repair_model = get_repair_model()
+            repair_factory: Any = get_repair_model
+            if repair_factory is None:
+                from RouterGym.engines.model_registry import get_repair_model as repair_factory
+
+            repair_model = repair_factory()
         except Exception:
             repair_model = model
 
@@ -476,7 +484,19 @@ def run_ticket_pipeline(
     t_start = time.perf_counter()
 
     # 1) Classification via calibrated encoder
-    classifier = EncoderClassifier(head_mode="calibrated", use_lexical_prior=True)
+    encoder_classifier_cls: Any = EncoderClassifier
+    if encoder_classifier_cls is None:
+        from RouterGym.classifiers.encoder_classifier import EncoderClassifier as encoder_classifier_cls
+
+    load_models_fn: Any = load_models
+    if load_models_fn is None:
+        from RouterGym.engines.model_registry import load_models as load_models_fn
+
+    get_memory_class_fn: Any = get_memory_class
+    if get_memory_class_fn is None:
+        from RouterGym.memory import get_memory_class as get_memory_class_fn
+
+    classifier = encoder_classifier_cls(head_mode="calibrated", use_lexical_prior=True)
     classify_start = time.perf_counter()
     probabilities = classifier.predict_proba(text)
     classify_latency = (time.perf_counter() - classify_start) * 1000.0
@@ -485,7 +505,7 @@ def run_ticket_pipeline(
     classifier_confidence_bucket = get_confidence_bucket(classifier_confidence)
 
     # 2) Retrieval based on memory_mode
-    mem_cls = get_memory_class(memory_mode)
+    mem_cls = get_memory_class_fn(memory_mode)
     if mem_cls is None:
         raise ValueError(f"Unknown memory backend for mode {memory_mode}")
     memory = mem_cls()
@@ -493,7 +513,7 @@ def run_ticket_pipeline(
         memory.load(ticket)
     except Exception:
         pass
-    retrieval: MemoryRetrieval = memory.retrieve(text)
+    retrieval = memory.retrieve(text)
     snippets = []
     if isinstance(retrieval.retrieval_metadata, dict):
         meta_snippets = retrieval.retrieval_metadata.get("snippets", [])
@@ -507,7 +527,7 @@ def run_ticket_pipeline(
     subset = [base_model_name]
     if escalation_model_name:
         subset.append(escalation_model_name)
-    models = load_models(sanity=True, slm_subset=subset)
+    models = load_models_fn(sanity=True, slm_subset=subset)
     base_model = models.get(base_model_name)
     if base_model is None:
         raise RuntimeError(f"Model '{base_model_name}' is not available; check model registry or subset filter.")
