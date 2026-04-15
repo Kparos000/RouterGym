@@ -21,6 +21,7 @@ from RouterGym.data.tickets import dataset_loader
 from RouterGym.data.policy_kb import kb_loader
 from RouterGym.engines.model_registry import load_models
 from RouterGym.routing.llm_first import LLMFirstRouter
+from RouterGym.routing.slm_only import SLMOnlyRouter
 from RouterGym.routing.slm_dominant import SLMDominantRouter
 from RouterGym.routing.hybrid_specialist import HybridSpecialistRouter
 from RouterGym.memory.base import MemoryBase, MemoryRetrieval
@@ -327,8 +328,8 @@ def _coerce_record(rec: Any) -> Dict[str, Any]:
 def init_router(name: str) -> Optional[BaseRouter]:
     router_map = {
         "llm_first": LLMFirstRouter(),
-        "llm_only": LLMFirstRouter(),
-        "slm_only": HybridSpecialistRouter(),
+        "llm_only": LLMFirstRouter(router_mode="llm_only"),
+        "slm_only": SLMOnlyRouter(),
         "slm_dominant": SLMDominantRouter(),
         "hybrid_specialist": HybridSpecialistRouter(),
     }

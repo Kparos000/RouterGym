@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, List, Optional
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
 from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, SchemaContract
 from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonicalize_label
+from RouterGym.routing.policy import ROUTING_POLICY_VERSION, build_routing_decision
 from RouterGym.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -26,17 +27,11 @@ CLASS_LABELS = CANONICAL_LABELS
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 
-CONFIDENCE_HIGH_THRESHOLD = 0.80
-CONFIDENCE_MEDIUM_THRESHOLD = 0.50
-
-
 def get_confidence_bucket(conf: float) -> str:
     """Map a numeric confidence into low/medium/high buckets."""
-    if conf >= CONFIDENCE_HIGH_THRESHOLD:
-        return "high"
-    if conf >= CONFIDENCE_MEDIUM_THRESHOLD:
-        return "medium"
-    return "low"
+    from RouterGym.routing.policy import get_confidence_bucket as routing_get_confidence_bucket
+
+    return routing_get_confidence_bucket(conf)
 
 
 def _dedupe_preserve(items: Iterable[str]) -> List[str]:
@@ -557,51 +552,43 @@ def run_ticket_pipeline(
     # Routing decision
     chosen_model_name = base_model_name
     parsed_output = _call_and_parse(base_model)
+    initial_steps = parsed_output.get("resolution_steps", [])
+    if not isinstance(initial_steps, list):
+        initial_steps = []
+    retrieval_score = getattr(retrieval, "relevance_score", 0.0) or retrieval.relevance_score
+    initial_answer = str(parsed_output.get("final_answer", "") or "")
+    initial_schema_valid, _ = SchemaContract().validate(
+        {
+            "final_answer": initial_answer,
+            "reasoning": str(parsed_output.get("reasoning", "") or ""),
+            "predicted_category": str(parsed_output.get("predicted_category", classifier_label) or ""),
+        }
+    )
+    routing_decision = build_routing_decision(
+        router_mode=router_mode,
+        text=text,
+        base_model_name=base_model_name,
+        escalation_model_name=escalation_model_name,
+        category=classifier_label,
+        classifier_confidence=classifier_confidence,
+        retrieval_score=retrieval_score,
+        final_answer=initial_answer,
+        resolution_steps_count=len(initial_steps),
+        schema_valid=initial_schema_valid,
+    )
     escalated = False
-    escalation_reasons: List[str] = []
-    if router_mode == "slm_dominant":
-        if escalation_model is None:
-            raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
-        relevance = getattr(retrieval, "relevance_score", 0.0) or retrieval.relevance_score
-        final_answer = str(parsed_output.get("final_answer", "") or "")
-        resolution_steps = parsed_output.get("resolution_steps", [])
-        if not isinstance(resolution_steps, list):
-            resolution_steps = []
-        low_confidence = classifier_confidence_bucket == "low"
-        weak_kb = relevance < 0.10
-        no_answer = not final_answer.strip()
-        no_steps = len(resolution_steps) == 0
-        answer_lower = final_answer.lower()
-        ai_disclaimer = any(
-            phrase in answer_lower for phrase in ("as an ai", "as a language model", "i cannot", "i'm unable", "i am unable")
-        )
-        short_answer = len(final_answer.split()) < 10
-        if low_confidence:
-            escalation_reasons.append("low_confidence")
-        if weak_kb:
-            escalation_reasons.append("weak_kb")
-        if no_answer:
-            escalation_reasons.append("no_answer")
-        if no_steps:
-            escalation_reasons.append("no_steps")
-        if ai_disclaimer:
-            escalation_reasons.append("ai_disclaimer")
-        if short_answer:
-            escalation_reasons.append("short_answer")
-        needs_escalation = bool(escalation_reasons)
-        if needs_escalation:
-            parsed_output = _call_and_parse(escalation_model)  # type: ignore[arg-type]
-            chosen_model_name = escalation_model_name or base_model_name
-            escalated = True
-    elif router_mode == "llm_only":
-        chosen_model_name = base_model_name  # expected llm
-    elif router_mode == "slm_only":
-        chosen_model_name = base_model_name
-    elif router_mode == "hybrid_specialist":
-        # TODO: implement specialist gating; for now, use base_model_name as-is.
-        chosen_model_name = base_model_name
-    else:
-        chosen_model_name = base_model_name
+    escalation_reasons = list(routing_decision.escalation_reasons)
+    should_execute_escalation = (
+        routing_decision.escalated
+        and escalation_model is not None
+        and routing_decision.final_model != base_model_name
+    )
+    if router_mode == "slm_dominant" and routing_decision.escalated and escalation_model is None:
+        raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
+    if should_execute_escalation:
+        parsed_output = _call_and_parse(escalation_model)  # type: ignore[arg-type]
+        chosen_model_name = escalation_model_name or base_model_name
+        escalated = True
 
     total_latency_ms = (time.perf_counter() - t_start) * 1000.0
 
@@ -618,7 +605,7 @@ def run_ticket_pipeline(
         "needs_human": bool(parsed_escalation.get("needs_human", False)),
         "needs_llm_escalation": bool(escalated),
         "policy_gap": bool(parsed_escalation.get("policy_gap", False)),
-        "reasons": escalation_reasons if escalated else [],
+        "reasons": escalation_reasons if routing_decision.escalated else [],
     }
 
     payload: Dict[str, Any] = {
@@ -655,5 +642,14 @@ def run_ticket_pipeline(
             # Optional: add classification latency for debugging
             "classification_latency_ms": classify_latency,
         },
+        "initial_model": routing_decision.initial_model,
+        "final_model": chosen_model_name,
+        "escalated": bool(escalated),
+        "escalation_reasons": escalation_reasons if routing_decision.escalated else [],
+        "confidence_bucket": routing_decision.confidence_bucket,
+        "retrieval_score": routing_decision.retrieval_score,
+        "routing_policy_version": ROUTING_POLICY_VERSION,
+        "router_confidence_score": routing_decision.router_confidence_score,
+        "router_decision_reason": routing_decision.router_decision_reason,
     }
     return validate_agent_output(payload)

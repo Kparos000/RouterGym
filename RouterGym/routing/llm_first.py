@@ -9,6 +9,7 @@ simple and easy to explain for benchmarking.
 from typing import Any, Dict, Optional
 
 from RouterGym.routing.base import BaseRouter
+from RouterGym.routing.policy import ROUTING_POLICY_VERSION, RoutingDecision, build_routing_decision
 from RouterGym.agents.generator import (
     CLASS_LABELS,
     SchemaContract,
@@ -38,6 +39,9 @@ def _infer_category(text: str, default: str = "") -> str:
 class LLMFirstRouter(BaseRouter):
     """Always prefer LLM, with optional downshift hooks."""
 
+    def __init__(self, router_mode: str = "llm_first") -> None:
+        self.router_mode = router_mode
+
     def route(
         self,
         ticket: Dict[str, Any],
@@ -57,10 +61,36 @@ class LLMFirstRouter(BaseRouter):
         llm = models.get("llm1") or models.get("llm2")
         slm = models.get("slm1") or models.get("slm2")
 
-        use_slm = (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})) and not force_llm
+        use_slm = (
+            self.router_mode != "llm_only"
+            and (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"}))
+            and not force_llm
+        )
         chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)
-        router_confidence_score = 0.0
-        router_decision_reason = "llm_first_baseline"
+        initial_model_name = "slm" if use_slm else "llm"
+        if self.router_mode == "llm_only":
+            routing_decision = build_routing_decision(
+                router_mode="llm_only",
+                text=text,
+                base_model_name="llm",
+                category=str(category or ""),
+                classifier_confidence=float(ticket.get("classifier_confidence", 1.0)),
+                force_llm=force_llm,
+            )
+        else:
+            routing_decision = RoutingDecision(
+                router_mode="llm_first",
+                initial_model=initial_model_name,
+                final_model=initial_model_name,
+                escalated=False,
+                escalation_reasons=[],
+                classifier_confidence=float(ticket.get("classifier_confidence", 1.0)),
+                confidence_bucket=str(ticket.get("classifier_confidence_bucket", "high")),
+                retrieval_score=None,
+                routing_policy_version=ROUTING_POLICY_VERSION,
+                router_confidence_score=1.0,
+                router_decision_reason="llm_first_baseline",
+            )
 
         if memory:
             memory.add(text)
@@ -107,7 +137,7 @@ class LLMFirstRouter(BaseRouter):
             {"stage": "generate", "prompt": prompt, "output": final_output},
         ]
         return {
-            "strategy": "llm_first",
+            "strategy": self.router_mode,
             "target_model": "slm" if use_slm else "llm",
             "model_used": "slm" if use_slm else "llm",
             "steps": steps,
@@ -118,6 +148,15 @@ class LLMFirstRouter(BaseRouter):
             "kb_attached": bool(kb_snippets),
             "kb_snippets": kb_snippets,
             "prompt": prompt,
-            "router_confidence_score": router_confidence_score,
-            "router_decision_reason": router_decision_reason,
+            "router_mode": routing_decision.router_mode,
+            "initial_model": routing_decision.initial_model,
+            "final_model": routing_decision.final_model,
+            "escalated": routing_decision.escalated,
+            "escalation_reasons": routing_decision.escalation_reasons,
+            "classifier_confidence": routing_decision.classifier_confidence,
+            "confidence_bucket": routing_decision.confidence_bucket,
+            "retrieval_score": routing_decision.retrieval_score,
+            "routing_policy_version": routing_decision.routing_policy_version,
+            "router_confidence_score": routing_decision.router_confidence_score,
+            "router_decision_reason": routing_decision.router_decision_reason,
         }
