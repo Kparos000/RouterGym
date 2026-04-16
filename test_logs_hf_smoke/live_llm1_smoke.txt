@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "model_key": "llm1",
+  "model_id": "openai/gpt-oss-20b",
+  "backend_used": "hf_inference",
+  "endpoint_path": "chat_completion_plain",
+  "output_preview": "{\"final_answer\":\"To reset your VPN access, please follow these steps:\\n1. **Log in to the VPN portal** using your current credentials.\\n2. Navigate to the **Account Settings** or **Profile** section.\\n3. Click on **\\\"Reset VPN Access\\\"** or **\\\"Revoke & Reissue Credentials\\\"**.\\n4. Confirm the action when prompted. The system will generate a new VPN profile.\\n5. **Download** the new profile file (",
+  "token_present": true,
+  "error": null
+}

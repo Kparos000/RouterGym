@@ -11,15 +11,15 @@ from typing import Dict, List
 
 
 BENCHMARK_SPEC_VERSION = "dissertation_run_v1"
-PRICING_VERSION = "normalized_v2"
+PRICING_VERSION = "normalized_v3"
 PRODUCTION_CHUNK_SIZE = 5000
 MEMORY_MODES = ["none", "rag_bm25", "rag_dense", "rag_hybrid"]
 
 MODEL_LINEUP: Dict[str, str] = {
     "slm1": "mistralai/Mistral-7B-Instruct-v0.3",
     "slm2": "meta-llama/Meta-Llama-3-8B-Instruct",
-    "llm1": "mistralai/Mistral-Small-24B-Instruct-2501",
-    "llm2": "Qwen/Qwen2.5-32B-Instruct-AWQ",
+    "llm1": "openai/gpt-oss-20b",
+    "llm2": "Qwen/Qwen2.5-14B-Instruct",
 }
 
 ROUTER_MODEL_CONFIGS: List[Dict[str, str]] = [

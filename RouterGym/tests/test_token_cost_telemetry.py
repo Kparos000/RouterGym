@@ -73,7 +73,7 @@ def test_aggregate_model_call_telemetry_splits_slm_vs_llm() -> None:
             ),
             ModelCallTelemetry(
                 model_key="llm1",
-                model_name="mistralai/Mistral-Small-24B-Instruct-2501",
+                model_name="openai/gpt-oss-20b",
                 model_family="llm",
                 backend_used="hf_inference",
                 input_tokens=40,
@@ -92,7 +92,7 @@ def test_aggregate_model_call_telemetry_splits_slm_vs_llm() -> None:
     assert summary["slm_cost_usd"] == 0.03
     assert summary["llm_cost_usd"] == 0.50
     assert summary["token_count_method_summary"] == "mixed"
-    assert summary["pricing_version"] == "normalized_v2"
+    assert summary["pricing_version"] == "normalized_v3"
 
 
 def test_run_ticket_pipeline_emits_telemetry_fields(monkeypatch: Any) -> None:
@@ -161,6 +161,6 @@ def test_run_ticket_pipeline_emits_telemetry_fields(monkeypatch: Any) -> None:
     assert result["total_cost_usd"] > 0.0
     assert result["slm_cost_usd"] == result["total_cost_usd"]
     assert result["llm_cost_usd"] == 0.0
-    assert result["pricing_version"] == "normalized_v2"
+    assert result["pricing_version"] == "normalized_v3"
     assert result["token_count_method_summary"] == "measured"
     assert len(result["model_call_telemetry"]) == 1

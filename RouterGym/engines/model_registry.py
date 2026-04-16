@@ -6,6 +6,7 @@ import json
 import importlib
 import importlib.util
 import os
+import traceback
 from dataclasses import dataclass
 from os import PathLike
 from typing import IO, Any, Callable, Dict, Optional
@@ -44,8 +45,8 @@ SLM_MODELS: Dict[str, ModelEntry] = {
 }
 
 LLM_MODELS: Dict[str, ModelEntry] = {
-    "llm1": ModelEntry("llm1", "mistralai/Mistral-Small-24B-Instruct-2501", "llm"),
-    "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-32B-Instruct-AWQ", "llm"),
+    "llm1": ModelEntry("llm1", "openai/gpt-oss-20b", "llm"),
+    "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-14B-Instruct", "llm"),
 }
 
 
@@ -67,6 +68,7 @@ class RemoteInferenceEngine:
         self.backend_used = "hf_inference"
         self.last_usage: Optional[Dict[str, int]] = None
         self.last_endpoint_path = ""
+        self.last_error: Optional[Dict[str, str]] = None
         self.client = InferenceClient(model=model_id, token=token, timeout=timeout)
         self.timeout = timeout
         self.max_retries = max_retries
@@ -80,13 +82,16 @@ class RemoteInferenceEngine:
         first = choices[0]
         if isinstance(first, dict):
             msg = first.get("message") or {}
-            return str(msg.get("content", ""))
+            content = str(msg.get("content", ""))
+            return content or None
         msg = getattr(first, "message", None)
         if isinstance(msg, dict):
-            return str(msg.get("content", ""))
+            content = str(msg.get("content", ""))
+            return content or None
         if msg is not None and hasattr(msg, "__getitem__"):
             try:
-                return str(msg["content"])
+                content = str(msg["content"])
+                return content or None
             except Exception:
                 return None
         return None
@@ -164,6 +169,7 @@ class RemoteInferenceEngine:
         )
         self.last_usage = None
         self.last_endpoint_path = ""
+        self.last_error = None
         for _attempt in range(max(1, self.max_retries + 1)):
             try:
                 response = self.client.chat_completion(  # type: ignore[call-overload]
@@ -175,12 +181,41 @@ class RemoteInferenceEngine:
                 )
                 self.last_usage = self._extract_usage(response)
                 self.last_endpoint_path = "chat_completion"
+                self.last_error = None
                 content = self._extract_content(response)
                 if content is not None:
                     return str(content)
-            except Exception:
+            except Exception as exc:
                 self.last_usage = None
                 self.last_endpoint_path = ""
+                self.last_error = {
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                    "stack_trace": traceback.format_exc(),
+                    "phase": "chat_completion",
+                }
+            try:
+                response = self.client.chat_completion(  # type: ignore[call-overload]
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max(max_new_tokens, 1024),
+                    temperature=temperature,
+                )
+                self.last_usage = self._extract_usage(response)
+                self.last_endpoint_path = "chat_completion_plain"
+                self.last_error = None
+                content = self._extract_content(response)
+                if content is not None:
+                    return str(content)
+            except Exception as exc:
+                self.last_usage = None
+                self.last_endpoint_path = ""
+                self.last_error = {
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                    "stack_trace": traceback.format_exc(),
+                    "phase": "chat_completion_plain",
+                }
             try:
                 response = self.client.text_generation(
                     prompt,
@@ -191,12 +226,19 @@ class RemoteInferenceEngine:
                 )
                 self.last_usage = self._extract_usage(response)
                 self.last_endpoint_path = "text_generation"
+                self.last_error = None
                 content = self._extract_text_generation_content(response)
                 if content is not None:
                     return str(content)
-            except Exception:
+            except Exception as exc:
                 self.last_usage = None
                 self.last_endpoint_path = ""
+                self.last_error = {
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                    "stack_trace": traceback.format_exc(),
+                    "phase": "text_generation",
+                }
                 continue
         return fallback
 

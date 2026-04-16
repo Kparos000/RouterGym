@@ -51,8 +51,8 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
     models = model_registry.load_models(sanity=False)
     assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
     assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
-    assert "mistralai/Mistral-Small-24B-Instruct-2501" in created
-    assert "Qwen/Qwen2.5-32B-Instruct-AWQ" in created
+    assert "openai/gpt-oss-20b" in created
+    assert "Qwen/Qwen2.5-14B-Instruct" in created
 
 
 def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
@@ -102,6 +102,38 @@ def test_remote_engine_falls_back_to_text_generation(monkeypatch: Any) -> None:
     assert engine.last_endpoint_path == "text_generation"
 
 
+def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch: Any) -> None:
+    class PlainChatFallbackClient(DummyClient):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self.chat_calls = 0
+
+        def chat_completion(self, **kwargs: Any):
+            self.chat_calls += 1
+            if self.chat_calls == 1:
+                raise RuntimeError("json mode unsupported")
+            self.calls.append(kwargs)
+            return type(
+                "Resp",
+                (),
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'
+                            }
+                        }
+                    ]
+                },
+            )
+
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: PlainChatFallbackClient(*args, **kwargs))
+    engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
+    text = engine.generate("hi", max_new_tokens=80)
+    assert "final_answer" in text
+    assert engine.last_endpoint_path == "chat_completion_plain"
+
+
 def test_get_repair_model(monkeypatch: Any) -> None:
     """Repair model should return strongest LLM remote engine."""
     monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
@@ -111,5 +143,5 @@ def test_get_repair_model(monkeypatch: Any) -> None:
 
 
 def test_llm_entries_match_frozen_models() -> None:
-    assert model_registry.LLM_MODELS["llm1"].hf_id == "mistralai/Mistral-Small-24B-Instruct-2501"
-    assert model_registry.LLM_MODELS["llm2"].hf_id == "Qwen/Qwen2.5-32B-Instruct-AWQ"
+    assert model_registry.LLM_MODELS["llm1"].hf_id == "openai/gpt-oss-20b"
+    assert model_registry.LLM_MODELS["llm2"].hf_id == "Qwen/Qwen2.5-14B-Instruct"

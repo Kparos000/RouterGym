@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Dict
 
 
-PRICING_VERSION = "normalized_v2"
+PRICING_VERSION = "normalized_v3"
 PRICING_SOURCE = "normalized_benchmark_model"
 
 
@@ -46,17 +46,17 @@ PRICING_TABLE: Dict[str, PricingEntry] = {
     ),
     "llm1": PricingEntry(
         model_key="llm1",
-        model_name="mistralai/Mistral-Small-24B-Instruct-2501",
+        model_name="openai/gpt-oss-20b",
         family="llm",
-        input_cost_per_1k_tokens=0.006,
-        output_cost_per_1k_tokens=0.006,
+        input_cost_per_1k_tokens=0.004,
+        output_cost_per_1k_tokens=0.004,
     ),
     "llm2": PricingEntry(
         model_key="llm2",
-        model_name="Qwen/Qwen2.5-32B-Instruct-AWQ",
+        model_name="Qwen/Qwen2.5-14B-Instruct",
         family="llm",
-        input_cost_per_1k_tokens=0.008,
-        output_cost_per_1k_tokens=0.008,
+        input_cost_per_1k_tokens=0.003,
+        output_cost_per_1k_tokens=0.003,
     ),
 }
 

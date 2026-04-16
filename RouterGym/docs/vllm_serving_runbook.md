@@ -8,8 +8,8 @@ Use a dedicated OpenAI-compatible endpoint for `llm1` and `llm2` so production L
 
 Current larger-model mappings:
 
-- `llm1` -> `mistralai/Mistral-Small-24B-Instruct-2501`
-- `llm2` -> `Qwen/Qwen2.5-32B-Instruct-AWQ`
+- `llm1` -> `openai/gpt-oss-20b`
+- `llm2` -> `Qwen/Qwen2.5-14B-Instruct`
 
 ## Required environment variables
 
@@ -39,13 +39,13 @@ RouterGym normalizes the base URL to include `/v1` when needed.
 Serve `llm1`:
 
 ```bash
-vllm serve mistralai/Mistral-Small-24B-Instruct-2501 --api-key replace-with-your-vllm-api-key
+vllm serve openai/gpt-oss-20b --api-key replace-with-your-vllm-api-key
 ```
 
 Serve `llm2`:
 
 ```bash
-vllm serve Qwen/Qwen2.5-32B-Instruct-AWQ --api-key replace-with-your-vllm-api-key
+vllm serve Qwen/Qwen2.5-14B-Instruct --api-key replace-with-your-vllm-api-key
 ```
 
 The vLLM OpenAI-compatible server listens on `http://localhost:8000` by default unless you override host or port.

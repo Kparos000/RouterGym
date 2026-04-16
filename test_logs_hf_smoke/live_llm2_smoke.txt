@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "model_key": "llm2",
+  "model_id": "Qwen/Qwen2.5-14B-Instruct",
+  "backend_used": "hf_inference",
+  "endpoint_path": "chat_completion",
+  "output_preview": "{   \"final_answer\": \"Contact your IT department to reset your VPN access.\",   \"reasoning\": \"The request pertains to resetting VPN access, which typically requires administrative intervention to ensure security and compliance. IT departments manage such requests to maintain network integrity and user access controls.\",   \"predicted_category\": \"IT Support\" }",
+  "token_present": true,
+  "error": null
+}
