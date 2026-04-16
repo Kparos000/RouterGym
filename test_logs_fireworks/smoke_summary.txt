@@ -1,0 +1,43 @@
+Fireworks Smoke Test Summary
+=============================
+
+Notes:
+- Fireworks base URL fixed to https://api.fireworks.ai/inference/v1
+- Temporary smoke model mapping only; final benchmark spec is unchanged.
+- Run did not start cleanly. Fireworks serverless support for the target model pages currently appears unavailable.
+
+llm1:
+  target_tickets: 50
+  processed_tickets: 0
+  success_count: 0
+  failure_count: 0
+  avg_latency_ms: 0.00
+  total_tokens: 0
+  total_cost_usd: 0.000000
+  escalation_rate: 0.000
+  model_usage_breakdown: {}
+  failure_types: {}
+
+llm2:
+  target_tickets: 50
+  processed_tickets: 0
+  success_count: 0
+  failure_count: 0
+  avg_latency_ms: 0.00
+  total_tokens: 0
+  total_cost_usd: 0.000000
+  escalation_rate: 0.000
+  model_usage_breakdown: {}
+  failure_types: {}
+
+overall:
+  total_ticket_runs: 100
+  processed_tickets: 0
+  success_count: 0
+  failure_count: 2
+  avg_latency_ms: 0.00
+  total_tokens: 0
+  total_cost_usd: 0.000000
+  escalation_rate: 0.000
+  model_usage_breakdown: {}
+  failure_types: {"MissingFireworksApiKeyError": 2}

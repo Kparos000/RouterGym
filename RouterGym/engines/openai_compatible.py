@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import traceback
 from typing import Any, Dict, Optional
 from urllib import request
 
@@ -44,6 +45,7 @@ class OpenAICompatibleEngine:
         self.backend_used = "openai_compatible"
         self.last_usage: Optional[Dict[str, int]] = None
         self.last_endpoint_path = ""
+        self.last_error: Optional[Dict[str, str]] = None
 
     def _extract_content(self, payload: Dict[str, Any]) -> Optional[str]:
         choices = payload.get("choices", [])
@@ -113,6 +115,7 @@ class OpenAICompatibleEngine:
         )
         self.last_usage = None
         self.last_endpoint_path = ""
+        self.last_error = None
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model_name,
@@ -136,12 +139,18 @@ class OpenAICompatibleEngine:
                     continue
                 self.last_usage = self._extract_usage(parsed)
                 self.last_endpoint_path = "openai_chat_completions"
+                self.last_error = None
                 content = self._extract_content(parsed)
                 if content is not None:
                     return content
-            except Exception:
+            except Exception as exc:
                 self.last_usage = None
                 self.last_endpoint_path = ""
+                self.last_error = {
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                    "stack_trace": traceback.format_exc(),
+                }
                 continue
         return fallback
 
