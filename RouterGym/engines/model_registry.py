@@ -215,6 +215,24 @@ def _get_token() -> Optional[str]:
     return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
 
 
+def _get_openai_compatible_base_url() -> str:
+    _ensure_env_loaded()
+    return (
+        os.getenv("ROUTERGYM_OPENAI_BASE_URL")
+        or os.getenv("ROUTERGYM_VLLM_BASE_URL")
+        or "http://localhost:8000/v1"
+    )
+
+
+def _get_openai_compatible_api_key() -> str:
+    _ensure_env_loaded()
+    return (
+        os.getenv("ROUTERGYM_OPENAI_API_KEY")
+        or os.getenv("ROUTERGYM_VLLM_API_KEY")
+        or "EMPTY"
+    )
+
+
 def _ensure_env_loaded() -> None:
     """Load environment variables lazily to keep module import side-effect free."""
     global _ENV_LOADED
@@ -226,8 +244,10 @@ def _ensure_env_loaded() -> None:
 
 
 def get_model_backend() -> str:
-    """Return configured model backend (hf_inference or vllm_local)."""
+    """Return configured model backend."""
     backend = os.getenv("ROUTERGYM_MODEL_BACKEND", "").strip().lower()
+    if backend in {"openai_compatible", "vllm_openai"}:
+        return "openai_compatible"
     if backend in {"vllm_local"}:
         return "vllm_local"
     return "hf_inference"
@@ -250,6 +270,12 @@ def has_local_vllm_backend() -> bool:
     return importlib.util.find_spec("vllm") is not None
 
 
+def _get_openai_compatible_engine_class():
+    from RouterGym.engines.openai_compatible import OpenAICompatibleEngine
+
+    return OpenAICompatibleEngine
+
+
 def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]]) -> list[ModelEntry]:
     if subset:
         allowed = set(subset)
@@ -259,6 +285,17 @@ def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]])
 
 def _build_engine(entry: ModelEntry, token: Optional[str]) -> RemoteInferenceEngine:
     return RemoteInferenceEngine(entry.hf_id, model_key=entry.name, kind=entry.kind, token=token)
+
+
+def _build_openai_compatible_engine(entry: ModelEntry) -> Any:
+    engine_cls = _get_openai_compatible_engine_class()
+    return engine_cls(
+        entry.hf_id,
+        model_key=entry.name,
+        kind=entry.kind,
+        base_url=_get_openai_compatible_base_url(),
+        api_key=_get_openai_compatible_api_key(),
+    )
 
 
 def _tag_local_engine(engine: Any, entry: ModelEntry) -> Any:
@@ -303,6 +340,12 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
                 models[entry.name] = _tag_local_engine(local_vllm_engine(entry.hf_id), entry)
         for entry in llm_entries:
             models[entry.name] = _tag_local_engine(local_vllm_engine(entry.hf_id), entry)
+    elif backend == "openai_compatible":
+        if not force_llm:
+            for entry in slm_entries:
+                models[entry.name] = _build_engine(entry, token)
+        for entry in llm_entries:
+            models[entry.name] = _build_openai_compatible_engine(entry)
     else:  # hf_inference default
         if not force_llm:
             for entry in slm_entries:
@@ -321,6 +364,11 @@ def get_repair_model() -> RemoteInferenceEngine:
         local_vllm_engine = _get_local_vllm_engine_class()
         target = LLM_MODELS.get("llm1") or LLM_MODELS.get("llm2")
         return local_vllm_engine(target.hf_id if target else "unknown_llm")  # type: ignore[return-value]
+    if backend == "openai_compatible":
+        target = LLM_MODELS.get("llm1") or LLM_MODELS.get("llm2")
+        if target is None:
+            raise RuntimeError("No LLM entries are configured for the openai_compatible backend.")
+        return _build_openai_compatible_engine(target)  # type: ignore[return-value]
     if "llm1" in LLM_MODELS:
         return _build_engine(LLM_MODELS["llm1"], token)
     return _build_engine(LLM_MODELS["llm2"], token)
@@ -331,6 +379,8 @@ __all__ = [
     "RemoteInferenceEngine",
     "SLM_MODELS",
     "LLM_MODELS",
+    "_get_openai_compatible_api_key",
+    "_get_openai_compatible_base_url",
     "get_repair_model",
     "get_model_backend",
     "has_local_vllm_backend",
