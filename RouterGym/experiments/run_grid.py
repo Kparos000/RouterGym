@@ -15,6 +15,9 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import pandas as pd
 
+from RouterGym.benchmark_spec import MEMORY_MODES as FROZEN_MEMORY_MODES
+from RouterGym.benchmark_spec import ROUTER_MODEL_CONFIGS as FROZEN_ROUTER_MODEL_CONFIGS
+
 from RouterGym.evaluation import analyzer as eval_analyzer
 from RouterGym.evaluation import metrics as eval_metrics
 from RouterGym.data.tickets import dataset_loader
@@ -39,23 +42,9 @@ RAW_DIR = RESULTS_DIR / "raw"
 DEFAULT_TICKETS_PATH = Path("RouterGym/data/tickets/tickets.csv")
 DEFAULT_KB_PATH = Path("RouterGym/data/policy_kb")
 
-ROUTER_CONFIGS = [
-    # SLM-only
-    {"router_mode": "slm_only", "base_model": "slm1"},
-    {"router_mode": "slm_only", "base_model": "slm2"},
-    # LLM-only
-    {"router_mode": "llm_only", "base_model": "llm1"},
-    {"router_mode": "llm_only", "base_model": "llm2"},
-    # SLM-dominant (all SLM→LLM pairs)
-    {"router_mode": "slm_dominant", "base_model": "slm1", "escalation_model": "llm1"},
-    {"router_mode": "slm_dominant", "base_model": "slm1", "escalation_model": "llm2"},
-    {"router_mode": "slm_dominant", "base_model": "slm2", "escalation_model": "llm1"},
-    {"router_mode": "slm_dominant", "base_model": "slm2", "escalation_model": "llm2"},
-    # Hybrid specialist placeholder
-    {"router_mode": "hybrid_specialist", "base_model": "slm1"},
-]
+ROUTER_CONFIGS = [dict(config) for config in FROZEN_ROUTER_MODEL_CONFIGS]
 
-MEMORY_MODES_CANONICAL = ["none", "rag_bm25", "rag_dense", "rag_hybrid"]
+MEMORY_MODES_CANONICAL = list(FROZEN_MEMORY_MODES)
 MODEL_NAMES = ["slm1", "slm2", "llm1", "llm2"]
 CLASSIFIER_MODES = ["tfidf", "encoder", "slm_finetuned"]
 ROUTER_MODE_NAMES = sorted({cfg["router_mode"] for cfg in ROUTER_CONFIGS})

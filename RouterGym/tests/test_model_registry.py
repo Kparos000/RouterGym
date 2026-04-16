@@ -51,8 +51,8 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
     models = model_registry.load_models(sanity=False)
     assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
     assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
-    assert any("Mistral" in m or "mistral" in m for m in created)
-    assert any("Llama" in m or "llama" in m for m in created)
+    assert "mistralai/Mistral-Small-24B-Instruct-2501" in created
+    assert "Qwen/Qwen2.5-32B-Instruct-AWQ" in created
 
 
 def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
@@ -83,6 +83,23 @@ def test_remote_engine_response_format(monkeypatch: Any) -> None:
     assert captured.get("messages")
     assert captured.get("max_tokens") is not None
     assert captured.get("temperature") is not None
+    assert engine.last_endpoint_path == "chat_completion"
+
+
+def test_remote_engine_falls_back_to_text_generation(monkeypatch: Any) -> None:
+    class FallbackClient(DummyClient):
+        def chat_completion(self, **kwargs: Any):
+            raise RuntimeError("chat_completion unavailable")
+
+        def text_generation(self, prompt: str, **kwargs: Any):
+            self.calls.append({"prompt": prompt, **kwargs})
+            return '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'
+
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: FallbackClient(*args, **kwargs))
+    engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
+    text = engine.generate("hi")
+    assert "final_answer" in text
+    assert engine.last_endpoint_path == "text_generation"
 
 
 def test_get_repair_model(monkeypatch: Any) -> None:
@@ -91,3 +108,8 @@ def test_get_repair_model(monkeypatch: Any) -> None:
     engine = model_registry.get_repair_model()
     assert isinstance(engine, model_registry.RemoteInferenceEngine)
     assert engine.kind == "llm"
+
+
+def test_llm_entries_match_frozen_models() -> None:
+    assert model_registry.LLM_MODELS["llm1"].hf_id == "mistralai/Mistral-Small-24B-Instruct-2501"
+    assert model_registry.LLM_MODELS["llm2"].hf_id == "Qwen/Qwen2.5-32B-Instruct-AWQ"

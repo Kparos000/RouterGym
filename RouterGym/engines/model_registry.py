@@ -44,8 +44,8 @@ SLM_MODELS: Dict[str, ModelEntry] = {
 }
 
 LLM_MODELS: Dict[str, ModelEntry] = {
-    "llm1": ModelEntry("llm1", "Qwen/Qwen2-72B-Instruct", "llm"),
-    "llm2": ModelEntry("llm2", "meta-llama/Meta-Llama-3-70B-Instruct", "llm"),
+    "llm1": ModelEntry("llm1", "mistralai/Mistral-Small-24B-Instruct-2501", "llm"),
+    "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-32B-Instruct-AWQ", "llm"),
 }
 
 
@@ -66,6 +66,7 @@ class RemoteInferenceEngine:
         self.kind = kind
         self.backend_used = "hf_inference"
         self.last_usage: Optional[Dict[str, int]] = None
+        self.last_endpoint_path = ""
         self.client = InferenceClient(model=model_id, token=token, timeout=timeout)
         self.timeout = timeout
         self.max_retries = max_retries
@@ -88,6 +89,20 @@ class RemoteInferenceEngine:
                 return str(msg["content"])
             except Exception:
                 return None
+        return None
+
+    def _extract_text_generation_content(self, response: Any) -> Optional[str]:
+        if response is None:
+            return None
+        if isinstance(response, str):
+            return response
+        generated_text = getattr(response, "generated_text", None)
+        if isinstance(generated_text, str):
+            return generated_text
+        if isinstance(response, dict):
+            value = response.get("generated_text", response.get("text"))
+            if isinstance(value, str):
+                return value
         return None
 
     def _extract_usage(self, response: Any) -> Optional[Dict[str, int]]:
@@ -148,6 +163,7 @@ class RemoteInferenceEngine:
             }
         )
         self.last_usage = None
+        self.last_endpoint_path = ""
         for _attempt in range(max(1, self.max_retries + 1)):
             try:
                 response = self.client.chat_completion(  # type: ignore[call-overload]
@@ -158,11 +174,29 @@ class RemoteInferenceEngine:
                     response_format={"type": "json_object"},
                 )
                 self.last_usage = self._extract_usage(response)
+                self.last_endpoint_path = "chat_completion"
                 content = self._extract_content(response)
                 if content is not None:
                     return str(content)
             except Exception:
                 self.last_usage = None
+                self.last_endpoint_path = ""
+            try:
+                response = self.client.text_generation(
+                    prompt,
+                    model=self.model_name,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    return_full_text=False,
+                )
+                self.last_usage = self._extract_usage(response)
+                self.last_endpoint_path = "text_generation"
+                content = self._extract_text_generation_content(response)
+                if content is not None:
+                    return str(content)
+            except Exception:
+                self.last_usage = None
+                self.last_endpoint_path = ""
                 continue
         return fallback
 
