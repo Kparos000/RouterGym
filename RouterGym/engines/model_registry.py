@@ -48,7 +48,10 @@ LLM_MODELS: Dict[str, ModelEntry] = {
     "llm1": ModelEntry("llm1", "openai/gpt-oss-20b", "llm"),
     "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-14B-Instruct", "llm"),
 }
-HF_CHAT_ONLY_MODEL_KEYS = frozenset({"llm1", "llm2"})
+# These benchmark models are routed through HF providers that expose
+# conversational/chat interfaces only. Keep them off text_generation so
+# provider task-mismatch errors stay out of the main pipeline path.
+HF_CHAT_ONLY_MODEL_KEYS = frozenset({"slm1", "slm2", "llm1", "llm2"})
 
 
 class RemoteInferenceEngine:

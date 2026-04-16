@@ -6,33 +6,33 @@ llm1:
   processed_tickets: 50
   success_count: 0
   failure_count: 50
-  avg_latency_ms: 1626.39
-  total_tokens: 171234
-  total_cost_usd: 0.387191
+  avg_latency_ms: 5798.43
+  total_tokens: 248702
+  total_cost_usd: 0.697063
   escalation_rate: 1.000
   model_usage_breakdown: {"llm1": 50}
-  failure_types: {"HfHubHTTPError": 49, "ValueError": 1}
+  failure_types: {"HfHubHTTPError": 50}
 
 llm2:
   target_tickets: 50
   processed_tickets: 50
   success_count: 0
   failure_count: 50
-  avg_latency_ms: 2068.77
-  total_tokens: 170291
-  total_cost_usd: 0.298198
+  avg_latency_ms: 25536.34
+  total_tokens: 179660
+  total_cost_usd: 0.326305
   escalation_rate: 1.000
   model_usage_breakdown: {"llm2": 50}
-  failure_types: {"HfHubHTTPError": 48, "ValueError": 2}
+  failure_types: {"HfHubHTTPError": 50}
 
 overall:
   total_ticket_runs: 100
   processed_tickets: 100
   success_count: 0
   failure_count: 100
-  avg_latency_ms: 1847.58
-  total_tokens: 341525
-  total_cost_usd: 0.685389
+  avg_latency_ms: 15667.39
+  total_tokens: 428362
+  total_cost_usd: 1.023368
   escalation_rate: 1.000
   model_usage_breakdown: {"llm1": 50, "llm2": 50}
-  failure_types: {"HfHubHTTPError": 97, "ValueError": 3}
+  failure_types: {"HfHubHTTPError": 100}
