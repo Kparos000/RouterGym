@@ -1,12 +1,16 @@
 """Evaluation metrics implementations."""
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
 import json
 import os
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from RouterGym.engines.pricing import calculate_call_costs
+from RouterGym.engines.telemetry import estimate_text_tokens
 from RouterGym.label_space import canonical_label
 
 try:
@@ -16,11 +20,6 @@ except Exception:  # pragma: no cover
 
 EMBED_MODEL = "all-MiniLM-L6-v2"
 _embedder = None
-
-COST_PER_1K_SLM = 0.0005
-COST_PER_1K_LLM = 0.02
-TOKENS_PER_CHAR = 0.25  # rough heuristic
-
 
 def _get_embedder():
     global _embedder
@@ -128,16 +127,14 @@ def _normalize_label(label: str) -> str:
 
 def estimate_tokens(*texts: str) -> int:
     """Rough token estimate based on character length."""
-    total_chars = sum(len(t or "") for t in texts)
-    est = int(total_chars * TOKENS_PER_CHAR)
-    return max(est, 1)
+    return sum(estimate_text_tokens(text) for text in texts)
 
 
 def estimate_cost_usd(model_used: str, prompt_text: str, answer_text: str, reasoning: str = "") -> float:
-    """Estimate cost per call using simple token heuristic and model family price."""
-    tokens = estimate_tokens(prompt_text, answer_text, reasoning)
-    rate = COST_PER_1K_SLM if model_used == "slm" else COST_PER_1K_LLM
-    return (tokens / 1000.0) * rate
+    """Estimate cost per call using normalized benchmark pricing."""
+    input_tokens = estimate_tokens(prompt_text)
+    output_tokens = estimate_tokens(answer_text, reasoning)
+    return float(calculate_call_costs(model_used, input_tokens, output_tokens)["total_cost_usd"])
 
 
 def router_conversion_rate(router_stats: List[Dict[str, Any]]) -> float:
@@ -172,7 +169,14 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     grounded = 0.0 if not kb_attached else groundedness_score(str(output), kb_snippets)
     faithful = groundedness_score(reasoning or str(output), kb_snippets) if kb_attached else 0.0
     schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))
-    cost = estimate_cost_usd(model_used, str(prompt_text), str(output), reasoning)
+    metrics_blob = record.get("metrics", {})
+    if isinstance(metrics_blob, dict) and isinstance(metrics_blob.get("total_cost_usd"), (int, float)):
+        cost = float(metrics_blob["total_cost_usd"])
+    elif isinstance(record.get("total_cost_usd"), (int, float)):
+        cost = float(record["total_cost_usd"])
+    else:
+        model_key = str(record.get("model_name") or record.get("model_used") or model_used)
+        cost = estimate_cost_usd(model_key, str(prompt_text), str(output), reasoning)
 
     metrics = {
         "accuracy": acc,

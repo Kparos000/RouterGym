@@ -5,10 +5,16 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
 from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, SchemaContract
+from RouterGym.engines.telemetry import (
+    ModelCallTelemetry,
+    aggregate_model_call_telemetry,
+    invoke_model_with_telemetry,
+    telemetry_records_as_dicts,
+)
 from RouterGym.label_space import CANONICAL_LABELS, CANONICAL_LABEL_SET, canonicalize_label
 from RouterGym.routing.policy import ROUTING_POLICY_VERSION, build_routing_decision
 from RouterGym.utils.logger import get_logger
@@ -82,25 +88,9 @@ def classification_instruction() -> str:
 
 def _call_model(model: Any, prompt: str) -> str:
     """Invoke a model or pipeline and normalize the output to string."""
-    output = None
-    if hasattr(model, "generate"):
-        try:
-            output = model.generate(prompt, max_new_tokens=256, temperature=0.0, top_p=1.0)
-        except TypeError:
-            output = model.generate(prompt)  # type: ignore[call-arg]
-    elif callable(model):
-        try:
-            output = model(prompt, max_new_tokens=256, temperature=0.0, top_p=1.0)
-        except TypeError:
-            output = model(prompt)
-    else:
-        return str(prompt)
-
-    if isinstance(output, str):
-        return output
-    if isinstance(output, list) and output and isinstance(output[0], dict) and "generated_text" in output[0]:
-        return output[0]["generated_text"]
-    return str(output)
+    model_key = str(getattr(model, "model_key", getattr(model, "name", "llm1")) or "llm1")
+    output_text, _ = invoke_model_with_telemetry(model, prompt, model_key=model_key)
+    return output_text
 
 
 def _parse_model_output(text: str) -> Dict[str, Any]:
@@ -528,7 +518,7 @@ def run_ticket_pipeline(
         raise RuntimeError(f"Model '{base_model_name}' is not available; check model registry or subset filter.")
     escalation_model = models.get(escalation_model_name) if escalation_model_name else None
 
-    def _call_and_parse(model: Any) -> Dict[str, Any]:
+    def _call_and_parse(model: Any, model_key: str) -> Tuple[Dict[str, Any], List[ModelCallTelemetry]]:
         prompt = build_prompt(
             ticket_text=text,
             kb_snippets=kb_texts,
@@ -537,8 +527,14 @@ def run_ticket_pipeline(
             memory_mode=memory_mode,
         )
         parsed_output: Dict[str, Any] = {}
+        telemetry_records: List[ModelCallTelemetry] = []
         for attempt in range(max_retries):
-            raw_output = _call_model(model, prompt)
+            raw_output, telemetry = invoke_model_with_telemetry(
+                model,
+                prompt,
+                model_key=model_key,
+            )
+            telemetry_records.append(telemetry)
             parsed_output = _parse_model_output(raw_output)
             try:
                 validate_agent_output({"original_query": text, **parsed_output})
@@ -547,11 +543,11 @@ def run_ticket_pipeline(
                 if attempt == max_retries - 1:
                     parsed_output = {}
                 continue
-        return parsed_output
+        return parsed_output, telemetry_records
 
     # Routing decision
     chosen_model_name = base_model_name
-    parsed_output = _call_and_parse(base_model)
+    parsed_output, model_call_telemetry = _call_and_parse(base_model, base_model_name)
     initial_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(initial_steps, list):
         initial_steps = []
@@ -586,7 +582,12 @@ def run_ticket_pipeline(
     if router_mode == "slm_dominant" and routing_decision.escalated and escalation_model is None:
         raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
     if should_execute_escalation:
-        parsed_output = _call_and_parse(escalation_model)  # type: ignore[arg-type]
+        escalated_output, escalation_telemetry = _call_and_parse(
+            escalation_model,  # type: ignore[arg-type]
+            escalation_model_name or base_model_name,
+        )
+        parsed_output = escalated_output
+        model_call_telemetry.extend(escalation_telemetry)
         chosen_model_name = escalation_model_name or base_model_name
         escalated = True
 
@@ -600,6 +601,7 @@ def run_ticket_pipeline(
         or f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
     )
     default_answer = parsed_output.get("final_answer", "") or "No valid answer produced"
+    telemetry_summary = aggregate_model_call_telemetry(model_call_telemetry)
     parsed_escalation = parsed_output.get("escalation_flags") or {}
     escalation_flags = {
         "needs_human": bool(parsed_escalation.get("needs_human", False)),
@@ -636,12 +638,36 @@ def run_ticket_pipeline(
         "escalation_flags": escalation_flags,
         "metrics": {
             "latency_ms": total_latency_ms,
-            "total_input_tokens": 0,
-            "total_output_tokens": 0,
-            "total_cost_usd": 0.0,
+            "total_input_tokens": telemetry_summary["total_input_tokens"],
+            "total_output_tokens": telemetry_summary["total_output_tokens"],
+            "total_tokens": telemetry_summary["total_tokens"],
+            "total_input_cost_usd": telemetry_summary["total_input_cost_usd"],
+            "total_output_cost_usd": telemetry_summary["total_output_cost_usd"],
+            "total_cost_usd": telemetry_summary["total_cost_usd"],
+            "slm_input_tokens": telemetry_summary["slm_input_tokens"],
+            "slm_output_tokens": telemetry_summary["slm_output_tokens"],
+            "slm_total_tokens": telemetry_summary["slm_total_tokens"],
+            "slm_cost_usd": telemetry_summary["slm_cost_usd"],
+            "llm_input_tokens": telemetry_summary["llm_input_tokens"],
+            "llm_output_tokens": telemetry_summary["llm_output_tokens"],
+            "llm_total_tokens": telemetry_summary["llm_total_tokens"],
+            "llm_cost_usd": telemetry_summary["llm_cost_usd"],
+            "token_count_method_summary": telemetry_summary["token_count_method_summary"],
+            "pricing_version": telemetry_summary["pricing_version"],
+            "pricing_source": telemetry_summary["pricing_source"],
             # Optional: add classification latency for debugging
             "classification_latency_ms": classify_latency,
         },
+        "model_call_telemetry": telemetry_records_as_dicts(model_call_telemetry),
+        "total_input_tokens": telemetry_summary["total_input_tokens"],
+        "total_output_tokens": telemetry_summary["total_output_tokens"],
+        "total_tokens": telemetry_summary["total_tokens"],
+        "total_cost_usd": telemetry_summary["total_cost_usd"],
+        "slm_cost_usd": telemetry_summary["slm_cost_usd"],
+        "llm_cost_usd": telemetry_summary["llm_cost_usd"],
+        "token_count_method_summary": telemetry_summary["token_count_method_summary"],
+        "pricing_version": telemetry_summary["pricing_version"],
+        "pricing_source": telemetry_summary["pricing_source"],
         "initial_model": routing_decision.initial_model,
         "final_model": chosen_model_name,
         "escalated": bool(escalated),

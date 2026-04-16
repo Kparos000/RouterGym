@@ -55,13 +55,17 @@ class RemoteInferenceEngine:
     def __init__(
         self,
         model_id: str,
+        model_key: Optional[str] = None,
         kind: str = "llm",
         token: Optional[str] = None,
         timeout: int = 30,
         max_retries: int = 1,
     ) -> None:
+        self.model_key = model_key or model_id
         self.model_name = model_id
         self.kind = kind
+        self.backend_used = "hf_inference"
+        self.last_usage: Optional[Dict[str, int]] = None
         self.client = InferenceClient(model=model_id, token=token, timeout=timeout)
         self.timeout = timeout
         self.max_retries = max_retries
@@ -86,6 +90,48 @@ class RemoteInferenceEngine:
                 return None
         return None
 
+    def _extract_usage(self, response: Any) -> Optional[Dict[str, int]]:
+        if response is None:
+            return None
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage")
+        if usage is None:
+            return None
+
+        def _coerce(value: Any) -> Optional[int]:
+            if isinstance(value, bool):
+                return int(value)
+            if isinstance(value, (int, float)):
+                return max(int(value), 0)
+            return None
+
+        if isinstance(usage, dict):
+            prompt_tokens = _coerce(usage.get("prompt_tokens", usage.get("input_tokens")))
+            completion_tokens = _coerce(
+                usage.get("completion_tokens", usage.get("output_tokens"))
+            )
+            total_tokens = _coerce(usage.get("total_tokens"))
+        else:
+            prompt_tokens = _coerce(getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", None)))
+            completion_tokens = _coerce(
+                getattr(usage, "completion_tokens", getattr(usage, "output_tokens", None))
+            )
+            total_tokens = _coerce(getattr(usage, "total_tokens", None))
+
+        if prompt_tokens is None and completion_tokens is None and total_tokens is None:
+            return None
+        safe_prompt = prompt_tokens or 0
+        safe_completion = completion_tokens or 0
+        safe_total = total_tokens if total_tokens is not None else safe_prompt + safe_completion
+        if safe_total == 0:
+            safe_total = safe_prompt + safe_completion
+        return {
+            "input_tokens": safe_prompt,
+            "output_tokens": safe_completion,
+            "total_tokens": safe_total,
+        }
+
     def generate(
         self,
         prompt: str,
@@ -101,6 +147,7 @@ class RemoteInferenceEngine:
                 "predicted_category": "unknown",
             }
         )
+        self.last_usage = None
         for _attempt in range(max(1, self.max_retries + 1)):
             try:
                 response = self.client.chat_completion(  # type: ignore[call-overload]
@@ -110,10 +157,12 @@ class RemoteInferenceEngine:
                     temperature=temperature,
                     response_format={"type": "json_object"},
                 )
+                self.last_usage = self._extract_usage(response)
                 content = self._extract_content(response)
                 if content is not None:
                     return str(content)
             except Exception:
+                self.last_usage = None
                 continue
         return fallback
 
@@ -175,7 +224,15 @@ def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]])
 
 
 def _build_engine(entry: ModelEntry, token: Optional[str]) -> RemoteInferenceEngine:
-    return RemoteInferenceEngine(entry.hf_id, kind=entry.kind, token=token)
+    return RemoteInferenceEngine(entry.hf_id, model_key=entry.name, kind=entry.kind, token=token)
+
+
+def _tag_local_engine(engine: Any, entry: ModelEntry) -> Any:
+    setattr(engine, "model_key", entry.name)
+    setattr(engine, "kind", entry.kind)
+    setattr(engine, "backend_used", "vllm_local")
+    setattr(engine, "last_usage", None)
+    return engine
 
 
 def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
@@ -209,9 +266,9 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
         local_vllm_engine = _get_local_vllm_engine_class()
         if not force_llm:
             for entry in slm_entries:
-                models[entry.name] = local_vllm_engine(entry.hf_id)
+                models[entry.name] = _tag_local_engine(local_vllm_engine(entry.hf_id), entry)
         for entry in llm_entries:
-            models[entry.name] = local_vllm_engine(entry.hf_id)
+            models[entry.name] = _tag_local_engine(local_vllm_engine(entry.hf_id), entry)
     else:  # hf_inference default
         if not force_llm:
             for entry in slm_entries:
