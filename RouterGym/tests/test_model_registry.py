@@ -134,6 +134,31 @@ def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch
     assert engine.last_endpoint_path == "chat_completion_plain"
 
 
+def test_large_hf_llms_do_not_fall_back_to_text_generation(monkeypatch: Any) -> None:
+    class ChatOnlyClient(DummyClient):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self.text_generation_calls = 0
+
+        def chat_completion(self, **kwargs: Any):
+            raise RuntimeError("conversational only")
+
+        def text_generation(self, prompt: str, **kwargs: Any):
+            self.text_generation_calls += 1
+            raise AssertionError("text_generation should not be called for llm1/llm2")
+
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: ChatOnlyClient(*args, **kwargs))
+
+    for model_key in ("llm1", "llm2"):
+        engine = model_registry.RemoteInferenceEngine("model", model_key=model_key, token="tkn", max_retries=0)
+        text = engine.generate("hi")
+        assert "LLM unavailable" in text
+        assert engine.last_endpoint_path == ""
+        assert engine.last_error is not None
+        assert engine.last_error.get("phase") == "chat_completion_plain"
+        assert getattr(engine.client, "text_generation_calls", 0) == 0
+
+
 def test_get_repair_model(monkeypatch: Any) -> None:
     """Repair model should return strongest LLM remote engine."""
     monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))

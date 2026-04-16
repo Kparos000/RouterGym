@@ -48,6 +48,7 @@ LLM_MODELS: Dict[str, ModelEntry] = {
     "llm1": ModelEntry("llm1", "openai/gpt-oss-20b", "llm"),
     "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-14B-Instruct", "llm"),
 }
+HF_CHAT_ONLY_MODEL_KEYS = frozenset({"llm1", "llm2"})
 
 
 class RemoteInferenceEngine:
@@ -216,6 +217,8 @@ class RemoteInferenceEngine:
                     "stack_trace": traceback.format_exc(),
                     "phase": "chat_completion_plain",
                 }
+            if self.model_key in HF_CHAT_ONLY_MODEL_KEYS:
+                continue
             try:
                 response = self.client.text_generation(
                     prompt,
