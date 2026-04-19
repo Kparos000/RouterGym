@@ -91,9 +91,90 @@ def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> No
     assert engine.last_usage == {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
 
 
+def test_openai_compatible_engine_records_missing_content_error(monkeypatch: Any) -> None:
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "reasoning": "thinking",
+                            },
+                            "finish_reason": "length",
+                        }
+                    ]
+                }
+            ).encode("utf-8")
+
+    def fake_urlopen(req: Any, timeout: int = 0) -> FakeResponse:
+        del req, timeout
+        return FakeResponse()
+
+    from RouterGym.engines import openai_compatible as openai_module
+
+    monkeypatch.setattr(openai_module.request, "urlopen", fake_urlopen)
+    engine = OpenAICompatibleEngine(
+        "openai/gpt-oss-20b",
+        model_key="llm1",
+        base_url="http://localhost:8000",
+        api_key="test-key",
+        max_retries=0,
+    )
+    output = engine.generate("hello", max_new_tokens=50, temperature=0.0)
+    assert "LLM unavailable" in output
+    assert engine.last_endpoint_path == "openai_chat_completions"
+    assert engine.last_error is not None
+    assert engine.last_error["error_type"] == "ValueError"
+    assert engine.last_error["phase"] == "response_parsing"
+    assert engine.last_error["finish_reason"] == "length"
+    assert engine.last_error["reasoning_present"] == "True"
+
+
+def test_smoke_script_surfaces_backend_error_on_failure(monkeypatch: Any) -> None:
+    class FakeEngine:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            del args, kwargs
+            self.last_endpoint_path = ""
+            self.last_error = {
+                "error_type": "HTTPError",
+                "message": "HTTP Error 401: Unauthorized",
+            }
+
+        def generate(self, *args: Any, **kwargs: Any) -> str:
+            del args, kwargs
+            return json.dumps(
+                {
+                    "final_answer": "LLM unavailable",
+                    "reasoning": "timeout or error",
+                    "predicted_category": "unknown",
+                }
+            )
+
+    monkeypatch.setattr(smoke_script, "OpenAICompatibleEngine", FakeEngine)
+    result = smoke_script.run_smoke_test(model_key="llm1", base_url="http://localhost:8123")
+    assert result["status"] == "failure"
+    assert result["model_id"] == "openai/gpt-oss-20b"
+    assert result["max_new_tokens"] == 512
+    assert result["backend_error"] == {
+        "error_type": "HTTPError",
+        "message": "HTTP Error 401: Unauthorized",
+    }
+
+
 def test_smoke_script_dry_run() -> None:
     result = smoke_script.run_smoke_test(model_key="llm1", dry_run=True, base_url="http://localhost:8123")
     assert result["status"] == "dry_run"
     assert result["model_key"] == "llm1"
     assert result["model_id"] == "openai/gpt-oss-20b"
     assert result["base_url"] == "http://localhost:8123"
+    assert result["max_new_tokens"] == 512
+    assert result["backend_error"] is None

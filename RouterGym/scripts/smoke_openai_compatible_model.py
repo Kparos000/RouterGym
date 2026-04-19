@@ -23,6 +23,14 @@ DEFAULT_PROMPT = (
     "Return strict JSON with keys final_answer, reasoning, predicted_category. "
     "Ticket: reset VPN access."
 )
+DEFAULT_SMOKE_MAX_NEW_TOKENS = 80
+GPT_OSS_SMOKE_MAX_NEW_TOKENS = 512
+
+
+def _resolve_smoke_max_new_tokens(model_id: str) -> int:
+    if model_id.startswith("openai/gpt-oss"):
+        return GPT_OSS_SMOKE_MAX_NEW_TOKENS
+    return DEFAULT_SMOKE_MAX_NEW_TOKENS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -46,14 +54,17 @@ def run_smoke_test(
     entry = LLM_MODELS[model_key]
     resolved_base_url = base_url or _get_openai_compatible_base_url()
     resolved_api_key = api_key or _get_openai_compatible_api_key()
+    max_new_tokens = _resolve_smoke_max_new_tokens(entry.hf_id)
     payload: Dict[str, Any] = {
         "status": "dry_run" if dry_run else "pending",
         "model_key": model_key,
         "model_id": entry.hf_id,
         "backend_used": "openai_compatible",
         "base_url": resolved_base_url,
+        "max_new_tokens": max_new_tokens,
         "endpoint_path": "",
         "output_preview": "",
+        "backend_error": None,
     }
     if dry_run:
         return payload
@@ -67,9 +78,10 @@ def run_smoke_test(
         timeout=30,
         max_retries=0,
     )
-    output = engine.generate(prompt, max_new_tokens=80, temperature=0.0)
+    output = engine.generate(prompt, max_new_tokens=max_new_tokens, temperature=0.0)
     payload["endpoint_path"] = engine.last_endpoint_path or "none"
     payload["output_preview"] = output[:300].replace("\n", " ")
+    payload["backend_error"] = engine.last_error
     payload["status"] = "success" if "LLM unavailable" not in output else "failure"
     return payload
 

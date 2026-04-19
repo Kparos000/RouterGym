@@ -96,6 +96,39 @@ class OpenAICompatibleEngine:
             "total_tokens": total_tokens or (input_tokens + output_tokens),
         }
 
+    def _build_missing_content_error(self, payload: Dict[str, Any]) -> Dict[str, str]:
+        choices = payload.get("choices", [])
+        if not isinstance(choices, list) or not choices:
+            return {
+                "error_type": "ValueError",
+                "message": "OpenAI-compatible response did not include any choices.",
+                "phase": "response_parsing",
+            }
+
+        first = choices[0]
+        if not isinstance(first, dict):
+            return {
+                "error_type": "ValueError",
+                "message": "OpenAI-compatible response choice was not an object.",
+                "phase": "response_parsing",
+            }
+
+        message = first.get("message", {})
+        message_keys = ""
+        reasoning_present = "False"
+        if isinstance(message, dict):
+            message_keys = ",".join(sorted(str(key) for key in message.keys()))
+            reasoning_present = str(bool(message.get("reasoning")))
+
+        return {
+            "error_type": "ValueError",
+            "message": "OpenAI-compatible response did not include assistant message content.",
+            "phase": "response_parsing",
+            "finish_reason": str(first.get("finish_reason") or ""),
+            "reasoning_present": reasoning_present,
+            "message_keys": message_keys,
+        }
+
     def generate(
         self,
         prompt: str,
@@ -136,13 +169,19 @@ class OpenAICompatibleEngine:
                     raw = response.read().decode("utf-8")
                 parsed = json.loads(raw)
                 if not isinstance(parsed, dict):
+                    self.last_error = {
+                        "error_type": "ValueError",
+                        "message": "OpenAI-compatible response body was not a JSON object.",
+                        "phase": "response_parsing",
+                    }
                     continue
                 self.last_usage = self._extract_usage(parsed)
                 self.last_endpoint_path = "openai_chat_completions"
-                self.last_error = None
                 content = self._extract_content(parsed)
                 if content is not None:
+                    self.last_error = None
                     return content
+                self.last_error = self._build_missing_content_error(parsed)
             except Exception as exc:
                 self.last_usage = None
                 self.last_endpoint_path = ""
