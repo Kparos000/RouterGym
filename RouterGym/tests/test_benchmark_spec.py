@@ -14,7 +14,7 @@ def test_benchmark_spec_is_frozen() -> None:
 
 
 def test_model_lineup_and_pricing_version_match() -> None:
-    assert benchmark_spec.MODEL_LINEUP["llm1"] == "openai/gpt-oss-20b"
+    assert benchmark_spec.MODEL_LINEUP["llm1"] == "mistralai/Mistral-Small-24B-Instruct-2501"
     assert benchmark_spec.MODEL_LINEUP["llm2"] == "Qwen/Qwen2.5-14B-Instruct"
     assert benchmark_spec.PRICING_VERSION == "normalized_v3"
     assert pricing.PRICING_VERSION == "normalized_v3"

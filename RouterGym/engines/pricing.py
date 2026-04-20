@@ -46,10 +46,10 @@ PRICING_TABLE: Dict[str, PricingEntry] = {
     ),
     "llm1": PricingEntry(
         model_key="llm1",
-        model_name="openai/gpt-oss-20b",
+        model_name="mistralai/Mistral-Small-24B-Instruct-2501",
         family="llm",
-        input_cost_per_1k_tokens=0.004,
-        output_cost_per_1k_tokens=0.004,
+        input_cost_per_1k_tokens=0.006,
+        output_cost_per_1k_tokens=0.006,
     ),
     "llm2": PricingEntry(
         model_key="llm2",

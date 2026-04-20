@@ -51,7 +51,7 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
     models = model_registry.load_models(sanity=False)
     assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
     assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
-    assert "openai/gpt-oss-20b" in created
+    assert "mistralai/Mistral-Small-24B-Instruct-2501" in created
     assert "Qwen/Qwen2.5-14B-Instruct" in created
 
 
@@ -168,5 +168,5 @@ def test_get_repair_model(monkeypatch: Any) -> None:
 
 
 def test_llm_entries_match_frozen_models() -> None:
-    assert model_registry.LLM_MODELS["llm1"].hf_id == "openai/gpt-oss-20b"
+    assert model_registry.LLM_MODELS["llm1"].hf_id == "mistralai/Mistral-Small-24B-Instruct-2501"
     assert model_registry.LLM_MODELS["llm2"].hf_id == "Qwen/Qwen2.5-14B-Instruct"

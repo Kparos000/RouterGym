@@ -75,7 +75,7 @@ def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> No
 
     monkeypatch.setattr(openai_module.request, "urlopen", fake_urlopen)
     engine = OpenAICompatibleEngine(
-        "openai/gpt-oss-20b",
+        "mistralai/Mistral-Small-24B-Instruct-2501",
         model_key="llm1",
         base_url="http://localhost:8000",
         api_key="test-key",
@@ -86,7 +86,7 @@ def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> No
     assert captured["url"] == "http://localhost:8000/v1/chat/completions"
     assert captured["authorization"] == "Bearer test-key"
     assert captured["content_type"] == "application/json"
-    assert captured["body"]["model"] == "openai/gpt-oss-20b"
+    assert captured["body"]["model"] == "mistralai/Mistral-Small-24B-Instruct-2501"
     assert engine.last_endpoint_path == "openai_chat_completions"
     assert engine.last_usage == {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
 
@@ -174,7 +174,7 @@ def test_smoke_script_dry_run() -> None:
     result = smoke_script.run_smoke_test(model_key="llm1", dry_run=True, base_url="http://localhost:8123")
     assert result["status"] == "dry_run"
     assert result["model_key"] == "llm1"
-    assert result["model_id"] == "openai/gpt-oss-20b"
+    assert result["model_id"] == "mistralai/Mistral-Small-24B-Instruct-2501"
     assert result["base_url"] == "http://localhost:8123"
     assert result["max_new_tokens"] == 512
     assert result["backend_error"] is None

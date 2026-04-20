@@ -45,7 +45,7 @@ SLM_MODELS: Dict[str, ModelEntry] = {
 }
 
 LLM_MODELS: Dict[str, ModelEntry] = {
-    "llm1": ModelEntry("llm1", "openai/gpt-oss-20b", "llm"),
+    "llm1": ModelEntry("llm1", "mistralai/Mistral-Small-24B-Instruct-2501", "llm"),
     "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-14B-Instruct", "llm"),
 }
 # These benchmark models are routed through HF providers that expose

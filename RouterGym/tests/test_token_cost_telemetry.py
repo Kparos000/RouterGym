@@ -73,7 +73,7 @@ def test_aggregate_model_call_telemetry_splits_slm_vs_llm() -> None:
             ),
             ModelCallTelemetry(
                 model_key="llm1",
-                model_name="openai/gpt-oss-20b",
+                model_name="mistralai/Mistral-Small-24B-Instruct-2501",
                 model_family="llm",
                 backend_used="hf_inference",
                 input_tokens=40,
