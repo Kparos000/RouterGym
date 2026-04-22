@@ -12,7 +12,7 @@ from typing import Dict, List
 
 BENCHMARK_SPEC_VERSION = "dissertation_run_v1"
 PRICING_VERSION = "normalized_v3"
-PRODUCTION_CHUNK_SIZE = 5000
+PRODUCTION_CHUNK_SIZE = 100
 MEMORY_MODES = ["none", "rag_bm25", "rag_dense", "rag_hybrid"]
 
 MODEL_LINEUP: Dict[str, str] = {

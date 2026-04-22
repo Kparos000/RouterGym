@@ -14,15 +14,15 @@ matrix without changing benchmark semantics.
 
 ## Default production chunking
 
-- Default chunk size: `5000`
+- Default chunk size: `100`
 - Chunk boundaries are deterministic and based on dataset row order
 - Chunk filenames include both chunk index and ticket range
 
 Example chunk naming:
 
-- `chunk_0000__tickets_000000_004999__results.jsonl`
-- `chunk_0000__tickets_000000_004999__failures.jsonl`
-- `chunk_0000__tickets_000000_004999__metadata.json`
+- `chunk_0000__tickets_000000_000099__results.jsonl`
+- `chunk_0000__tickets_000000_000099__failures.jsonl`
+- `chunk_0000__tickets_000000_000099__metadata.json`
 
 ## Manifest behavior
 

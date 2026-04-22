@@ -8,7 +8,7 @@ from RouterGym.engines import pricing
 
 def test_benchmark_spec_is_frozen() -> None:
     assert benchmark_spec.BENCHMARK_SPEC_VERSION == "dissertation_run_v1"
-    assert benchmark_spec.PRODUCTION_CHUNK_SIZE == 5000
+    assert benchmark_spec.PRODUCTION_CHUNK_SIZE == 100
     assert benchmark_spec.MEMORY_MODES == ["none", "rag_bm25", "rag_dense", "rag_hybrid"]
     assert benchmark_spec.FINAL_CONFIG_COUNT == 36
 

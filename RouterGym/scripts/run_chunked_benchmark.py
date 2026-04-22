@@ -2,7 +2,7 @@
 
 Examples:
     python -m RouterGym.scripts.run_chunked_benchmark --preflight-size 100 --config-id slm_only__base_slm1__mem_none --dry-run
-    python -m RouterGym.scripts.run_chunked_benchmark --backend openai_compatible --chunk-size 5000
+    python -m RouterGym.scripts.run_chunked_benchmark --backend openai_compatible --chunk-size 100
     python -m RouterGym.scripts.run_chunked_benchmark --config-id slm_dominant__base_slm1__esc_llm1__mem_rag_bm25 --merge-only
 """
 
