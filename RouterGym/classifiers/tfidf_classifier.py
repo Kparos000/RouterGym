@@ -89,7 +89,6 @@ class TFIDFClassifier(ClassifierProtocol):
             class_weight="balanced",
             max_iter=2000,
             solver="lbfgs",
-            multi_class="multinomial",
             n_jobs=None,
             random_state=self.random_state,
         )

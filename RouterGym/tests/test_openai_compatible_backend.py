@@ -162,8 +162,8 @@ def test_smoke_script_surfaces_backend_error_on_failure(monkeypatch: Any) -> Non
     monkeypatch.setattr(smoke_script, "OpenAICompatibleEngine", FakeEngine)
     result = smoke_script.run_smoke_test(model_key="llm1", base_url="http://localhost:8123")
     assert result["status"] == "failure"
-    assert result["model_id"] == "openai/gpt-oss-20b"
-    assert result["max_new_tokens"] == 512
+    assert result["model_id"] == "mistralai/Mistral-Small-24B-Instruct-2501"
+    assert result["max_new_tokens"] == 80
     assert result["backend_error"] == {
         "error_type": "HTTPError",
         "message": "HTTP Error 401: Unauthorized",
@@ -176,5 +176,5 @@ def test_smoke_script_dry_run() -> None:
     assert result["model_key"] == "llm1"
     assert result["model_id"] == "mistralai/Mistral-Small-24B-Instruct-2501"
     assert result["base_url"] == "http://localhost:8123"
-    assert result["max_new_tokens"] == 512
+    assert result["max_new_tokens"] == 80
     assert result["backend_error"] is None
