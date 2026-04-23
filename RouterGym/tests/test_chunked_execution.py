@@ -69,6 +69,35 @@ def test_production_chunk_size_defaults_to_100_ticket_boundaries() -> None:
     ]
 
 
+def test_build_parallel_config_plan_assigns_gpu_slots() -> None:
+    tmp_path = _temp_dir()
+    plan = chunked_execution.build_parallel_config_plan(
+        output_root=tmp_path,
+        backend_name="openai_compatible",
+        config_ids=[
+            "slm_only__base_slm1__mem_none",
+            "slm_only__base_slm2__mem_none",
+            "llm_only__base_llm1__mem_none",
+        ],
+        parallel_workers=2,
+        gpu_ids=["0", "1"],
+        ticket_start=0,
+        ticket_limit=47000,
+        chunk_size=100,
+    )
+
+    assert [entry["config_identifier"] for entry in plan] == [
+        "slm_only__base_slm1__mem_none",
+        "slm_only__base_slm2__mem_none",
+        "llm_only__base_llm1__mem_none",
+    ]
+    assert [entry["worker_slot"] for entry in plan] == [0, 1, 0]
+    assert [entry["gpu_id"] for entry in plan] == ["0", "1", "0"]
+    assert plan[0]["manifest_path"].endswith("slm_only__base_slm1__mem_none\\manifest.json")
+    assert plan[1]["output_dir"].endswith("openai_compatible\\slm_only__base_slm2__mem_none")
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_manifest_creation_and_update(monkeypatch: Any) -> None:
     _patch_dataset(monkeypatch, size=4)
     tmp_path = _temp_dir()
@@ -215,6 +244,65 @@ def test_resume_skips_completed_chunks(monkeypatch: Any) -> None:
         dry_run=False,
     )
     assert seen_ticket_ids == []
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_resume_is_independent_per_config(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=4)
+    tmp_path = _temp_dir()
+    seen_calls: List[tuple[str, str]] = []
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        seen_calls.append((str(kwargs["base_model_name"]), str(kwargs["ticket"]["ticket_id"])))
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "ok",
+            "reasoning": "r",
+            "model_name": kwargs["base_model_name"],
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    chunked_execution.run_benchmark_matrix_chunked(
+        output_root=tmp_path,
+        config_ids=["slm_only__base_slm1__mem_none"],
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=4,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+    assert seen_calls == [("slm1", "0"), ("slm1", "1"), ("slm1", "2"), ("slm1", "3")]
+
+    seen_calls.clear()
+    results = chunked_execution.run_benchmark_matrix_chunked(
+        output_root=tmp_path,
+        config_ids=["slm_only__base_slm1__mem_none", "slm_only__base_slm2__mem_none"],
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=4,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+
+    assert seen_calls == [("slm2", "0"), ("slm2", "1"), ("slm2", "2"), ("slm2", "3")]
+    config_ids = [entry["config_identifier"] for entry in results]
+    assert config_ids == ["slm_only__base_slm1__mem_none", "slm_only__base_slm2__mem_none"]
+    assert Path(results[0]["manifest_path"]) != Path(results[1]["manifest_path"])
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

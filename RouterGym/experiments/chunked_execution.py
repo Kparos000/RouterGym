@@ -18,7 +18,7 @@ import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from RouterGym.benchmark_spec import (
     BENCHMARK_SPEC_VERSION,
@@ -75,6 +75,32 @@ def get_frozen_config_map() -> Dict[str, Dict[str, str]]:
     }
 
 
+def resolve_selected_configs(
+    *,
+    config_id: Optional[str] = None,
+    config_ids: Optional[Sequence[str]] = None,
+) -> List[Tuple[str, Dict[str, str]]]:
+    """Return one or many frozen configs while preserving explicit input order."""
+
+    if config_id and config_ids:
+        raise ValueError("Provide either config_id or config_ids, not both.")
+
+    config_map = get_frozen_config_map()
+    if config_id:
+        selected_ids = [config_id]
+    elif config_ids:
+        selected_ids = [str(item) for item in config_ids]
+    else:
+        selected_ids = sorted(config_map)
+
+    selected: List[Tuple[str, Dict[str, str]]] = []
+    for selected_id in selected_ids:
+        if selected_id not in config_map:
+            raise KeyError(f"Unknown config identifier: {selected_id}")
+        selected.append((selected_id, dict(config_map[selected_id])))
+    return selected
+
+
 def build_chunk_plan(
     *,
     total_tickets: int,
@@ -124,6 +150,56 @@ def resolve_backend_details(backend_override: Optional[str] = None) -> Dict[str,
             os.getenv("ROUTERGYM_OPENAI_API_KEY") or os.getenv("ROUTERGYM_VLLM_API_KEY")
         )
     return details
+
+
+def build_parallel_config_plan(
+    *,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    backend_name: str,
+    config_id: Optional[str] = None,
+    config_ids: Optional[Sequence[str]] = None,
+    parallel_workers: int = 1,
+    gpu_ids: Optional[Sequence[str]] = None,
+    ticket_start: int = 0,
+    ticket_limit: Optional[int] = None,
+    chunk_size: int = PRODUCTION_CHUNK_SIZE,
+) -> List[Dict[str, Any]]:
+    """Build a deterministic config-level worker assignment plan."""
+
+    if parallel_workers <= 0:
+        raise ValueError("parallel_workers must be > 0")
+
+    selected = resolve_selected_configs(config_id=config_id, config_ids=config_ids)
+    normalized_gpu_ids = [str(gpu_id).strip() for gpu_id in (gpu_ids or []) if str(gpu_id).strip()]
+    if normalized_gpu_ids and parallel_workers > len(normalized_gpu_ids):
+        raise ValueError("parallel_workers cannot exceed the number of provided gpu_ids.")
+
+    worker_count = min(parallel_workers, len(selected))
+    if normalized_gpu_ids:
+        worker_count = min(worker_count, len(normalized_gpu_ids))
+    worker_count = max(worker_count, 1)
+
+    plan: List[Dict[str, Any]] = []
+    for queue_index, (selected_id, config) in enumerate(selected):
+        worker_slot = queue_index % worker_count
+        gpu_id = normalized_gpu_ids[worker_slot] if normalized_gpu_ids else None
+        config_dir = get_config_output_dir(output_root, backend_name, selected_id)
+        plan.append(
+            {
+                "queue_index": queue_index,
+                "worker_slot": worker_slot,
+                "gpu_id": gpu_id,
+                "config_identifier": selected_id,
+                "config": dict(config),
+                "backend_name": backend_name,
+                "output_dir": str(config_dir),
+                "manifest_path": str(get_manifest_path(output_root, backend_name, selected_id)),
+                "ticket_start": int(ticket_start),
+                "ticket_limit": ticket_limit,
+                "chunk_size": int(chunk_size),
+            }
+        )
+    return plan
 
 
 @contextmanager
@@ -644,6 +720,7 @@ def run_benchmark_matrix_chunked(
     *,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
     config_id: Optional[str] = None,
+    config_ids: Optional[Sequence[str]] = None,
     chunk_size: int = PRODUCTION_CHUNK_SIZE,
     ticket_start: int = 0,
     ticket_limit: Optional[int] = None,
@@ -653,13 +730,7 @@ def run_benchmark_matrix_chunked(
 ) -> List[Dict[str, Any]]:
     """Run one or many frozen configs through the chunked execution wrapper."""
 
-    config_map = get_frozen_config_map()
-    if config_id:
-        if config_id not in config_map:
-            raise KeyError(f"Unknown config identifier: {config_id}")
-        selected = [(config_id, config_map[config_id])]
-    else:
-        selected = sorted(config_map.items())
+    selected = resolve_selected_configs(config_id=config_id, config_ids=config_ids)
 
     results: List[Dict[str, Any]] = []
     for selected_id, config in selected:
@@ -687,6 +758,7 @@ __all__ = [
     "chunk_file_stem",
     "chunk_metadata_path",
     "chunk_results_path",
+    "build_parallel_config_plan",
     "describe_resume_behavior",
     "ensure_manifest",
     "execute_chunk",
@@ -695,6 +767,7 @@ __all__ = [
     "get_manifest_path",
     "merge_completed_chunks",
     "resolve_backend_details",
+    "resolve_selected_configs",
     "run_benchmark_matrix_chunked",
     "run_config_chunked",
 ]

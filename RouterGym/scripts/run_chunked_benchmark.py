@@ -3,6 +3,7 @@
 Examples:
     python -m RouterGym.scripts.run_chunked_benchmark --preflight-size 100 --config-id slm_only__base_slm1__mem_none --dry-run
     python -m RouterGym.scripts.run_chunked_benchmark --backend openai_compatible --chunk-size 100
+    python -m RouterGym.scripts.run_chunked_benchmark --config-ids slm_only__base_slm1__mem_none slm_only__base_slm2__mem_none --parallel-workers 2 --gpu-ids 0,1
     python -m RouterGym.scripts.run_chunked_benchmark --config-id slm_dominant__base_slm1__esc_llm1__mem_rag_bm25 --merge-only
 """
 
@@ -10,16 +11,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from RouterGym.benchmark_spec import PRODUCTION_CHUNK_SIZE
 from RouterGym.experiments.chunked_execution import (
     DEFAULT_OUTPUT_ROOT,
-    get_frozen_config_map,
+    build_parallel_config_plan,
     get_manifest_path,
     merge_completed_chunks,
     resolve_backend_details,
+    resolve_selected_configs,
     run_benchmark_matrix_chunked,
 )
 
@@ -27,6 +33,12 @@ from RouterGym.experiments.chunked_execution import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Chunked/resumable production benchmark runner.")
     parser.add_argument("--config-id", type=str, default=None, help="Run only one frozen config identifier.")
+    parser.add_argument(
+        "--config-ids",
+        nargs="+",
+        default=None,
+        help="Optional ordered list of frozen config identifiers.",
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -56,6 +68,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional backend override for this run.",
     )
     parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=1,
+        help="Config-level worker count for concurrent execution (default 1).",
+    )
+    parser.add_argument(
+        "--gpu-ids",
+        type=str,
+        default=None,
+        help="Optional comma-separated GPU ids; one visible GPU per worker slot.",
+    )
+    parser.add_argument(
         "--merge-only",
         action="store_true",
         help="Merge completed chunk outputs without running new work.",
@@ -73,14 +97,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _parse_gpu_ids(raw_value: Optional[str]) -> List[str]:
+    if not raw_value:
+        return []
+    return [chunk.strip() for chunk in str(raw_value).split(",") if chunk.strip()]
+
+
+def _resolve_parallel_workers(requested_workers: int, gpu_ids: Sequence[str]) -> int:
+    if requested_workers <= 0:
+        raise ValueError("parallel_workers must be > 0")
+    if gpu_ids and requested_workers == 1:
+        return len(gpu_ids)
+    return requested_workers
+
+
 def _merge_selection(
     *,
     output_root: Path,
     config_id: Optional[str],
+    config_ids: Optional[Sequence[str]],
     backend_name: str,
 ) -> List[dict]:
-    config_map = get_frozen_config_map()
-    selected_ids = [config_id] if config_id else sorted(config_map)
+    selected_ids = [selected_id for selected_id, _ in resolve_selected_configs(config_id=config_id, config_ids=config_ids)]
     merged_results = []
     for selected_id in selected_ids:
         manifest_path = get_manifest_path(output_root, backend_name, selected_id)
@@ -95,21 +133,199 @@ def _merge_selection(
     return merged_results
 
 
+def _single_config_command(
+    *,
+    selected_id: str,
+    output_root: Path,
+    chunk_size: int,
+    ticket_start: int,
+    ticket_limit: Optional[int],
+    backend_name: Optional[str],
+    resume: bool,
+) -> List[str]:
+    command = [
+        sys.executable,
+        "-m",
+        "RouterGym.scripts.run_chunked_benchmark",
+        "--config-id",
+        selected_id,
+        "--output-root",
+        str(output_root),
+        "--chunk-size",
+        str(chunk_size),
+        "--start",
+        str(ticket_start),
+    ]
+    if ticket_limit is not None:
+        command.extend(["--limit", str(ticket_limit)])
+    if backend_name:
+        command.extend(["--backend", backend_name])
+    if not resume:
+        command.append("--no-resume")
+    return command
+
+
+def _run_parallel_selection(
+    *,
+    output_root: Path,
+    config_id: Optional[str],
+    config_ids: Optional[Sequence[str]],
+    chunk_size: int,
+    ticket_start: int,
+    ticket_limit: Optional[int],
+    backend_name: Optional[str],
+    resume: bool,
+    dry_run: bool,
+    parallel_workers: int,
+    gpu_ids: Sequence[str],
+) -> List[Dict[str, Any]]:
+    resolved_backend = str(resolve_backend_details(backend_name)["backend_name"])
+    effective_workers = _resolve_parallel_workers(parallel_workers, gpu_ids)
+    launch_plan = build_parallel_config_plan(
+        output_root=output_root,
+        backend_name=resolved_backend,
+        config_id=config_id,
+        config_ids=config_ids,
+        parallel_workers=effective_workers,
+        gpu_ids=gpu_ids,
+        ticket_start=ticket_start,
+        ticket_limit=ticket_limit,
+        chunk_size=chunk_size,
+    )
+
+    if dry_run:
+        return [
+            {
+                "status": "parallel_dry_run",
+                "backend_name": resolved_backend,
+                "parallel_workers": effective_workers,
+                "gpu_ids": list(gpu_ids),
+                "launch_plan": launch_plan,
+            }
+        ]
+
+    worker_limit = max((int(entry["worker_slot"]) for entry in launch_plan), default=-1) + 1
+    pending = list(launch_plan)
+    active: List[Dict[str, Any]] = []
+    results: List[Dict[str, Any]] = []
+
+    while pending or active:
+        active_slots = {int(item["entry"]["worker_slot"]) for item in active}
+        free_slots = [slot for slot in range(worker_limit) if slot not in active_slots]
+        for free_slot in free_slots:
+            match_index = next(
+                (idx for idx, candidate in enumerate(pending) if int(candidate["worker_slot"]) == free_slot),
+                None,
+            )
+            if match_index is None:
+                continue
+
+            entry = dict(pending.pop(match_index))
+            config_dir = Path(str(entry["output_dir"]))
+            log_path = config_dir / "worker.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            env = os.environ.copy()
+            if entry.get("gpu_id") is not None:
+                env["CUDA_VISIBLE_DEVICES"] = str(entry["gpu_id"])
+                env["ROUTERGYM_ASSIGNED_GPU_ID"] = str(entry["gpu_id"])
+
+            process = subprocess.Popen(
+                _single_config_command(
+                    selected_id=str(entry["config_identifier"]),
+                    output_root=output_root,
+                    chunk_size=chunk_size,
+                    ticket_start=ticket_start,
+                    ticket_limit=ticket_limit,
+                    backend_name=backend_name,
+                    resume=resume,
+                ),
+                cwd=str(Path.cwd()),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            active.append(
+                {
+                    "entry": entry,
+                    "process": process,
+                    "log_path": log_path,
+                }
+            )
+
+        time.sleep(0.25)
+        next_active: List[Dict[str, Any]] = []
+        for item in active:
+            process = item["process"]
+            if process.poll() is None:
+                next_active.append(item)
+                continue
+
+            stdout, stderr = process.communicate()
+            combined_output = "\n".join(part.rstrip() for part in [stdout, stderr] if part and part.strip())
+            item["log_path"].write_text((combined_output + "\n") if combined_output else "", encoding="utf-8")
+
+            parsed_output: Any = None
+            if stdout and stdout.strip():
+                try:
+                    parsed_output = json.loads(stdout)
+                except json.JSONDecodeError:
+                    parsed_output = stdout.strip()
+
+            entry = dict(item["entry"])
+            results.append(
+                {
+                    "config_identifier": entry["config_identifier"],
+                    "backend_name": resolved_backend,
+                    "worker_slot": entry["worker_slot"],
+                    "gpu_id": entry.get("gpu_id"),
+                    "manifest_path": entry["manifest_path"],
+                    "worker_log_path": str(item["log_path"]),
+                    "exit_code": int(process.returncode or 0),
+                    "status": "completed" if int(process.returncode or 0) == 0 else "worker_failed",
+                    "child_output": parsed_output,
+                    "stderr_present": bool(stderr and stderr.strip()),
+                }
+            )
+        active = next_active
+
+    return sorted(results, key=lambda item: str(item["config_identifier"]))
+
+
 def main() -> None:
     args = build_parser().parse_args()
     effective_limit = args.preflight_size if args.preflight_size is not None else args.limit
     backend_name = str(resolve_backend_details(args.backend)["backend_name"])
+    gpu_ids = _parse_gpu_ids(args.gpu_ids)
+    should_parallelize = bool(gpu_ids) or args.parallel_workers > 1
 
     if args.merge_only:
         payload = _merge_selection(
             output_root=args.output_root,
             config_id=args.config_id,
+            config_ids=args.config_ids,
             backend_name=backend_name,
+        )
+    elif should_parallelize:
+        payload = _run_parallel_selection(
+            output_root=args.output_root,
+            config_id=args.config_id,
+            config_ids=args.config_ids,
+            chunk_size=args.chunk_size,
+            ticket_start=args.start,
+            ticket_limit=effective_limit,
+            backend_name=args.backend,
+            resume=not args.no_resume,
+            dry_run=args.dry_run,
+            parallel_workers=args.parallel_workers,
+            gpu_ids=gpu_ids,
         )
     else:
         payload = run_benchmark_matrix_chunked(
             output_root=args.output_root,
             config_id=args.config_id,
+            config_ids=args.config_ids,
             chunk_size=args.chunk_size,
             ticket_start=args.start,
             ticket_limit=effective_limit,
