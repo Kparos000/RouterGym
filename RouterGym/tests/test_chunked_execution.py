@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
+import pytest
 
 from RouterGym.experiments import chunked_execution
 
@@ -49,6 +50,43 @@ def _sample_config() -> Dict[str, str]:
         "escalation_model": "llm1",
         "memory_mode": "rag_bm25",
     }
+
+
+def _write_fake_chunk_outputs(
+    *,
+    output_root: Path,
+    config_identifier: str,
+    backend_name: str,
+    chunk_spec: Dict[str, int],
+) -> Dict[str, Any]:
+    config_dir = chunked_execution.get_config_output_dir(output_root, backend_name, config_identifier)
+    results_path = chunked_execution.chunk_results_path(config_dir, chunk_spec)
+    failures_path = chunked_execution.chunk_failures_path(config_dir, chunk_spec)
+    metadata_path = chunked_execution.chunk_metadata_path(config_dir, chunk_spec)
+
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    with results_path.open("w", encoding="utf-8") as handle:
+        for ticket_index in range(int(chunk_spec["start"]), int(chunk_spec["end_exclusive"])):
+            handle.write(json.dumps({"ticket_index": ticket_index, "chunk_index": int(chunk_spec["chunk_index"])}) + "\n")
+    failures_path.write_text("", encoding="utf-8")
+
+    metadata = {
+        "config_identifier": config_identifier,
+        "backend_name": backend_name,
+        "chunk_index": int(chunk_spec["chunk_index"]),
+        "start": int(chunk_spec["start"]),
+        "end_exclusive": int(chunk_spec["end_exclusive"]),
+        "ticket_count": int(chunk_spec["ticket_count"]),
+        "row_count": int(chunk_spec["ticket_count"]),
+        "success_count": int(chunk_spec["ticket_count"]),
+        "failure_count": 0,
+        "results_path": str(results_path),
+        "failures_path": str(failures_path),
+        "metadata_path": str(metadata_path),
+        "completed_at": "2026-04-22T00:00:00+00:00",
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    return metadata
 
 
 def test_build_chunk_plan_boundaries() -> None:
@@ -233,7 +271,7 @@ def test_resume_skips_completed_chunks(monkeypatch: Any) -> None:
     assert seen_ticket_ids == ["0", "1", "2", "3"]
 
     seen_ticket_ids.clear()
-    chunked_execution.run_config_chunked(
+    second_result = chunked_execution.run_config_chunked(
         config=_sample_config(),
         output_root=tmp_path,
         chunk_size=2,
@@ -244,6 +282,8 @@ def test_resume_skips_completed_chunks(monkeypatch: Any) -> None:
         dry_run=False,
     )
     assert seen_ticket_ids == []
+    merged_results = Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    assert len(merged_results) == 4
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
@@ -303,6 +343,175 @@ def test_resume_is_independent_per_config(monkeypatch: Any) -> None:
     config_ids = [entry["config_identifier"] for entry in results]
     assert config_ids == ["slm_only__base_slm1__mem_none", "slm_only__base_slm2__mem_none"]
     assert Path(results[0]["manifest_path"]) != Path(results[1]["manifest_path"])
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_interrupted_run_resumes_from_last_completed_chunk(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=6)
+    tmp_path = _temp_dir()
+    config = _sample_config()
+    config_identifier = chunked_execution.build_config_identifier(config)
+    executed_chunks: List[int] = []
+
+    def interrupting_execute_chunk(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        chunk_spec = dict(kwargs["chunk_spec"])
+        chunk_index = int(chunk_spec["chunk_index"])
+        executed_chunks.append(chunk_index)
+        if chunk_index == 1:
+            raise KeyboardInterrupt()
+        return _write_fake_chunk_outputs(
+            output_root=tmp_path,
+            config_identifier=config_identifier,
+            backend_name="openai_compatible",
+            chunk_spec=chunk_spec,
+        )
+
+    monkeypatch.setattr(chunked_execution, "execute_chunk", interrupting_execute_chunk)
+
+    with pytest.raises(KeyboardInterrupt):
+        chunked_execution.run_config_chunked(
+            config=config,
+            output_root=tmp_path,
+            chunk_size=2,
+            ticket_start=0,
+            ticket_limit=6,
+            backend_name="openai_compatible",
+            resume=True,
+            dry_run=False,
+        )
+
+    manifest_path = chunked_execution.get_manifest_path(tmp_path, "openai_compatible", config_identifier)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert executed_chunks == [0, 1]
+    assert [entry["chunk_index"] for entry in manifest["completed_chunks"]] == [0]
+    assert manifest["failed_chunks"] == []
+
+    resumed_chunks: List[int] = []
+
+    def resumed_execute_chunk(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        chunk_spec = dict(kwargs["chunk_spec"])
+        resumed_chunks.append(int(chunk_spec["chunk_index"]))
+        return _write_fake_chunk_outputs(
+            output_root=tmp_path,
+            config_identifier=config_identifier,
+            backend_name="openai_compatible",
+            chunk_spec=chunk_spec,
+        )
+
+    monkeypatch.setattr(chunked_execution, "execute_chunk", resumed_execute_chunk)
+
+    result = chunked_execution.run_config_chunked(
+        config=config,
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=6,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+
+    assert result["startup_resume_state"] == {
+        "completed_chunks": 1,
+        "pending_chunks": 2,
+        "failed_chunks": 0,
+        "total_chunks": 3,
+    }
+    assert resumed_chunks == [1, 2]
+    merged_results = Path(result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    assert len(merged_results) == 6
+    assert [json.loads(line)["ticket_index"] for line in merged_results] == [0, 1, 2, 3, 4, 5]
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_failed_chunks_retry_without_duplicating_completed_output(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=6)
+    tmp_path = _temp_dir()
+    config = _sample_config()
+    config_identifier = chunked_execution.build_config_identifier(config)
+    first_attempts: List[int] = []
+
+    def flaky_execute_chunk(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        chunk_spec = dict(kwargs["chunk_spec"])
+        chunk_index = int(chunk_spec["chunk_index"])
+        first_attempts.append(chunk_index)
+        if chunk_index == 1:
+            raise RuntimeError("simulated worker failure")
+        return _write_fake_chunk_outputs(
+            output_root=tmp_path,
+            config_identifier=config_identifier,
+            backend_name="openai_compatible",
+            chunk_spec=chunk_spec,
+        )
+
+    monkeypatch.setattr(chunked_execution, "execute_chunk", flaky_execute_chunk)
+
+    first_result = chunked_execution.run_config_chunked(
+        config=config,
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=6,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+
+    assert first_attempts == [0, 1, 2]
+    assert first_result["final_resume_state"] == {
+        "completed_chunks": 2,
+        "pending_chunks": 0,
+        "failed_chunks": 1,
+        "total_chunks": 3,
+    }
+
+    manifest_path = chunked_execution.get_manifest_path(tmp_path, "openai_compatible", config_identifier)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert [entry["chunk_index"] for entry in manifest["completed_chunks"]] == [0, 2]
+    assert [entry["chunk_index"] for entry in manifest["failed_chunks"]] == [1]
+
+    retry_attempts: List[int] = []
+
+    def successful_execute_chunk(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        chunk_spec = dict(kwargs["chunk_spec"])
+        retry_attempts.append(int(chunk_spec["chunk_index"]))
+        return _write_fake_chunk_outputs(
+            output_root=tmp_path,
+            config_identifier=config_identifier,
+            backend_name="openai_compatible",
+            chunk_spec=chunk_spec,
+        )
+
+    monkeypatch.setattr(chunked_execution, "execute_chunk", successful_execute_chunk)
+
+    second_result = chunked_execution.run_config_chunked(
+        config=config,
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=6,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+
+    assert second_result["startup_resume_state"] == {
+        "completed_chunks": 2,
+        "pending_chunks": 0,
+        "failed_chunks": 1,
+        "total_chunks": 3,
+    }
+    assert retry_attempts == [1]
+    merged_results = Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    assert len(merged_results) == 6
+    assert [json.loads(line)["ticket_index"] for line in merged_results] == [0, 1, 2, 3, 4, 5]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["failed_chunks"] == []
+    assert [entry["chunk_index"] for entry in manifest["completed_chunks"]] == [0, 1, 2]
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
@@ -384,5 +593,11 @@ def test_dry_run_summary_includes_manifest_and_first_chunk(monkeypatch: Any) -> 
     assert summary["chunk_size"] == 40
     assert summary["manifest_path"].endswith("manifest.json")
     assert "chunk_0000" in summary["first_chunk_path"]
+    assert summary["resume_state"] == {
+        "completed_chunks": 0,
+        "pending_chunks": 3,
+        "failed_chunks": 0,
+        "total_chunks": 3,
+    }
     assert "pending" in summary["resume_behavior_summary"]
     shutil.rmtree(tmp_path, ignore_errors=True)

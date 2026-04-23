@@ -406,13 +406,12 @@ def _update_manifest_status(manifest: Dict[str, Any], chunk_plan: Sequence[Mappi
 def describe_resume_behavior(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]]) -> str:
     """Return a short, human-readable summary of resume behavior."""
 
-    completed = _completed_chunk_map(manifest)
-    failed = _failed_chunk_map(manifest)
-    pending = len(chunk_plan) - len(completed)
+    config_dir = Path(str(manifest.get("output_files", {}).get("config_dir", "")))
+    resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
     return (
-        f"{len(completed)} completed chunk(s) will be skipped; "
-        f"{pending} chunk(s) pending; "
-        f"{len(failed)} failed chunk(s) eligible for retry"
+        f"{resume_state['completed_chunks']} completed chunk(s) will be skipped; "
+        f"{resume_state['pending_chunks']} chunk(s) pending; "
+        f"{resume_state['failed_chunks']} failed chunk(s) eligible for retry"
     )
 
 
@@ -424,6 +423,35 @@ def _is_chunk_complete(config_dir: Path, manifest: Mapping[str, Any], chunk_spec
     results_path = Path(str(entry.get("results_path", chunk_results_path(config_dir, chunk_spec))))
     metadata_path = Path(str(entry.get("metadata_path", chunk_metadata_path(config_dir, chunk_spec))))
     return results_path.exists() and metadata_path.exists()
+
+
+def summarize_resume_state(
+    config_dir: Path,
+    manifest: Mapping[str, Any],
+    chunk_plan: Sequence[Mapping[str, int]],
+) -> Dict[str, int]:
+    """Return completed/pending/failed chunk counts for a manifest-backed run."""
+
+    failed = _failed_chunk_map(manifest)
+    completed_count = 0
+    pending_count = 0
+    failed_count = 0
+
+    for chunk_spec in chunk_plan:
+        chunk_index = int(chunk_spec["chunk_index"])
+        if _is_chunk_complete(config_dir, manifest, chunk_spec):
+            completed_count += 1
+        elif chunk_index in failed:
+            failed_count += 1
+        else:
+            pending_count += 1
+
+    return {
+        "completed_chunks": completed_count,
+        "pending_chunks": pending_count,
+        "failed_chunks": failed_count,
+        "total_chunks": len(chunk_plan),
+    }
 
 
 def _chunk_error_record(
@@ -616,8 +644,9 @@ def run_config_chunked(
         chunk_size=chunk_size,
     )
     manifest_path = get_manifest_path(output_root, str(backend_details["backend_name"]), config_identifier)
-    resume_summary = describe_resume_behavior(manifest, chunk_plan)
     config_dir = get_config_output_dir(output_root, str(backend_details["backend_name"]), config_identifier)
+    resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
+    resume_summary = describe_resume_behavior(manifest, chunk_plan)
 
     if dry_run:
         return {
@@ -629,6 +658,7 @@ def run_config_chunked(
             "first_chunk_path": (
                 str(chunk_results_path(config_dir, chunk_plan[0])) if chunk_plan else ""
             ),
+            "resume_state": dict(resume_state),
             "resume_behavior_summary": resume_summary,
         }
 
@@ -670,12 +700,15 @@ def run_config_chunked(
     manifest["output_files"]["merged_failures_path"] = merged["merged_failures_path"]
     _update_manifest_status(manifest, chunk_plan)
     _write_manifest(manifest_path, manifest)
+    final_resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
     return {
         "status": manifest["run_status"],
         "config_identifier": config_identifier,
         "manifest_path": str(manifest_path),
         "merged_results_path": merged["merged_results_path"],
         "merged_failures_path": merged["merged_failures_path"],
+        "startup_resume_state": dict(resume_state),
+        "final_resume_state": dict(final_resume_state),
         "resume_behavior_summary": resume_summary,
     }
 
@@ -770,4 +803,5 @@ __all__ = [
     "resolve_selected_configs",
     "run_benchmark_matrix_chunked",
     "run_config_chunked",
+    "summarize_resume_state",
 ]
