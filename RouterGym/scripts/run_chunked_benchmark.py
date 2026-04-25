@@ -21,7 +21,10 @@ from typing import Any, Dict, List, Optional, Sequence
 from RouterGym.benchmark_spec import PRODUCTION_CHUNK_SIZE
 from RouterGym.experiments.chunked_execution import (
     DEFAULT_OUTPUT_ROOT,
+    backend_status_summary_path,
     build_parallel_config_plan,
+    config_progress_log_path,
+    config_status_path,
     get_manifest_path,
     merge_completed_chunks,
     resolve_backend_details,
@@ -222,14 +225,24 @@ def _run_parallel_selection(
 
             entry = dict(pending.pop(match_index))
             config_dir = Path(str(entry["output_dir"]))
-            log_path = config_dir / "worker.log"
-            log_path.parent.mkdir(parents=True, exist_ok=True)
+            config_dir.mkdir(parents=True, exist_ok=True)
 
             env = os.environ.copy()
+            env["ROUTERGYM_WORKER_SLOT"] = str(entry["worker_slot"])
             if entry.get("gpu_id") is not None:
                 env["CUDA_VISIBLE_DEVICES"] = str(entry["gpu_id"])
                 env["ROUTERGYM_ASSIGNED_GPU_ID"] = str(entry["gpu_id"])
 
+            progress_log = config_progress_log_path(config_dir)
+            status_file = config_status_path(config_dir)
+            gpu_suffix = f" gpu {entry['gpu_id']}" if entry.get("gpu_id") is not None else ""
+            print(
+                (
+                    f"launching config {entry['config_identifier']} "
+                    f"[worker {entry['worker_slot']}{gpu_suffix}]"
+                ),
+                flush=True,
+            )
             process = subprocess.Popen(
                 _single_config_command(
                     selected_id=str(entry["config_identifier"]),
@@ -242,15 +255,13 @@ def _run_parallel_selection(
                 ),
                 cwd=str(Path.cwd()),
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
             )
             active.append(
                 {
                     "entry": entry,
                     "process": process,
-                    "log_path": log_path,
+                    "progress_log_path": progress_log,
+                    "status_path": status_file,
                 }
             )
 
@@ -262,17 +273,6 @@ def _run_parallel_selection(
                 next_active.append(item)
                 continue
 
-            stdout, stderr = process.communicate()
-            combined_output = "\n".join(part.rstrip() for part in [stdout, stderr] if part and part.strip())
-            item["log_path"].write_text((combined_output + "\n") if combined_output else "", encoding="utf-8")
-
-            parsed_output: Any = None
-            if stdout and stdout.strip():
-                try:
-                    parsed_output = json.loads(stdout)
-                except json.JSONDecodeError:
-                    parsed_output = stdout.strip()
-
             entry = dict(item["entry"])
             results.append(
                 {
@@ -281,11 +281,11 @@ def _run_parallel_selection(
                     "worker_slot": entry["worker_slot"],
                     "gpu_id": entry.get("gpu_id"),
                     "manifest_path": entry["manifest_path"],
-                    "worker_log_path": str(item["log_path"]),
+                    "progress_log_path": str(item["progress_log_path"]),
+                    "status_path": str(item["status_path"]),
+                    "backend_status_summary_path": str(backend_status_summary_path(output_root, resolved_backend)),
                     "exit_code": int(process.returncode or 0),
                     "status": "completed" if int(process.returncode or 0) == 0 else "worker_failed",
-                    "child_output": parsed_output,
-                    "stderr_present": bool(stderr and stderr.strip()),
                 }
             )
         active = next_active

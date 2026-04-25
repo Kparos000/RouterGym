@@ -181,6 +181,25 @@ def test_manifest_creation_and_update(monkeypatch: Any) -> None:
     assert manifest["chunk_size"] == 2
     assert len(manifest["completed_chunks"]) == 2
     assert manifest["failed_chunks"] == []
+    status_path = chunked_execution.config_status_path(Path(manifest["output_files"]["config_dir"]))
+    progress_log = chunked_execution.config_progress_log_path(Path(manifest["output_files"]["config_dir"]))
+    backend_summary = chunked_execution.backend_status_summary_path(tmp_path, "openai_compatible")
+    assert status_path.exists()
+    assert progress_log.exists()
+    assert backend_summary.exists()
+
+    status_payload = json.loads(status_path.read_text(encoding="utf-8"))
+    backend_payload = json.loads(backend_summary.read_text(encoding="utf-8"))
+    assert status_payload["config_identifier"] == result["config_identifier"]
+    assert status_payload["completed_chunks"] == 2
+    assert status_payload["pending_chunks"] == 0
+    assert status_payload["failed_chunks"] == 0
+    assert status_payload["last_completed_ticket_index"] == 3
+    assert status_payload["current_status"] == "completed"
+    assert any(
+        entry["config_identifier"] == result["config_identifier"]
+        for entry in backend_payload["configs"]
+    )
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
@@ -228,6 +247,49 @@ def test_manifest_records_100_ticket_chunk_outputs(monkeypatch: Any) -> None:
     assert manifest["completed_chunks"][1]["results_path"].endswith(
         "chunk_0001__tickets_000100_000199__results.jsonl"
     )
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_progress_log_contains_chunk_save_lines(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=4)
+    tmp_path = _temp_dir()
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "ok",
+            "reasoning": "r",
+            "model_name": kwargs["base_model_name"],
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=4,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+    )
+
+    progress_lines = Path(result["progress_log_path"]).read_text(encoding="utf-8").splitlines()
+    assert any("startup" in line for line in progress_lines)
+    assert any("tickets 0-1 saved" in line for line in progress_lines)
+    assert any("tickets 2-3 saved" in line for line in progress_lines)
+    assert any("completed | completed 2/2 chunks" in line for line in progress_lines)
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

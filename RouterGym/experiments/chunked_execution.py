@@ -254,6 +254,18 @@ def chunk_metadata_path(config_dir: Path, chunk_spec: Mapping[str, int]) -> Path
     return config_dir / "chunks" / f"{chunk_file_stem(chunk_spec)}__metadata.json"
 
 
+def config_progress_log_path(config_dir: Path) -> Path:
+    return config_dir / "progress.log"
+
+
+def config_status_path(config_dir: Path) -> Path:
+    return config_dir / "status.json"
+
+
+def backend_status_summary_path(output_root: Path, backend_name: str) -> Path:
+    return output_root / backend_name / "run_status.json"
+
+
 def merged_results_path(config_dir: Path, config_identifier: str) -> Path:
     return config_dir / "merged" / f"{config_identifier}__results_merged.jsonl"
 
@@ -268,9 +280,60 @@ def _load_manifest(path: Path) -> Optional[Dict[str, Any]]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_json(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temp_path.replace(path)
+
+
+def _parse_iso_datetime(value: str) -> Optional[datetime]:
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return None
+    return datetime.fromisoformat(raw_value)
+
+
+def _format_duration(seconds: float) -> str:
+    total_seconds = max(int(round(seconds)), 0)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _execution_context() -> Dict[str, Optional[str]]:
+    worker_slot_raw = str(os.getenv("ROUTERGYM_WORKER_SLOT", "")).strip()
+    gpu_id = (
+        str(os.getenv("ROUTERGYM_ASSIGNED_GPU_ID", "")).strip()
+        or str(os.getenv("CUDA_VISIBLE_DEVICES", "")).strip()
+        or None
+    )
+    return {
+        "worker_slot": worker_slot_raw or None,
+        "gpu_id": gpu_id,
+    }
+
+
+def _status_context_suffix(status_payload: Mapping[str, Any]) -> str:
+    worker_slot = str(status_payload.get("worker_slot", "") or "").strip()
+    gpu_id = str(status_payload.get("gpu_id", "") or "").strip()
+    parts: List[str] = []
+    if worker_slot:
+        parts.append(f"worker {worker_slot}")
+    if gpu_id:
+        parts.append(f"gpu {gpu_id}")
+    return f" [{' | '.join(parts)}]" if parts else ""
 
 
 def initialize_manifest(
@@ -303,11 +366,15 @@ def initialize_manifest(
         "updated_at": _utc_now(),
         "last_run_started_at": "",
         "last_run_completed_at": "",
+        "first_execution_started_at": "",
         "run_status": "initialized",
         "output_files": {
             "config_dir": str(config_dir),
             "chunks_dir": str(config_dir / "chunks"),
             "merged_dir": str(config_dir / "merged"),
+            "progress_log_path": str(config_progress_log_path(config_dir)),
+            "status_path": str(config_status_path(config_dir)),
+            "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name)),
             "merged_results_path": "",
             "merged_failures_path": "",
         },
@@ -351,6 +418,18 @@ def ensure_manifest(
         raise ValueError("Existing manifest total_tickets_expected does not match requested ticket set.")
     if str(existing.get("backend_name", "")) != str(backend_details["backend_name"]):
         raise ValueError("Existing manifest backend_name does not match requested backend.")
+    output_files = existing.setdefault("output_files", {})
+    config_dir = get_config_output_dir(output_root, str(backend_details["backend_name"]), config_identifier)
+    output_files.setdefault("config_dir", str(config_dir))
+    output_files.setdefault("chunks_dir", str(config_dir / "chunks"))
+    output_files.setdefault("merged_dir", str(config_dir / "merged"))
+    output_files.setdefault("progress_log_path", str(config_progress_log_path(config_dir)))
+    output_files.setdefault("status_path", str(config_status_path(config_dir)))
+    output_files.setdefault(
+        "backend_status_summary_path",
+        str(backend_status_summary_path(output_root, str(backend_details["backend_name"]))),
+    )
+    existing.setdefault("first_execution_started_at", "")
     return existing
 
 
@@ -452,6 +531,153 @@ def summarize_resume_state(
         "failed_chunks": failed_count,
         "total_chunks": len(chunk_plan),
     }
+
+
+def _completed_tickets_count(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path) -> int:
+    return sum(
+        int(chunk_spec["ticket_count"])
+        for chunk_spec in chunk_plan
+        if _is_chunk_complete(config_dir, manifest, chunk_spec)
+    )
+
+
+def _last_completed_ticket_index(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path) -> int:
+    completed_ticket_indices = [
+        int(chunk_spec["end_exclusive"]) - 1
+        for chunk_spec in chunk_plan
+        if _is_chunk_complete(config_dir, manifest, chunk_spec)
+    ]
+    return max(completed_ticket_indices, default=-1)
+
+
+def build_config_status_payload(
+    *,
+    output_root: Path,
+    backend_name: str,
+    manifest: Mapping[str, Any],
+    chunk_plan: Sequence[Mapping[str, int]],
+    current_status: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build a machine-readable per-config status payload."""
+
+    config_dir = Path(str(manifest["output_files"]["config_dir"]))
+    resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
+    completed_tickets = _completed_tickets_count(manifest, chunk_plan, config_dir)
+    total_tickets_expected = int(manifest.get("total_tickets_expected", 0))
+    last_completed_ticket_index = _last_completed_ticket_index(manifest, chunk_plan, config_dir)
+
+    run_started_at = (
+        _parse_iso_datetime(str(manifest.get("first_execution_started_at", "")))
+        or _parse_iso_datetime(str(manifest.get("last_run_started_at", "")))
+        or _parse_iso_datetime(str(manifest.get("created_at", "")))
+    )
+    elapsed_seconds = (
+        max((datetime.now(timezone.utc) - run_started_at).total_seconds(), 0.0)
+        if run_started_at is not None
+        else 0.0
+    )
+    eta_seconds: Optional[float]
+    completed_chunks = int(resume_state["completed_chunks"])
+    remaining_chunks = int(resume_state["pending_chunks"]) + int(resume_state["failed_chunks"])
+    if completed_chunks > 0 and remaining_chunks > 0:
+        eta_seconds = (elapsed_seconds / float(completed_chunks)) * float(remaining_chunks)
+    else:
+        eta_seconds = 0.0 if remaining_chunks == 0 else None
+
+    execution_context = _execution_context()
+    return {
+        "config_identifier": str(manifest["config_identifier"]),
+        "backend_name": backend_name,
+        "manifest_path": str(get_manifest_path(output_root, backend_name, str(manifest["config_identifier"]))),
+        "progress_log_path": str(config_progress_log_path(config_dir)),
+        "status_path": str(config_status_path(config_dir)),
+        "worker_slot": execution_context["worker_slot"],
+        "gpu_id": execution_context["gpu_id"],
+        "completed_chunks": completed_chunks,
+        "pending_chunks": int(resume_state["pending_chunks"]),
+        "failed_chunks": int(resume_state["failed_chunks"]),
+        "total_chunks": int(resume_state["total_chunks"]),
+        "completed_tickets": completed_tickets,
+        "total_tickets_expected": total_tickets_expected,
+        "last_completed_ticket_index": last_completed_ticket_index,
+        "elapsed_seconds": round(elapsed_seconds, 2),
+        "elapsed_hms": _format_duration(elapsed_seconds),
+        "eta_seconds": None if eta_seconds is None else round(eta_seconds, 2),
+        "eta_hms": None if eta_seconds is None else _format_duration(eta_seconds),
+        "current_status": str(current_status or manifest.get("run_status", "initialized")),
+        "updated_at": _utc_now(),
+    }
+
+
+def write_backend_status_summary(output_root: Path, backend_name: str) -> Dict[str, Any]:
+    """Write a compact top-level status summary across all manifests for one backend."""
+
+    backend_root = output_root / backend_name
+    config_statuses: List[Dict[str, Any]] = []
+    for manifest_path in sorted(backend_root.glob("*/manifest.json")):
+        manifest = _load_manifest(manifest_path)
+        if manifest is None:
+            continue
+        config_dir = Path(str(manifest["output_files"]["config_dir"]))
+        status_path = config_status_path(config_dir)
+        status_payload = _load_json(status_path)
+        if status_payload is None:
+            chunk_size = int(manifest.get("chunk_size", PRODUCTION_CHUNK_SIZE))
+            total_tickets = int(manifest.get("total_tickets_expected", 0))
+            ticket_start = int(manifest.get("ticket_start", 0))
+            chunk_plan = build_chunk_plan(
+                total_tickets=total_tickets,
+                chunk_size=chunk_size,
+                start_index=ticket_start,
+            )
+            status_payload = build_config_status_payload(
+                output_root=output_root,
+                backend_name=backend_name,
+                manifest=manifest,
+                chunk_plan=chunk_plan,
+            )
+        config_statuses.append(dict(status_payload))
+
+    summary = {
+        "generated_at": _utc_now(),
+        "backend_name": backend_name,
+        "summary_path": str(backend_status_summary_path(output_root, backend_name)),
+        "config_count": len(config_statuses),
+        "configs": sorted(config_statuses, key=lambda item: str(item["config_identifier"])),
+    }
+    _write_json(backend_status_summary_path(output_root, backend_name), summary)
+    return summary
+
+
+def _append_progress_line(path: Path, line: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line.rstrip() + "\n")
+
+
+def _emit_progress_update(
+    *,
+    output_root: Path,
+    backend_name: str,
+    manifest: Mapping[str, Any],
+    chunk_plan: Sequence[Mapping[str, int]],
+    current_status: Optional[str],
+    progress_line: Optional[str] = None,
+) -> Dict[str, Any]:
+    config_dir = Path(str(manifest["output_files"]["config_dir"]))
+    status_payload = build_config_status_payload(
+        output_root=output_root,
+        backend_name=backend_name,
+        manifest=manifest,
+        chunk_plan=chunk_plan,
+        current_status=current_status,
+    )
+    _write_json(config_status_path(config_dir), status_payload)
+    write_backend_status_summary(output_root, backend_name)
+    if progress_line:
+        _append_progress_line(config_progress_log_path(config_dir), progress_line)
+        print(progress_line, flush=True)
+    return status_payload
 
 
 def _chunk_error_record(
@@ -623,6 +849,7 @@ def run_config_chunked(
     """Run one frozen config in deterministic chunks with manifest-based resume."""
 
     backend_details = resolve_backend_details(backend_name)
+    backend_name_resolved = str(backend_details["backend_name"])
     config_identifier = build_config_identifier(config)
 
     ticket_df = load_ticket_dataset(limit=ticket_limit, start=ticket_start)
@@ -643,12 +870,19 @@ def run_config_chunked(
         ticket_limit=ticket_limit,
         chunk_size=chunk_size,
     )
-    manifest_path = get_manifest_path(output_root, str(backend_details["backend_name"]), config_identifier)
-    config_dir = get_config_output_dir(output_root, str(backend_details["backend_name"]), config_identifier)
+    manifest_path = get_manifest_path(output_root, backend_name_resolved, config_identifier)
+    config_dir = get_config_output_dir(output_root, backend_name_resolved, config_identifier)
     resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
     resume_summary = describe_resume_behavior(manifest, chunk_plan)
 
     if dry_run:
+        dry_run_status = _emit_progress_update(
+            output_root=output_root,
+            backend_name=backend_name_resolved,
+            manifest=manifest,
+            chunk_plan=chunk_plan,
+            current_status="dry_run",
+        )
         return {
             "status": "dry_run",
             "config_identifier": config_identifier,
@@ -659,39 +893,104 @@ def run_config_chunked(
                 str(chunk_results_path(config_dir, chunk_plan[0])) if chunk_plan else ""
             ),
             "resume_state": dict(resume_state),
+            "status_path": str(config_status_path(config_dir)),
+            "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name_resolved)),
+            "progress_log_path": str(config_progress_log_path(config_dir)),
+            "status_payload": dict(dry_run_status),
             "resume_behavior_summary": resume_summary,
         }
 
     with backend_override(backend_name):
+        if not str(manifest.get("first_execution_started_at", "")).strip():
+            manifest["first_execution_started_at"] = _utc_now()
         manifest["last_run_started_at"] = _utc_now()
         manifest["updated_at"] = _utc_now()
         manifest["run_status"] = "running"
         _write_manifest(manifest_path, manifest)
-
-        for chunk_spec in chunk_plan:
-            if resume and _is_chunk_complete(config_dir, manifest, chunk_spec):
-                continue
-            try:
-                chunk_metadata = execute_chunk(
-                    config_identifier=config_identifier,
-                    config=config,
-                    output_root=output_root,
-                    backend_name=str(backend_details["backend_name"]),
-                    chunk_spec=chunk_spec,
-                )
-                _set_completed_chunk(manifest, chunk_metadata)
-            except Exception as exc:  # pragma: no cover - exercised via tests with mocks
-                _set_failed_chunk(
-                    manifest,
-                    _chunk_error_record(
+        startup_status = build_config_status_payload(
+            output_root=output_root,
+            backend_name=backend_name_resolved,
+            manifest=manifest,
+            chunk_plan=chunk_plan,
+            current_status="running",
+        )
+        startup_status = _emit_progress_update(
+            output_root=output_root,
+            backend_name=backend_name_resolved,
+            manifest=manifest,
+            chunk_plan=chunk_plan,
+            current_status="running",
+            progress_line=(
+                f"config {config_identifier}{_status_context_suffix(startup_status)}: startup | "
+                f"completed {resume_state['completed_chunks']} chunk(s), "
+                f"pending {resume_state['pending_chunks']}, failed {resume_state['failed_chunks']} | "
+                f"elapsed {startup_status['elapsed_hms']} | "
+                f"eta {startup_status['eta_hms'] or 'unknown'}"
+            ),
+        )
+        try:
+            for chunk_spec in chunk_plan:
+                if resume and _is_chunk_complete(config_dir, manifest, chunk_spec):
+                    continue
+                try:
+                    chunk_metadata = execute_chunk(
                         config_identifier=config_identifier,
                         config=config,
+                        output_root=output_root,
+                        backend_name=backend_name_resolved,
                         chunk_spec=chunk_spec,
-                        exc=exc,
-                    ),
+                    )
+                    _set_completed_chunk(manifest, chunk_metadata)
+                    current_status = "running"
+                    message_suffix = "saved"
+                except Exception as exc:  # pragma: no cover - exercised via tests with mocks
+                    _set_failed_chunk(
+                        manifest,
+                        _chunk_error_record(
+                            config_identifier=config_identifier,
+                            config=config,
+                            chunk_spec=chunk_spec,
+                            exc=exc,
+                        ),
+                    )
+                    current_status = "partial"
+                    message_suffix = f"failed ({type(exc).__name__})"
+                _update_manifest_status(manifest, chunk_plan)
+                _write_manifest(manifest_path, manifest)
+                progress_status = _emit_progress_update(
+                    output_root=output_root,
+                    backend_name=backend_name_resolved,
+                    manifest=manifest,
+                    chunk_plan=chunk_plan,
+                    current_status=current_status,
                 )
+                end_inclusive = int(chunk_spec["end_exclusive"]) - 1
+                progress_line = (
+                    f"config {config_identifier}{_status_context_suffix(progress_status)}: "
+                    f"chunk {int(chunk_spec['chunk_index']) + 1}/{progress_status['total_chunks']} "
+                    f"tickets {int(chunk_spec['start'])}-{end_inclusive} {message_suffix} | "
+                    f"completed {progress_status['completed_tickets']}/{progress_status['total_tickets_expected']} tickets | "
+                    f"chunks {progress_status['completed_chunks']}/{progress_status['total_chunks']} | "
+                    f"elapsed {progress_status['elapsed_hms']} | "
+                    f"eta {progress_status['eta_hms'] or 'unknown'}"
+                )
+                _append_progress_line(config_progress_log_path(config_dir), progress_line)
+                print(progress_line, flush=True)
+        except BaseException:
             _update_manifest_status(manifest, chunk_plan)
             _write_manifest(manifest_path, manifest)
+            _emit_progress_update(
+                output_root=output_root,
+                backend_name=backend_name_resolved,
+                manifest=manifest,
+                chunk_plan=chunk_plan,
+                current_status="interrupted",
+                progress_line=(
+                    f"config {config_identifier}{_status_context_suffix(startup_status)}: interrupted | "
+                    f"{describe_resume_behavior(manifest, chunk_plan)}"
+                ),
+            )
+            raise
 
     merged = merge_completed_chunks(manifest_path)
     manifest = _load_manifest(manifest_path) or manifest
@@ -701,14 +1000,38 @@ def run_config_chunked(
     _update_manifest_status(manifest, chunk_plan)
     _write_manifest(manifest_path, manifest)
     final_resume_state = summarize_resume_state(config_dir, manifest, chunk_plan)
+    final_status_payload = build_config_status_payload(
+        output_root=output_root,
+        backend_name=backend_name_resolved,
+        manifest=manifest,
+        chunk_plan=chunk_plan,
+        current_status=str(manifest["run_status"]),
+    )
+    final_status = _emit_progress_update(
+        output_root=output_root,
+        backend_name=backend_name_resolved,
+        manifest=manifest,
+        chunk_plan=chunk_plan,
+        current_status=str(manifest["run_status"]),
+        progress_line=(
+            f"config {config_identifier}{_status_context_suffix(final_status_payload)}: "
+            f"{str(manifest['run_status'])} | "
+            f"completed {final_resume_state['completed_chunks']}/{final_resume_state['total_chunks']} chunks | "
+            f"elapsed {final_status_payload['elapsed_hms']}"
+        ),
+    )
     return {
         "status": manifest["run_status"],
         "config_identifier": config_identifier,
         "manifest_path": str(manifest_path),
         "merged_results_path": merged["merged_results_path"],
         "merged_failures_path": merged["merged_failures_path"],
+        "progress_log_path": str(config_progress_log_path(config_dir)),
+        "status_path": str(config_status_path(config_dir)),
+        "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name_resolved)),
         "startup_resume_state": dict(resume_state),
         "final_resume_state": dict(final_resume_state),
+        "final_status_payload": dict(final_status),
         "resume_behavior_summary": resume_summary,
     }
 
