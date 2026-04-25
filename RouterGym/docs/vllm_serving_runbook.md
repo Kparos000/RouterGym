@@ -39,16 +39,57 @@ RouterGym normalizes the base URL to include `/v1` when needed.
 Serve `llm1`:
 
 ```bash
-vllm serve mistralai/Mistral-Small-24B-Instruct-2501 --api-key replace-with-your-vllm-api-key
+vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+  --api-key replace-with-your-vllm-api-key
 ```
 
 Serve `llm2`:
 
 ```bash
-vllm serve Qwen/Qwen2.5-14B-Instruct --api-key replace-with-your-vllm-api-key
+vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --api-key replace-with-your-vllm-api-key
 ```
 
 The vLLM OpenAI-compatible server listens on `http://localhost:8000` by default unless you override host or port.
+
+## Prefix caching for the final benchmark
+
+For the final long benchmark run, enable vLLM automatic prefix caching.
+
+Why this is low risk:
+
+- it is a serving-side KV-cache reuse optimization
+- it does not change RouterGym prompts, routing, pricing, or benchmark semantics
+- it only helps when many requests share the same prompt prefix
+
+This fits RouterGym well because benchmark requests share stable prompt scaffolding
+such as task instructions, schema hints, and other repeated prompt boilerplate.
+
+Recommended launch command for `llm1`:
+
+```bash
+vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+Recommended launch command for `llm2`:
+
+```bash
+vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+Notes:
+
+- `--enable-prefix-caching` turns on vLLM automatic prefix caching
+- `--prefix-caching-hash-algo sha256` makes the safe default explicit
+- this optimization mainly improves the prompt/prefill phase; it does not reduce decode time
+- if prompts do not share prefixes, the benefit will be limited
+- no RouterGym code change is required to use this; it is a launch-time serving setting
 
 ## RouterGym smoke test
 

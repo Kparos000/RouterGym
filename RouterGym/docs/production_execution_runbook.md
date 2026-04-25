@@ -99,6 +99,33 @@ The runner can also take an explicit backend override:
 python -m RouterGym.scripts.run_chunked_benchmark --backend openai_compatible
 ```
 
+## vLLM launch recommendation for the final run
+
+RouterGym does not need a code change to benefit from vLLM prefix caching. This
+is a serving-time optimization.
+
+Recommended vLLM launch pattern for the final benchmark:
+
+```bash
+vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+or
+
+```bash
+vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+This is appropriate for RouterGym because the benchmark repeatedly sends prompts
+with shared instruction scaffolding. Prefix caching can therefore reduce prefill
+work without changing benchmark outputs.
+
 ## How this fits the later RunPod + vLLM phase
 
 - RunPod/vLLM details stay outside the core runner logic
