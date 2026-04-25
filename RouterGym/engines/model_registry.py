@@ -202,7 +202,7 @@ class RemoteInferenceEngine:
                 response = self.client.chat_completion(  # type: ignore[call-overload]
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=max(max_new_tokens, 1024),
+                    max_tokens=max_new_tokens,
                     temperature=temperature,
                 )
                 self.last_usage = self._extract_usage(response)

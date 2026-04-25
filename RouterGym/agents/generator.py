@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -32,6 +33,25 @@ get_repair_model: Any = None
 CLASS_LABELS = CANONICAL_LABELS
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
+
+
+def resolve_max_output_tokens(override: Optional[int] = None) -> int:
+    """Return the active output cap from an explicit override or environment."""
+
+    if override is not None:
+        if int(override) <= 0:
+            raise ValueError("max_output_tokens must be > 0")
+        return int(override)
+    env_value = str(os.getenv("ROUTERGYM_MAX_OUTPUT_TOKENS", "")).strip()
+    if env_value:
+        try:
+            resolved = int(env_value)
+        except ValueError as exc:
+            raise ValueError("ROUTERGYM_MAX_OUTPUT_TOKENS must be an integer") from exc
+        if resolved <= 0:
+            raise ValueError("ROUTERGYM_MAX_OUTPUT_TOKENS must be > 0")
+        return resolved
+    return 256
 
 def get_confidence_bucket(conf: float) -> str:
     """Map a numeric confidence into low/medium/high buckets."""
@@ -454,6 +474,7 @@ def run_ticket_pipeline(
     base_model_name: str,
     escalation_model_name: Optional[str] = None,
     max_retries: int = 2,
+    max_output_tokens: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run Classify -> Retrieve -> Respond for a single ticket with optional escalation."""
 
@@ -467,6 +488,7 @@ def run_ticket_pipeline(
     ticket_id = str(ticket_id) if ticket_id is not None else ""
 
     t_start = time.perf_counter()
+    resolved_max_output_tokens = resolve_max_output_tokens(max_output_tokens)
 
     # 1) Classification via calibrated encoder
     encoder_classifier_cls: Any = EncoderClassifier
@@ -533,6 +555,7 @@ def run_ticket_pipeline(
                 model,
                 prompt,
                 model_key=model_key,
+                max_new_tokens=resolved_max_output_tokens,
             )
             telemetry_records.append(telemetry)
             parsed_output = _parse_model_output(raw_output)
@@ -638,6 +661,7 @@ def run_ticket_pipeline(
         "escalation_flags": escalation_flags,
         "metrics": {
             "latency_ms": total_latency_ms,
+            "max_output_tokens": resolved_max_output_tokens,
             "total_input_tokens": telemetry_summary["total_input_tokens"],
             "total_output_tokens": telemetry_summary["total_output_tokens"],
             "total_tokens": telemetry_summary["total_tokens"],
@@ -659,6 +683,7 @@ def run_ticket_pipeline(
             "classification_latency_ms": classify_latency,
         },
         "model_call_telemetry": telemetry_records_as_dicts(model_call_telemetry),
+        "max_output_tokens": resolved_max_output_tokens,
         "total_input_tokens": telemetry_summary["total_input_tokens"],
         "total_output_tokens": telemetry_summary["total_output_tokens"],
         "total_tokens": telemetry_summary["total_tokens"],

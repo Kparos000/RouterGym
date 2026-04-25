@@ -103,6 +103,8 @@ def test_remote_engine_falls_back_to_text_generation(monkeypatch: Any) -> None:
 
 
 def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch: Any) -> None:
+    captured_plain: dict[str, Any] = {}
+
     class PlainChatFallbackClient(DummyClient):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
@@ -112,6 +114,7 @@ def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch
             self.chat_calls += 1
             if self.chat_calls == 1:
                 raise RuntimeError("json mode unsupported")
+            captured_plain.update(kwargs)
             self.calls.append(kwargs)
             return type(
                 "Resp",
@@ -132,6 +135,7 @@ def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch
     text = engine.generate("hi", max_new_tokens=80)
     assert "final_answer" in text
     assert engine.last_endpoint_path == "chat_completion_plain"
+    assert captured_plain.get("max_tokens") == 80
 
 
 def test_conversational_hf_models_do_not_fall_back_to_text_generation(monkeypatch: Any) -> None:

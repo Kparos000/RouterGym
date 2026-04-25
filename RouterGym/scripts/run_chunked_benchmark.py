@@ -54,6 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=PRODUCTION_CHUNK_SIZE,
         help=f"Tickets per chunk (default {PRODUCTION_CHUNK_SIZE}).",
     )
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=None,
+        help="Optional generation cap override for benchmark responses.",
+    )
     parser.add_argument("--start", type=int, default=0, help="0-based dataset start index.")
     parser.add_argument("--limit", type=int, default=None, help="Optional ticket limit.")
     parser.add_argument(
@@ -145,6 +151,7 @@ def _single_config_command(
     ticket_limit: Optional[int],
     backend_name: Optional[str],
     resume: bool,
+    max_output_tokens: Optional[int],
 ) -> List[str]:
     command = [
         sys.executable,
@@ -161,6 +168,8 @@ def _single_config_command(
     ]
     if ticket_limit is not None:
         command.extend(["--limit", str(ticket_limit)])
+    if max_output_tokens is not None:
+        command.extend(["--max-output-tokens", str(max_output_tokens)])
     if backend_name:
         command.extend(["--backend", backend_name])
     if not resume:
@@ -181,6 +190,7 @@ def _run_parallel_selection(
     dry_run: bool,
     parallel_workers: int,
     gpu_ids: Sequence[str],
+    max_output_tokens: Optional[int],
 ) -> List[Dict[str, Any]]:
     resolved_backend = str(resolve_backend_details(backend_name)["backend_name"])
     effective_workers = _resolve_parallel_workers(parallel_workers, gpu_ids)
@@ -252,6 +262,7 @@ def _run_parallel_selection(
                     ticket_limit=ticket_limit,
                     backend_name=backend_name,
                     resume=resume,
+                    max_output_tokens=max_output_tokens,
                 ),
                 cwd=str(Path.cwd()),
                 env=env,
@@ -320,6 +331,7 @@ def main() -> None:
             dry_run=args.dry_run,
             parallel_workers=args.parallel_workers,
             gpu_ids=gpu_ids,
+            max_output_tokens=args.max_output_tokens,
         )
     else:
         payload = run_benchmark_matrix_chunked(
@@ -332,6 +344,7 @@ def main() -> None:
             backend_name=args.backend,
             resume=not args.no_resume,
             dry_run=args.dry_run,
+            max_output_tokens=args.max_output_tokens,
         )
 
     print(json.dumps(payload, indent=2, ensure_ascii=False))

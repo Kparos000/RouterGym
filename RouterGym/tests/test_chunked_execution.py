@@ -250,6 +250,52 @@ def test_manifest_records_100_ticket_chunk_outputs(monkeypatch: Any) -> None:
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_chunked_execution_persists_and_passes_max_output_tokens(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=4)
+    tmp_path = _temp_dir()
+    seen_caps: List[int | None] = []
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args
+        seen_caps.append(kwargs.get("max_output_tokens"))
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "ok",
+            "reasoning": "r",
+            "model_name": kwargs["base_model_name"],
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=4,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+        max_output_tokens=123,
+    )
+
+    manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+    assert manifest["generation_settings"]["max_output_tokens"] == 123
+    assert seen_caps == [123, 123, 123, 123]
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_progress_log_contains_chunk_save_lines(monkeypatch: Any) -> None:
     _patch_dataset(monkeypatch, size=4)
     tmp_path = _temp_dir()

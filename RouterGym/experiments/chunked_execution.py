@@ -346,6 +346,7 @@ def initialize_manifest(
     ticket_start: int,
     ticket_limit: Optional[int],
     chunk_size: int,
+    max_output_tokens: Optional[int],
 ) -> Dict[str, Any]:
     """Build an initial manifest for one config/backend run."""
 
@@ -362,6 +363,9 @@ def initialize_manifest(
         "ticket_start": int(ticket_start),
         "ticket_limit": ticket_limit,
         "chunk_size": int(chunk_size),
+        "generation_settings": {
+            "max_output_tokens": (int(max_output_tokens) if max_output_tokens is not None else None),
+        },
         "created_at": _utc_now(),
         "updated_at": _utc_now(),
         "last_run_started_at": "",
@@ -393,6 +397,7 @@ def ensure_manifest(
     ticket_start: int,
     ticket_limit: Optional[int],
     chunk_size: int,
+    max_output_tokens: Optional[int],
 ) -> Dict[str, Any]:
     """Load or initialize a manifest, rejecting incompatible resume settings."""
 
@@ -408,6 +413,7 @@ def ensure_manifest(
             ticket_start=ticket_start,
             ticket_limit=ticket_limit,
             chunk_size=chunk_size,
+            max_output_tokens=max_output_tokens,
         )
         _write_manifest(manifest_path, manifest)
         return manifest
@@ -418,6 +424,17 @@ def ensure_manifest(
         raise ValueError("Existing manifest total_tickets_expected does not match requested ticket set.")
     if str(existing.get("backend_name", "")) != str(backend_details["backend_name"]):
         raise ValueError("Existing manifest backend_name does not match requested backend.")
+    generation_settings = existing.setdefault("generation_settings", {})
+    existing_max_output_tokens = generation_settings.get("max_output_tokens")
+    requested_max_output_tokens = (
+        int(max_output_tokens) if max_output_tokens is not None else None
+    )
+    if existing_max_output_tokens is None and "max_output_tokens" not in generation_settings:
+        generation_settings["max_output_tokens"] = requested_max_output_tokens
+    elif existing_max_output_tokens != requested_max_output_tokens:
+        raise ValueError(
+            "Existing manifest max_output_tokens does not match requested max_output_tokens."
+        )
     output_files = existing.setdefault("output_files", {})
     config_dir = get_config_output_dir(output_root, str(backend_details["backend_name"]), config_identifier)
     output_files.setdefault("config_dir", str(config_dir))
@@ -763,6 +780,7 @@ def execute_chunk(
     output_root: Path,
     backend_name: str,
     chunk_spec: Mapping[str, int],
+    max_output_tokens: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Execute one chunk and write result/failure artifacts atomically."""
 
@@ -789,6 +807,7 @@ def execute_chunk(
                 memory_mode=str(config["memory_mode"]),
                 base_model_name=str(config["base_model"]),
                 escalation_model_name=(str(config["escalation_model"]) if config.get("escalation_model") else None),
+                max_output_tokens=max_output_tokens,
             )
         except Exception as exc:  # pragma: no cover - exercised via tests with mocks
             error = {
@@ -845,6 +864,7 @@ def run_config_chunked(
     backend_name: Optional[str] = None,
     resume: bool = True,
     dry_run: bool = False,
+    max_output_tokens: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run one frozen config in deterministic chunks with manifest-based resume."""
 
@@ -869,6 +889,7 @@ def run_config_chunked(
         ticket_start=ticket_start,
         ticket_limit=ticket_limit,
         chunk_size=chunk_size,
+        max_output_tokens=max_output_tokens,
     )
     manifest_path = get_manifest_path(output_root, backend_name_resolved, config_identifier)
     config_dir = get_config_output_dir(output_root, backend_name_resolved, config_identifier)
@@ -887,6 +908,7 @@ def run_config_chunked(
             "status": "dry_run",
             "config_identifier": config_identifier,
             "chunk_size": chunk_size,
+            "max_output_tokens": max_output_tokens,
             "total_tickets_expected": total_tickets_expected,
             "manifest_path": str(manifest_path),
             "first_chunk_path": (
@@ -939,6 +961,7 @@ def run_config_chunked(
                         output_root=output_root,
                         backend_name=backend_name_resolved,
                         chunk_spec=chunk_spec,
+                        max_output_tokens=max_output_tokens,
                     )
                     _set_completed_chunk(manifest, chunk_metadata)
                     current_status = "running"
@@ -1083,6 +1106,7 @@ def run_benchmark_matrix_chunked(
     backend_name: Optional[str] = None,
     resume: bool = True,
     dry_run: bool = False,
+    max_output_tokens: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """Run one or many frozen configs through the chunked execution wrapper."""
 
@@ -1099,6 +1123,7 @@ def run_benchmark_matrix_chunked(
             backend_name=backend_name,
             resume=resume,
             dry_run=dry_run,
+            max_output_tokens=max_output_tokens,
         )
         result.setdefault("config_identifier", selected_id)
         results.append(result)

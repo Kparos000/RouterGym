@@ -164,3 +164,76 @@ def test_run_ticket_pipeline_emits_telemetry_fields(monkeypatch: Any) -> None:
     assert result["pricing_version"] == "normalized_v3"
     assert result["token_count_method_summary"] == "measured"
     assert len(result["model_call_telemetry"]) == 1
+
+
+def test_run_ticket_pipeline_honors_max_output_tokens(monkeypatch: Any) -> None:
+    class FakeClassifier:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.backend_name = "encoder_calibrated"
+
+        def predict_proba(self, text: str) -> Dict[str, float]:
+            probs = {label: 0.0 for label in CANONICAL_LABELS}
+            probs["Access"] = 0.9
+            remaining = (1.0 - probs["Access"]) / float(len(CANONICAL_LABELS) - 1)
+            for label in CANONICAL_LABELS:
+                if label != "Access":
+                    probs[label] = remaining
+            return probs
+
+    class FakeMemory(MemoryBase):
+        def update(self, item: Any, metadata: Dict[str, Any] | None = None) -> None:
+            return None
+
+        def summarize(self) -> str:
+            return "memory summary"
+
+        def retrieve(self, query: str | None = None) -> MemoryRetrieval:
+            return MemoryRetrieval(
+                retrieved_context="ctx",
+                retrieval_metadata={"mode": "rag_dense", "query": query or "", "snippets": []},
+                retrieval_cost_tokens=0,
+                relevance_score=0.2,
+                retrieval_latency_ms=1.0,
+            )
+
+    class CapturingSLM:
+        model_key = "slm1"
+        backend_used = "hf_inference"
+
+        def __init__(self) -> None:
+            self.seen_kwargs: Dict[str, Any] = {}
+
+        def __call__(self, prompt: str, **kwargs: Any) -> str:
+            self.seen_kwargs = dict(kwargs)
+            self.last_usage = {"input_tokens": 12, "output_tokens": 8, "total_tokens": 20}
+            return json.dumps(
+                {
+                    "rewritten_query": "rewrite",
+                    "final_answer": "Detailed answer with enough information to satisfy the user request.",
+                    "reasoning": "Reasoning text",
+                    "predicted_category": "Access",
+                    "resolution_steps": ["step 1", "step 2", "step 3"],
+                }
+            )
+
+    fake_model = CapturingSLM()
+    monkeypatch.setattr(gen, "EncoderClassifier", FakeClassifier)
+    monkeypatch.setattr(gen, "get_memory_class", lambda mode: FakeMemory)
+    monkeypatch.setattr(
+        gen,
+        "load_models",
+        lambda sanity=True, slm_subset=None: {"slm1": fake_model},
+    )
+    monkeypatch.setattr(gen, "validate_agent_output", lambda payload: dict(payload))
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "Please reset my VPN access", "ticket_id": "1"},
+        base_model_name="slm1",
+        memory_mode="rag_dense",
+        router_mode="slm_only",
+        max_output_tokens=123,
+    )
+
+    assert fake_model.seen_kwargs["max_new_tokens"] == 123
+    assert result["max_output_tokens"] == 123
+    assert result["metrics"]["max_output_tokens"] == 123
