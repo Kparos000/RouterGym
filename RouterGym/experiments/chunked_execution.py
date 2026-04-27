@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import traceback
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -293,9 +294,15 @@ def _write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_suffix(path.suffix + ".tmp")
-    temp_path.write_text(json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temp_path.replace(path)
+    temp_path = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+    try:
+        temp_path.write_text(
+            json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temp_path, path)
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def _parse_iso_datetime(value: str) -> Optional[datetime]:
@@ -690,7 +697,10 @@ def _emit_progress_update(
         current_status=current_status,
     )
     _write_json(config_status_path(config_dir), status_payload)
-    write_backend_status_summary(output_root, backend_name)
+    try:
+        write_backend_status_summary(output_root, backend_name)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        pass
     if progress_line:
         _append_progress_line(config_progress_log_path(config_dir), progress_line)
         print(progress_line, flush=True)

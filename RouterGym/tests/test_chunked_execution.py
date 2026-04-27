@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import shutil
 import uuid
@@ -89,6 +90,76 @@ def _write_fake_chunk_outputs(
     return metadata
 
 
+def test_write_json_survives_concurrent_writers() -> None:
+    tmp_path = _temp_dir()
+    status_path = tmp_path / "run_status.json"
+
+    def write_status(worker_index: int) -> None:
+        for sequence in range(50):
+            chunked_execution._write_json(
+                status_path,
+                {
+                    "worker_index": worker_index,
+                    "sequence": sequence,
+                },
+            )
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        list(executor.map(write_status, range(12)))
+
+    payload = json.loads(status_path.read_text(encoding="utf-8"))
+    assert isinstance(payload["worker_index"], int)
+    assert isinstance(payload["sequence"], int)
+    assert not list(tmp_path.glob("*run_status.json*.tmp"))
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_emit_progress_update_keeps_running_when_backend_summary_races(monkeypatch: Any) -> None:
+    tmp_path = _temp_dir()
+    config = _sample_config()
+    config_identifier = chunked_execution.build_config_identifier(config)
+    backend_name = "openai_compatible"
+    manifest = chunked_execution.initialize_manifest(
+        config_identifier=config_identifier,
+        config=config,
+        output_root=tmp_path,
+        backend_details={"backend_name": backend_name},
+        total_tickets_expected=2,
+        ticket_start=0,
+        ticket_limit=2,
+        chunk_size=1,
+        max_output_tokens=None,
+    )
+    chunk_plan = chunked_execution.build_chunk_plan(total_tickets=2, chunk_size=1)
+
+    def racing_backend_summary(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        del args, kwargs
+        raise FileNotFoundError("simulated shared status race")
+
+    monkeypatch.setattr(
+        chunked_execution,
+        "write_backend_status_summary",
+        racing_backend_summary,
+    )
+
+    status_payload = chunked_execution._emit_progress_update(
+        output_root=tmp_path,
+        backend_name=backend_name,
+        manifest=manifest,
+        chunk_plan=chunk_plan,
+        current_status="running",
+    )
+
+    status_path = chunked_execution.config_status_path(
+        Path(manifest["output_files"]["config_dir"])
+    )
+    stored_status = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_payload["current_status"] == "running"
+    assert stored_status["config_identifier"] == config_identifier
+    assert stored_status["current_status"] == "running"
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_build_chunk_plan_boundaries() -> None:
     plan = chunked_execution.build_chunk_plan(total_tickets=12, chunk_size=5, start_index=0)
     assert plan == [
@@ -131,8 +202,14 @@ def test_build_parallel_config_plan_assigns_gpu_slots() -> None:
     ]
     assert [entry["worker_slot"] for entry in plan] == [0, 1, 0]
     assert [entry["gpu_id"] for entry in plan] == ["0", "1", "0"]
-    assert plan[0]["manifest_path"].endswith("slm_only__base_slm1__mem_none\\manifest.json")
-    assert plan[1]["output_dir"].endswith("openai_compatible\\slm_only__base_slm2__mem_none")
+    assert Path(plan[0]["manifest_path"]).parts[-2:] == (
+        "slm_only__base_slm1__mem_none",
+        "manifest.json",
+    )
+    assert Path(plan[1]["output_dir"]).parts[-2:] == (
+        "openai_compatible",
+        "slm_only__base_slm2__mem_none",
+    )
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

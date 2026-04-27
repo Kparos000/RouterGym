@@ -9,7 +9,11 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 try:
-    from vllm import LlamaEngine, LLM, SamplingParams
+    import vllm as _vllm
+
+    LlamaEngine = getattr(_vllm, "LlamaEngine", None)
+    LLM = getattr(_vllm, "LLM", None)
+    SamplingParams = getattr(_vllm, "SamplingParams", None)
 except Exception:  # pragma: no cover - optional dependency
     LlamaEngine = None  # type: ignore
     LLM = None  # type: ignore
@@ -45,6 +49,7 @@ class LocalVLLMEngine:
         if LlamaEngine is not None:
             self._engine = LlamaEngine(**kwargs)  # type: ignore[arg-type]
         else:
+            assert LLM is not None
             self._engine = LLM(**kwargs)  # type: ignore[arg-type]
 
     def generate(
