@@ -73,3 +73,16 @@ RouterGym/data/gold_eval/gold_eval_samples.txt
 router,memory,memory_mode,model,router_c.csv
 folders.txt
 project_folders.txt
+
+# Local/raw benchmark artifacts
+RouterGym/results/production_runs/
+test_logs_runpod_final_47k/
+
+# Large final benchmark bundles/log exports
+*.tar.gz
+*.tar.gz.sha256
+
+# Temporary local analysis outputs
+.tmp_local_logs/
+.tmp_prod_dryrun/
+.tmp_prod_dryrun_100/

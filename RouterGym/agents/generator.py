@@ -6,10 +6,11 @@ import json
 import os
 import re
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
-from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, SchemaContract
+from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, DraftOutputSchema, SchemaContract
 from RouterGym.engines.telemetry import (
     ModelCallTelemetry,
     aggregate_model_call_telemetry,
@@ -33,6 +34,32 @@ get_repair_model: Any = None
 CLASS_LABELS = CANONICAL_LABELS
 
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
+PLACEHOLDER_FINAL_ANSWER = "No valid answer produced"
+GENERATION_INVALID_REASON = "Generation invalid"
+
+
+@dataclass(frozen=True)
+class DraftParseResult:
+    """Intermediate model draft plus parse/validation diagnostics."""
+
+    raw_model_response_text: str
+    parsed_output_before_validation: Dict[str, Any]
+    normalized_output: Dict[str, Any]
+    parse_error: Optional[str]
+    validation_error: Optional[str]
+    generation_valid: bool
+    parser_mode: str
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "raw_model_response_text": self.raw_model_response_text,
+            "parsed_output_before_validation": dict(self.parsed_output_before_validation),
+            "normalized_output": dict(self.normalized_output),
+            "parse_error": self.parse_error,
+            "validation_error": self.validation_error,
+            "generation_valid": self.generation_valid,
+            "parser_mode": self.parser_mode,
+        }
 
 
 def resolve_max_output_tokens(override: Optional[int] = None) -> int:
@@ -138,6 +165,128 @@ def _extract_json_fragment(text: str) -> Any:
         except Exception:
             return None
     return None
+
+
+def _compact_text(text: Any) -> str:
+    return re.sub(r"\s+", " ", str(text or "")).strip()
+
+
+def _normalize_resolution_steps(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [_compact_text(step) for step in value if _compact_text(step)]
+    if isinstance(value, str):
+        return [step for step in (_compact_text(line) for line in value.splitlines()) if step]
+    return []
+
+
+def _extract_resolution_steps_from_text(text: str) -> List[str]:
+    steps: List[str] = []
+    for raw_line in str(text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = re.match(r"^(?:[-*•]|\d+[\).\:-]?)\s+(.*)$", line)
+        if match:
+            step = _compact_text(match.group(1))
+            if step:
+                steps.append(step)
+    return steps
+
+
+def _normalize_draft_output(
+    raw_output: str,
+    parsed_output: Dict[str, Any],
+    classifier_label: str,
+) -> Tuple[Dict[str, Any], str]:
+    parser_mode = "json" if parsed_output else "natural_language"
+    if parsed_output:
+        resolution_steps = _normalize_resolution_steps(parsed_output.get("resolution_steps", []))
+        final_answer = _compact_text(parsed_output.get("final_answer", ""))
+        reasoning = _compact_text(parsed_output.get("reasoning", ""))
+        rewritten_query = _compact_text(parsed_output.get("rewritten_query", ""))
+        predicted = _normalize_category(
+            str(parsed_output.get("predicted_category") or parsed_output.get("category") or classifier_label),
+            context=f"{final_answer} {reasoning}",
+        )
+        escalation_flags = parsed_output.get("escalation_flags", {})
+        if not isinstance(escalation_flags, dict):
+            escalation_flags = {}
+        return (
+            {
+                "final_answer": final_answer,
+                "reasoning": reasoning,
+                "predicted_category": predicted or classifier_label,
+                "resolution_steps": resolution_steps,
+                "rewritten_query": rewritten_query,
+                "escalation_flags": escalation_flags,
+            },
+            parser_mode,
+        )
+
+    stripped = str(raw_output or "").strip()
+    lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    labeled_values: Dict[str, str] = {}
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key_normalized = _compact_text(key).lower()
+        labeled_values[key_normalized] = _compact_text(value)
+
+    resolution_steps = _extract_resolution_steps_from_text(stripped)
+    final_answer = (
+        labeled_values.get("final_answer")
+        or labeled_values.get("answer")
+        or _compact_text(stripped)
+    )
+    if final_answer and not re.search(r"[A-Za-z0-9]", final_answer):
+        final_answer = ""
+    reasoning = labeled_values.get("reasoning", "")
+    if not reasoning and final_answer:
+        reasoning = "Normalized from non-JSON model output."
+
+    predicted = _normalize_category(
+        labeled_values.get("predicted_category") or labeled_values.get("category") or classifier_label,
+        context=final_answer,
+    )
+    rewritten_query = labeled_values.get("rewritten_query", "")
+    return (
+        {
+            "final_answer": final_answer,
+            "reasoning": reasoning,
+            "predicted_category": predicted or classifier_label,
+            "resolution_steps": resolution_steps,
+            "rewritten_query": rewritten_query,
+            "escalation_flags": {},
+        },
+        parser_mode,
+    )
+
+
+def _parse_draft_output(raw_output: str, classifier_label: str) -> DraftParseResult:
+    raw_text = str(raw_output or "")
+    contract = JSONContract()
+    ok_json, parsed_json = contract.validate(raw_text)
+    parsed_output: Dict[str, Any] = {}
+    if ok_json and isinstance(parsed_json, dict):
+        parsed_output = parsed_json
+    else:
+        fragment = _extract_json_fragment(raw_text)
+        if isinstance(fragment, dict):
+            parsed_output = fragment
+    parse_error = None if ok_json or parsed_output else "Model output is not valid JSON."
+    normalized_output, parser_mode = _normalize_draft_output(raw_text, parsed_output, classifier_label)
+    draft_ok, draft_errors = DraftOutputSchema().validate(normalized_output)
+    validation_error = "; ".join(draft_errors) if draft_errors else None
+    return DraftParseResult(
+        raw_model_response_text=raw_text,
+        parsed_output_before_validation=dict(parsed_output),
+        normalized_output=normalized_output,
+        parse_error=parse_error,
+        validation_error=validation_error,
+        generation_valid=draft_ok,
+        parser_mode=parser_mode,
+    )
 
 
 def normalize_output(output: Any) -> Dict[str, str]:
@@ -540,7 +689,7 @@ def run_ticket_pipeline(
         raise RuntimeError(f"Model '{base_model_name}' is not available; check model registry or subset filter.")
     escalation_model = models.get(escalation_model_name) if escalation_model_name else None
 
-    def _call_and_parse(model: Any, model_key: str) -> Tuple[Dict[str, Any], List[ModelCallTelemetry]]:
+    def _call_and_parse(model: Any, model_key: str) -> Tuple[DraftParseResult, List[ModelCallTelemetry]]:
         prompt = build_prompt(
             ticket_text=text,
             kb_snippets=kb_texts,
@@ -548,8 +697,23 @@ def run_ticket_pipeline(
             confidence_bucket=classifier_confidence_bucket,
             memory_mode=memory_mode,
         )
-        parsed_output: Dict[str, Any] = {}
         telemetry_records: List[ModelCallTelemetry] = []
+        last_result = DraftParseResult(
+            raw_model_response_text="",
+            parsed_output_before_validation={},
+            normalized_output={
+                "final_answer": "",
+                "reasoning": "",
+                "predicted_category": classifier_label,
+                "resolution_steps": [],
+                "rewritten_query": "",
+                "escalation_flags": {},
+            },
+            parse_error="Model returned an empty response.",
+            validation_error="Draft output must include a non-empty final_answer or reasoning",
+            generation_valid=False,
+            parser_mode="empty",
+        )
         for attempt in range(max_retries):
             raw_output, telemetry = invoke_model_with_telemetry(
                 model,
@@ -558,19 +722,15 @@ def run_ticket_pipeline(
                 max_new_tokens=resolved_max_output_tokens,
             )
             telemetry_records.append(telemetry)
-            parsed_output = _parse_model_output(raw_output)
-            try:
-                validate_agent_output({"original_query": text, **parsed_output})
+            last_result = _parse_draft_output(raw_output, classifier_label)
+            if last_result.generation_valid:
                 break
-            except Exception:
-                if attempt == max_retries - 1:
-                    parsed_output = {}
-                continue
-        return parsed_output, telemetry_records
+        return last_result, telemetry_records
 
     # Routing decision
     chosen_model_name = base_model_name
-    parsed_output, model_call_telemetry = _call_and_parse(base_model, base_model_name)
+    base_draft, model_call_telemetry = _call_and_parse(base_model, base_model_name)
+    parsed_output = dict(base_draft.normalized_output)
     initial_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(initial_steps, list):
         initial_steps = []
@@ -597,6 +757,8 @@ def run_ticket_pipeline(
     )
     escalated = False
     escalation_reasons = list(routing_decision.escalation_reasons)
+    chosen_draft = base_draft
+    escalation_draft: Optional[DraftParseResult] = None
     should_execute_escalation = (
         routing_decision.escalated
         and escalation_model is not None
@@ -605,11 +767,12 @@ def run_ticket_pipeline(
     if router_mode == "slm_dominant" and routing_decision.escalated and escalation_model is None:
         raise ValueError("slm_dominant requires an escalation_model_name (llm1 or llm2).")
     if should_execute_escalation:
-        escalated_output, escalation_telemetry = _call_and_parse(
+        escalation_draft, escalation_telemetry = _call_and_parse(
             escalation_model,  # type: ignore[arg-type]
             escalation_model_name or base_model_name,
         )
-        parsed_output = escalated_output
+        chosen_draft = escalation_draft
+        parsed_output = dict(escalation_draft.normalized_output)
         model_call_telemetry.extend(escalation_telemetry)
         chosen_model_name = escalation_model_name or base_model_name
         escalated = True
@@ -619,11 +782,18 @@ def run_ticket_pipeline(
     resolution_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(resolution_steps, list):
         resolution_steps = []
-    default_reasoning = (
-        parsed_output.get("reasoning", "")
-        or f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
-    )
-    default_answer = parsed_output.get("final_answer", "") or "No valid answer produced"
+    invalid_reason = chosen_draft.validation_error or chosen_draft.parse_error or GENERATION_INVALID_REASON
+    default_reasoning = parsed_output.get("reasoning", "")
+    if not default_reasoning:
+        if chosen_draft.generation_valid:
+            default_reasoning = f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
+        else:
+            default_reasoning = f"{GENERATION_INVALID_REASON}: {invalid_reason}"
+    default_answer = parsed_output.get("final_answer", "") or PLACEHOLDER_FINAL_ANSWER
+    placeholder_answer = default_answer == PLACEHOLDER_FINAL_ANSWER
+    has_real_final_answer = bool(default_answer.strip()) and not placeholder_answer
+    has_resolution_steps = bool(resolution_steps)
+    raw_response_saved = bool(chosen_draft.raw_model_response_text.strip())
     telemetry_summary = aggregate_model_call_telemetry(model_call_telemetry)
     parsed_escalation = parsed_output.get("escalation_flags") or {}
     escalation_flags = {
@@ -632,11 +802,17 @@ def run_ticket_pipeline(
         "policy_gap": bool(parsed_escalation.get("policy_gap", False)),
         "reasons": escalation_reasons if routing_decision.escalated else [],
     }
+    generation_debug: Dict[str, Any] = {
+        "selected_stage": "escalation" if escalated else "base",
+        "base_stage": base_draft.as_dict(),
+    }
+    if escalation_draft is not None:
+        generation_debug["escalation_stage"] = escalation_draft.as_dict()
 
     payload: Dict[str, Any] = {
         "ticket_id": ticket_id,
         "original_query": text,
-        "rewritten_query": parsed_output.get("rewritten_query", text),
+        "rewritten_query": parsed_output.get("rewritten_query") or text,
         "topic_group": classifier_label,
         "model_name": chosen_model_name,
         "router_mode": router_mode,
@@ -702,5 +878,39 @@ def run_ticket_pipeline(
         "routing_policy_version": ROUTING_POLICY_VERSION,
         "router_confidence_score": routing_decision.router_confidence_score,
         "router_decision_reason": routing_decision.router_decision_reason,
+        "raw_model_response_text": chosen_draft.raw_model_response_text,
+        "parse_error": chosen_draft.parse_error,
+        "validation_error": chosen_draft.validation_error,
+        "parsed_output_before_validation": dict(chosen_draft.parsed_output_before_validation),
+        "raw_model_response_text_base": base_draft.raw_model_response_text,
+        "raw_model_response_text_escalation": (
+            escalation_draft.raw_model_response_text if escalation_draft is not None else ""
+        ),
+        "generation_parser_mode": chosen_draft.parser_mode,
+        "generation_valid": bool(chosen_draft.generation_valid),
+        "generation_invalid_reason": ("" if chosen_draft.generation_valid else invalid_reason),
+        "has_real_final_answer": has_real_final_answer,
+        "has_resolution_steps": has_resolution_steps,
+        "placeholder_answer": placeholder_answer,
+        "raw_response_saved": raw_response_saved,
+        "generation_debug": generation_debug,
     }
-    return validate_agent_output(payload)
+    try:
+        return validate_agent_output(payload)
+    except Exception as exc:
+        payload["generation_valid"] = False
+        merged_validation_error = "; ".join(
+            part
+            for part in [
+                (payload.get("validation_error") or "").strip(),
+                str(exc).strip(),
+            ]
+            if part
+        )
+        payload["validation_error"] = merged_validation_error
+        payload["generation_invalid_reason"] = merged_validation_error or GENERATION_INVALID_REASON
+        payload["placeholder_answer"] = True
+        payload["has_real_final_answer"] = False
+        payload["final_answer"] = payload.get("final_answer") or PLACEHOLDER_FINAL_ANSWER
+        payload["reasoning"] = payload.get("reasoning") or f"{GENERATION_INVALID_REASON}: {payload['generation_invalid_reason']}"
+        return payload

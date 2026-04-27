@@ -50,6 +50,48 @@ class SchemaContract:
         return len(errors) == 0, errors
 
 
+class DraftOutputSchema:
+    """Validate relaxed intermediate model drafts before final normalization.
+
+    Drafts do not need to satisfy the full AgentOutput schema. They only need
+    enough signal to preserve or normalize a generation into a final row.
+    """
+
+    def validate(self, json_obj: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        errors: List[str] = []
+        if not isinstance(json_obj, dict):
+            return False, ["Draft output is not a JSON object"]
+
+        final_answer = json_obj.get("final_answer", "")
+        reasoning = json_obj.get("reasoning", "")
+
+        if final_answer is not None and not isinstance(final_answer, str):
+            errors.append("final_answer must be a string when provided")
+        if reasoning is not None and not isinstance(reasoning, str):
+            errors.append("reasoning must be a string when provided")
+
+        has_answer = isinstance(final_answer, str) and bool(final_answer.strip())
+        has_reasoning = isinstance(reasoning, str) and bool(reasoning.strip())
+        if not has_answer and not has_reasoning:
+            errors.append("Draft output must include a non-empty final_answer or reasoning")
+
+        if "resolution_steps" in json_obj:
+            steps = json_obj["resolution_steps"]
+            if not isinstance(steps, list) or not all(isinstance(step, str) for step in steps):
+                errors.append("resolution_steps must be a list of strings when provided")
+
+        if "predicted_category" in json_obj and json_obj.get("predicted_category"):
+            try:
+                normalized = canonicalize_label(json_obj["predicted_category"])
+            except RuntimeError:
+                errors.append("predicted_category is not in the allowed label set")
+            else:
+                if normalized not in CANONICAL_LABEL_SET:
+                    errors.append("predicted_category is not in the allowed label set")
+
+        return len(errors) == 0, errors
+
+
 class AgentOutputSchema:
     """Validate structured AgentOutput payloads for a single ticket.
 
@@ -203,4 +245,10 @@ class AgentOutputSchema:
         return len(errors) == 0, errors
 
 
-__all__ = ["SchemaContract", "AgentOutputSchema", "ALLOWED_CONTEXT_MODES", "ALLOWED_CONFIDENCE_BUCKETS"]
+__all__ = [
+    "SchemaContract",
+    "DraftOutputSchema",
+    "AgentOutputSchema",
+    "ALLOWED_CONTEXT_MODES",
+    "ALLOWED_CONFIDENCE_BUCKETS",
+]

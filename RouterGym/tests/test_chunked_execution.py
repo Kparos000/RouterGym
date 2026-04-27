@@ -327,6 +327,54 @@ def test_manifest_records_100_ticket_chunk_outputs(monkeypatch: Any) -> None:
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_execute_chunk_marks_generation_invalid_rows_as_failures(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=1)
+    tmp_path = _temp_dir()
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "No valid answer produced",
+            "reasoning": "Generation invalid: malformed output",
+            "model_name": kwargs["base_model_name"],
+            "generation_valid": False,
+            "generation_invalid_reason": "malformed output",
+            "raw_model_response_text": "???",
+            "raw_response_saved": True,
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    metadata = chunked_execution.execute_chunk(
+        config_identifier=chunked_execution.build_config_identifier(_sample_config()),
+        config=_sample_config(),
+        output_root=tmp_path,
+        backend_name="openai_compatible",
+        chunk_spec={"chunk_index": 0, "start": 0, "end_exclusive": 1, "ticket_count": 1},
+    )
+
+    results_path = Path(metadata["results_path"])
+    failures_path = Path(metadata["failures_path"])
+    rows = [json.loads(line) for line in results_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    failures = [json.loads(line) for line in failures_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert metadata["failure_count"] == 1
+    assert rows[0]["success"] is False
+    assert rows[0]["error"]["error_type"] == "GenerationInvalidError"
+    assert failures[0]["raw_model_response_text"] == "???"
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_chunked_execution_persists_and_passes_max_output_tokens(monkeypatch: Any) -> None:
     _patch_dataset(monkeypatch, size=4)
     tmp_path = _temp_dir()

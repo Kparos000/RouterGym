@@ -125,11 +125,20 @@ def test_run_ticket_pipeline(monkeypatch):
     assert isinstance(cls["confidence"], float)
     assert cls["confidence_bucket"] in {"high", "medium", "low"}
     assert isinstance(result["resolution_steps"], list)
-    assert result["resolution_steps"] == []
+    assert result["resolution_steps"] == ["step1"]
     assert "final_answer" in result and isinstance(result["final_answer"], str)
     assert isinstance(result["escalation_flags"]["needs_human"], bool)
     assert isinstance(result["escalation_flags"]["needs_llm_escalation"], bool)
     assert isinstance(result["escalation_flags"]["policy_gap"], bool)
+    assert result["generation_valid"] is True
+    assert result["has_real_final_answer"] is True
+    assert result["has_resolution_steps"] is True
+    assert result["placeholder_answer"] is False
+    assert result["raw_response_saved"] is True
+    assert result["raw_model_response_text"]
+    assert result["parsed_output_before_validation"]["final_answer"] == "answer"
+    assert result["parse_error"] is None
+    assert result["validation_error"] is None
     assert isinstance(result["metrics"], dict)
     for key in ("latency_ms", "total_input_tokens", "total_output_tokens", "total_cost_usd"):
         assert key in result["metrics"]
@@ -186,6 +195,62 @@ def test_run_ticket_pipeline_with_kb(monkeypatch):
     assert result["memory_mode"] == "rag_dense"
     assert result["kb_policy_ids"] == ["hardware.doc1"]
     assert result["kb_categories"] == ["Hardware"]
+
+
+def test_run_ticket_pipeline_normalizes_natural_language_output(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return (
+                "Answer: Reset the VPN connection and sign in again.\n"
+                "Reasoning: This addresses the reported remote access issue.\n"
+                "1. Disconnect from VPN.\n"
+                "2. Reconnect using SSO.\n"
+            )
+
+    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "vpn issue"},
+        base_model_name="slm1",
+        memory_mode="none",
+        router_mode="slm_only",
+    )
+
+    assert result["generation_valid"] is True
+    assert result["parse_error"] == "Model output is not valid JSON."
+    assert result["final_answer"] == "Reset the VPN connection and sign in again."
+    assert result["reasoning"] == "This addresses the reported remote access issue."
+    assert result["resolution_steps"] == ["Disconnect from VPN.", "Reconnect using SSO."]
+    assert result["placeholder_answer"] is False
+    assert result["raw_response_saved"] is True
+
+
+def test_run_ticket_pipeline_preserves_raw_text_on_malformed_output(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return "???"
+
+    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "bad output case"},
+        base_model_name="slm1",
+        memory_mode="none",
+        router_mode="slm_only",
+    )
+
+    assert result["generation_valid"] is False
+    assert result["placeholder_answer"] is True
+    assert result["has_real_final_answer"] is False
+    assert result["has_resolution_steps"] is False
+    assert result["raw_response_saved"] is True
+    assert result["raw_model_response_text"] == "???"
+    assert result["parse_error"] == "Model output is not valid JSON."
+    assert "Draft output must include a non-empty final_answer or reasoning" in result["validation_error"]
 
 
 def test_slm_dominant_escalates_with_reasons(monkeypatch):
@@ -245,6 +310,7 @@ def test_slm_dominant_escalates_with_reasons(monkeypatch):
     reasons = result["escalation_flags"]["reasons"]
     assert result["model_name"] == "llm1"
     assert result["escalation_flags"]["needs_llm_escalation"] is True
+    assert result["generation_valid"] is True
     assert "low_confidence" in reasons
     assert "weak_kb" in reasons
     assert "short_answer" in reasons
@@ -311,3 +377,4 @@ def test_slm_dominant_no_escalation(monkeypatch):
     assert result["model_name"] == "slm1"
     assert result["escalation_flags"]["needs_llm_escalation"] is False
     assert result["escalation_flags"]["reasons"] == []
+    assert result["generation_valid"] is True

@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import threading
 import traceback
 import uuid
 from contextlib import contextmanager
@@ -31,6 +33,8 @@ from RouterGym.engines.model_registry import get_model_backend
 
 
 DEFAULT_OUTPUT_ROOT = Path("RouterGym/results/production_runs")
+_JSON_WRITE_GUARDS: Dict[str, threading.Lock] = {}
+_JSON_WRITE_GUARDS_LOCK = threading.Lock()
 
 
 def load_ticket_dataset(*, limit: Optional[int], start: int):
@@ -292,17 +296,38 @@ def _write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def _get_json_write_lock(path: Path) -> threading.Lock:
+    path_key = str(path.resolve())
+    with _JSON_WRITE_GUARDS_LOCK:
+        lock = _JSON_WRITE_GUARDS.get(path_key)
+        if lock is None:
+            lock = threading.Lock()
+            _JSON_WRITE_GUARDS[path_key] = lock
+        return lock
+
+
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
-    try:
-        temp_path.write_text(
-            json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        os.replace(temp_path, path)
-    finally:
-        temp_path.unlink(missing_ok=True)
+    last_error: Optional[PermissionError] = None
+    with _get_json_write_lock(path):
+        for attempt in range(5):
+            temp_path = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+            try:
+                temp_path.write_text(
+                    json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                os.replace(temp_path, path)
+                return
+            except PermissionError as exc:
+                last_error = exc
+                if attempt == 4:
+                    raise
+                time.sleep(0.01 * float(attempt + 1))
+            finally:
+                temp_path.unlink(missing_ok=True)
+    if last_error is not None:
+        raise last_error
 
 
 def _parse_iso_datetime(value: str) -> Optional[datetime]:
@@ -819,6 +844,17 @@ def execute_chunk(
                 escalation_model_name=(str(config["escalation_model"]) if config.get("escalation_model") else None),
                 max_output_tokens=max_output_tokens,
             )
+            if not bool(result.get("generation_valid", True)):
+                error = {
+                    "error_type": "GenerationInvalidError",
+                    "message": str(
+                        result.get("generation_invalid_reason")
+                        or result.get("validation_error")
+                        or result.get("parse_error")
+                        or "generation_valid=false"
+                    ),
+                    "traceback": "",
+                }
         except Exception as exc:  # pragma: no cover - exercised via tests with mocks
             error = {
                 "error_type": type(exc).__name__,
