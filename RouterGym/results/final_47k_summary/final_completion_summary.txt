@@ -1,0 +1,108 @@
+RouterGym final 47,837-ticket x 6-config benchmark completion summary
+generated_at_utc: 2026-04-27T11:42:50.308304+00:00
+
+Process state
+launcher_pid_file: /workspace/RouterGym/test_logs_runpod_final_47k/final_47k_launcher.pid
+launcher_pid: 23864
+launcher_pid_alive: no
+benchmark_workers_running: no
+
+Top-level status
+run_status_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/run_status.json
+run_status_generated_at: 2026-04-27T10:17:02.882072+00:00
+backend_name: openai_compatible
+config_count: 6
+
+Aggregate artifacts
+chunk_results_jsonl_count: 2874
+chunk_failures_jsonl_count: 2874
+chunk_metadata_json_count: 2874
+merged_results_count: 6
+merged_failures_count: 6
+expected_chunk_count: 2874
+nonempty_chunk_failure_files: 0
+nonempty_merged_failure_files: 0
+metadata_failure_count_nonzero_files: 0
+
+Per-config completion
+slm_only__base_slm1__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=07:42:24 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/merged/slm_only__base_slm1__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/merged/slm_only__base_slm1__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config slm_only__base_slm1__mem_rag_bm25 [worker 0 | gpu 0]: completed | completed 479/479 chunks | elapsed 07:42:21
+slm_only__base_slm2__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=07:41:34 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/merged/slm_only__base_slm2__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/merged/slm_only__base_slm2__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config slm_only__base_slm2__mem_rag_bm25 [worker 1 | gpu 1]: completed | completed 479/479 chunks | elapsed 07:41:32
+llm_only__base_llm1__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=07:42:11 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/merged/llm_only__base_llm1__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/merged/llm_only__base_llm1__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config llm_only__base_llm1__mem_rag_bm25 [worker 2 | gpu 2]: completed | completed 479/479 chunks | elapsed 07:42:08
+llm_only__base_llm2__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=07:41:02 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/merged/llm_only__base_llm2__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/merged/llm_only__base_llm2__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config llm_only__base_llm2__mem_rag_bm25 [worker 3 | gpu 3]: completed | completed 479/479 chunks | elapsed 07:40:59
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=08:11:01 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config slm_dominant__base_slm1__esc_llm2__mem_rag_bm25 [worker 4 | gpu 4]: completed | completed 479/479 chunks | elapsed 08:10:57
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25 | status=completed | chunks=479/479 | tickets=47837/47837 | failed_chunks=0 | elapsed=08:09:52 | merged_exists=yes | merged_rows=47837 | merged_failure_rows=0 | chunk_results=479 | chunk_failures=479 | chunk_metadata=479
+  merged_results_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25__results_merged.jsonl
+  merged_failures_path: /workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25__failures_merged.jsonl
+  final_progress_line: config slm_dominant__base_slm2__esc_llm2__mem_rag_bm25 [worker 5 | gpu 5]: completed | completed 479/479 chunks | elapsed 08:09:48
+
+Error scan
+Raw literal scan summary is saved at: /workspace/RouterGym/test_logs_runpod_final_47k/strict_error_scan_summary.json
+Raw literal scan samples are saved at: /workspace/RouterGym/test_logs_runpod_final_47k/strict_error_scan_samples.txt
+Raw literal matches include expected benign strings such as result field "error": null, chunk_0429 paths, and failed_chunks=0 JSON fields.
+raw_literal_term_counts: {"429": 39446, "error": 574044, "exception": 1536, "failed_chunk": 6, "killed": 192}
+Targeted failure scan:
+launcher_actual_hf_429_or_retry: 0
+launcher_traceback_exception_bad_gateway_killed_file_not_found: 0
+nonempty_failure_jsonl_files: 0
+nonempty_merged_failure_files: 0
+metadata_failure_count_nonzero: 0
+
+Launcher log final excerpt
+    "exit_code": 0,
+    "status": "completed"
+  },
+  {
+    "config_identifier": "slm_dominant__base_slm2__esc_llm2__mem_rag_bm25",
+    "backend_name": "openai_compatible",
+    "worker_slot": 5,
+    "gpu_id": "5",
+    "manifest_path": "RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/manifest.json",
+    "progress_log_path": "RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/progress.log",
+    "status_path": "RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/status.json",
+    "backend_status_summary_path": "RouterGym/results/production_runs/openai_compatible/run_status.json",
+    "exit_code": 0,
+    "status": "completed"
+  },
+  {
+    "config_identifier": "slm_only__base_slm1__mem_rag_bm25",
+    "backend_name": "openai_compatible",
+    "worker_slot": 0,
+    "gpu_id": "0",
+    "manifest_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/manifest.json",
+    "progress_log_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/progress.log",
+    "status_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/status.json",
+    "backend_status_summary_path": "RouterGym/results/production_runs/openai_compatible/run_status.json",
+    "exit_code": 0,
+    "status": "completed"
+  },
+  {
+    "config_identifier": "slm_only__base_slm2__mem_rag_bm25",
+    "backend_name": "openai_compatible",
+    "worker_slot": 1,
+    "gpu_id": "1",
+    "manifest_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/manifest.json",
+    "progress_log_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/progress.log",
+    "status_path": "RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/status.json",
+    "backend_status_summary_path": "RouterGym/results/production_runs/openai_compatible/run_status.json",
+    "exit_code": 0,
+    "status": "completed"
+  }
+]
+
+completion_verdict: SUCCESS
+safe_to_stop_after_bundle_preserved: yes

@@ -1,0 +1,442 @@
+{
+  "scanned_file_count": 8654,
+  "matched_file_count": 2949,
+  "term_counts": {
+    "error": 574044,
+    "429": 39446,
+    "exception": 1536,
+    "killed": 192,
+    "failed_chunk": 6
+  },
+  "top_matched_files": [
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 4291,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 52272
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/merged/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 3627,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 51608
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/merged/slm_only__base_slm1__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 2911,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 50892
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/merged/llm_only__base_llm2__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 2882,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 50863
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/merged/slm_only__base_slm2__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 2847,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 50828
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/merged/llm_only__base_llm1__mem_rag_bm25__results_merged.jsonl",
+      "counts": {
+        "error": 47837,
+        "429": 2835,
+        "exception": 128,
+        "killed": 16
+      },
+      "total": 50816
+    },
+    {
+      "path": "/workspace/RouterGym/test_logs_runpod_final_47k/final_47k_launcher_stdout_stderr.log",
+      "counts": {
+        "429": 338,
+        "failed_chunk": 6
+      },
+      "total": 344
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/chunks/chunk_0429__tickets_042900_042999__results.jsonl",
+      "counts": {
+        "429": 100,
+        "error": 100
+      },
+      "total": 200
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 23,
+        "exception": 1
+      },
+      "total": 124
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0142__tickets_014200_014299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 20
+      },
+      "total": 120
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/chunks/chunk_0142__tickets_014200_014299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 18
+      },
+      "total": 118
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0314__tickets_031400_031499__results.jsonl",
+      "counts": {
+        "429": 18,
+        "error": 100
+      },
+      "total": 118
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 17,
+        "exception": 1
+      },
+      "total": 118
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/chunks/chunk_0022__tickets_002200_002299__results.jsonl",
+      "counts": {
+        "429": 16,
+        "error": 100,
+        "exception": 1
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/chunks/chunk_0442__tickets_044200_044299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 17
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0022__tickets_002200_002299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16,
+        "exception": 1
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0242__tickets_024200_024299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 17
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0332__tickets_033200_033299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16,
+        "exception": 1
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0452__tickets_045200_045299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16,
+        "exception": 1
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0039__tickets_003900_003999__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16,
+        "exception": 1
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0042__tickets_004200_004299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 17
+      },
+      "total": 117
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm2__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0010__tickets_001000_001099__results.jsonl",
+      "counts": {
+        "429": 15,
+        "error": 100,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0078__tickets_007800_007899__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0357__tickets_035700_035799__results.jsonl",
+      "counts": {
+        "429": 15,
+        "error": 100,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm1__mem_rag_bm25/chunks/chunk_0442__tickets_044200_044299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 16
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/chunks/chunk_0342__tickets_034200_034299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/chunks/chunk_0454__tickets_045400_045499__results.jsonl",
+      "counts": {
+        "429": 15,
+        "error": 100,
+        "exception": 1
+      },
+      "total": 116
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0013__tickets_001300_001399__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 14,
+        "exception": 1
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0032__tickets_003200_003299__results.jsonl",
+      "counts": {
+        "429": 15,
+        "error": 100
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0042__tickets_004200_004299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0062__tickets_006200_006299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0084__tickets_008400_008499__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0298__tickets_029800_029899__results.jsonl",
+      "counts": {
+        "429": 15,
+        "error": 100
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0337__tickets_033700_033799__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm1__esc_llm2__mem_rag_bm25/chunks/chunk_0374__tickets_037400_037499__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 12,
+        "exception": 3
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0002__tickets_000200_000299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 14,
+        "exception": 1
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0242__tickets_024200_024299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0322__tickets_032200_032299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_dominant__base_slm2__esc_llm2__mem_rag_bm25/chunks/chunk_0442__tickets_044200_044299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/slm_only__base_slm2__mem_rag_bm25/chunks/chunk_0142__tickets_014200_014299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 15
+      },
+      "total": 115
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/chunks/chunk_0142__tickets_014200_014299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 14
+      },
+      "total": 114
+    },
+    {
+      "path": "/workspace/RouterGym/RouterGym/results/production_runs/openai_compatible/llm_only__base_llm1__mem_rag_bm25/chunks/chunk_0242__tickets_024200_024299__results.jsonl",
+      "counts": {
+        "error": 100,
+        "429": 14
+      },
+      "total": 114
+    }
+  ]
+}
