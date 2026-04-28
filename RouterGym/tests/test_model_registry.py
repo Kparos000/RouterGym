@@ -66,6 +66,18 @@ def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
     assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
 
 
+def test_sanity_openai_backend_includes_local_slm_and_llm(monkeypatch: Any) -> None:
+    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
+    monkeypatch.setenv("ROUTERGYM_OPENAI_BASE_URL", "http://localhost:9000")
+    monkeypatch.setenv("ROUTERGYM_OPENAI_API_KEY", "secret-key")
+    models = model_registry.load_models(sanity=True)
+    kinds = {getattr(engine, "kind", "") for engine in models.values()}
+    assert "slm" in kinds
+    assert "llm" in kinds
+    assert all(engine.backend_used == "openai_compatible" for engine in models.values())
+
+
 def test_remote_engine_response_format(monkeypatch: Any) -> None:
     """Ensure response_format is passed to chat_completion."""
     captured = {}

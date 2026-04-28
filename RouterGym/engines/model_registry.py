@@ -48,6 +48,7 @@ LLM_MODELS: Dict[str, ModelEntry] = {
     "llm1": ModelEntry("llm1", "mistralai/Mistral-Small-24B-Instruct-2501", "llm"),
     "llm2": ModelEntry("llm2", "Qwen/Qwen2.5-14B-Instruct", "llm"),
 }
+ALL_MODELS: Dict[str, ModelEntry] = {**SLM_MODELS, **LLM_MODELS}
 # These benchmark models are routed through HF providers that expose
 # conversational/chat interfaces only. Keep them off text_generation so
 # provider task-mismatch errors stay out of the main pipeline path.
@@ -340,6 +341,7 @@ def _build_openai_compatible_engine(entry: ModelEntry) -> Any:
     return engine_cls(
         entry.hf_id,
         model_key=entry.name,
+        request_model_name=entry.name,
         kind=entry.kind,
         base_url=_get_openai_compatible_base_url(),
         api_key=_get_openai_compatible_api_key(),
@@ -352,6 +354,15 @@ def _tag_local_engine(engine: Any, entry: ModelEntry) -> Any:
     setattr(engine, "backend_used", "vllm_local")
     setattr(engine, "last_usage", None)
     return engine
+
+
+def _build_entry_for_backend(entry: ModelEntry, backend: str, token: Optional[str]) -> Any:
+    if backend == "openai_compatible":
+        return _build_openai_compatible_engine(entry)
+    if backend == "vllm_local":
+        local_vllm_engine = _get_local_vllm_engine_class()
+        return _tag_local_engine(local_vllm_engine(entry.hf_id), entry)
+    return _build_engine(entry, token)
 
 
 def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
@@ -372,10 +383,10 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
 
         if slm_entries:
             slm_entry = slm_entries[0]
-            models[slm_entry.name] = _build_engine(slm_entry, token)
+            models[slm_entry.name] = _build_entry_for_backend(slm_entry, backend, token)
         if llm_entries:
             llm_entry = llm_entries[0]
-            models[llm_entry.name] = _build_engine(llm_entry, token)
+            models[llm_entry.name] = _build_entry_for_backend(llm_entry, backend, token)
         return models
 
     if force_llm and not llm_entries:
@@ -391,7 +402,7 @@ def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, fo
     elif backend == "openai_compatible":
         if not force_llm:
             for entry in slm_entries:
-                models[entry.name] = _build_engine(entry, token)
+                models[entry.name] = _build_openai_compatible_engine(entry)
         for entry in llm_entries:
             models[entry.name] = _build_openai_compatible_engine(entry)
     else:  # hf_inference default
@@ -425,6 +436,7 @@ def get_repair_model() -> RemoteInferenceEngine:
 __all__ = [
     "load_models",
     "RemoteInferenceEngine",
+    "ALL_MODELS",
     "SLM_MODELS",
     "LLM_MODELS",
     "_get_openai_compatible_api_key",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+import pytest
 
 from RouterGym.engines import model_registry
 from RouterGym.engines.openai_compatible import OpenAICompatibleEngine
@@ -24,16 +25,18 @@ def test_backend_selection_accepts_openai_aliases(monkeypatch: Any) -> None:
     assert model_registry.get_model_backend() == "openai_compatible"
 
 
-def test_load_models_openai_backend_uses_openai_for_llms(monkeypatch: Any) -> None:
+def test_load_models_openai_backend_uses_openai_for_all_model_keys(monkeypatch: Any) -> None:
     monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
     monkeypatch.setenv("ROUTERGYM_OPENAI_BASE_URL", "http://localhost:9000")
     monkeypatch.setenv("ROUTERGYM_OPENAI_API_KEY", "secret-key")
     models = model_registry.load_models(sanity=False)
-    assert isinstance(models["slm1"], model_registry.RemoteInferenceEngine)
-    assert isinstance(models["slm2"], model_registry.RemoteInferenceEngine)
+    assert isinstance(models["slm1"], OpenAICompatibleEngine)
+    assert isinstance(models["slm2"], OpenAICompatibleEngine)
     assert isinstance(models["llm1"], OpenAICompatibleEngine)
     assert isinstance(models["llm2"], OpenAICompatibleEngine)
+    assert models["slm1"].request_model_name == "slm1"
+    assert models["slm2"].request_model_name == "slm2"
     assert models["llm1"].base_url == "http://localhost:9000/v1"
     assert models["llm1"].api_key == "secret-key"
     assert models["llm1"].backend_used == "openai_compatible"
@@ -86,7 +89,7 @@ def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> No
     assert captured["url"] == "http://localhost:8000/v1/chat/completions"
     assert captured["authorization"] == "Bearer test-key"
     assert captured["content_type"] == "application/json"
-    assert captured["body"]["model"] == "mistralai/Mistral-Small-24B-Instruct-2501"
+    assert captured["body"]["model"] == "llm1"
     assert engine.last_endpoint_path == "openai_chat_completions"
     assert engine.last_usage == {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
 
@@ -170,11 +173,21 @@ def test_smoke_script_surfaces_backend_error_on_failure(monkeypatch: Any) -> Non
     }
 
 
-def test_smoke_script_dry_run() -> None:
-    result = smoke_script.run_smoke_test(model_key="llm1", dry_run=True, base_url="http://localhost:8123")
+@pytest.mark.parametrize(
+    ("model_key", "expected_model_id"),
+    [
+        ("slm1", "mistralai/Mistral-7B-Instruct-v0.3"),
+        ("slm2", "meta-llama/Meta-Llama-3-8B-Instruct"),
+        ("llm1", "mistralai/Mistral-Small-24B-Instruct-2501"),
+        ("llm2", "Qwen/Qwen2.5-14B-Instruct"),
+    ],
+)
+def test_smoke_script_dry_run(model_key: str, expected_model_id: str) -> None:
+    result = smoke_script.run_smoke_test(model_key=model_key, dry_run=True, base_url="http://localhost:8123")
     assert result["status"] == "dry_run"
-    assert result["model_key"] == "llm1"
-    assert result["model_id"] == "mistralai/Mistral-Small-24B-Instruct-2501"
+    assert result["model_key"] == model_key
+    assert result["model_id"] == expected_model_id
+    assert result["request_model_name"] == model_key
     assert result["base_url"] == "http://localhost:8123"
     assert result["max_new_tokens"] == 80
     assert result["backend_error"] is None

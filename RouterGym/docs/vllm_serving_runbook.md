@@ -1,128 +1,223 @@
-# vLLM Serving Runbook
+# vLLM Local Four-Model Serving Runbook
 
-This runbook covers the dedicated larger-model serving path for RouterGym.
+This runbook covers the corrected local-serving layout for RouterGym when
+`ROUTERGYM_MODEL_BACKEND=openai_compatible`.
 
-## Purpose
+RouterGym now sends **all four logical model keys** through one local
+OpenAI-compatible gateway:
 
-Use a dedicated OpenAI-compatible endpoint for `llm1` and `llm2` so production LLM runs do not depend on Hugging Face Inference Providers.
-
-Current larger-model mappings:
-
+- `slm1` -> `mistralai/Mistral-7B-Instruct-v0.3`
+- `slm2` -> `meta-llama/Meta-Llama-3-8B-Instruct`
 - `llm1` -> `mistralai/Mistral-Small-24B-Instruct-2501`
 - `llm2` -> `Qwen/Qwen2.5-14B-Instruct`
 
-## Required environment variables
+The gateway exposes one RouterGym-facing endpoint:
 
-Set the backend:
+- `ROUTERGYM_OPENAI_BASE_URL=http://127.0.0.1:8000/v1`
+
+RouterGym sends the logical key (`slm1`, `slm2`, `llm1`, `llm2`) to the
+gateway. The gateway rewrites that to the upstream raw model ID and forwards
+the request to the correct local vLLM server.
+
+## Required RouterGym environment
 
 ```powershell
 $env:ROUTERGYM_MODEL_BACKEND="openai_compatible"
-```
-
-Set the OpenAI-compatible base URL and API key:
-
-```powershell
 $env:ROUTERGYM_OPENAI_BASE_URL="http://127.0.0.1:8000/v1"
 $env:ROUTERGYM_OPENAI_API_KEY="replace-with-your-vllm-api-key"
 ```
 
-Supported aliases:
+Supported aliases still work:
 
 - `ROUTERGYM_VLLM_BASE_URL`
 - `ROUTERGYM_VLLM_API_KEY`
-- backend alias: `vllm_openai`
+- backend alias `vllm_openai`
 
-RouterGym normalizes the base URL to include `/v1` when needed.
+## Gateway route variables
 
-## Example vLLM server commands
+Set one upstream URL per logical model key:
 
-Serve `llm1`:
-
-```bash
-vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
-  --api-key replace-with-your-vllm-api-key
+```powershell
+$env:ROUTERGYM_GATEWAY_SLM1_UPSTREAM_BASE_URL="http://127.0.0.1:8101/v1"
+$env:ROUTERGYM_GATEWAY_SLM2_UPSTREAM_BASE_URL="http://127.0.0.1:8102/v1"
+$env:ROUTERGYM_GATEWAY_LLM1_UPSTREAM_BASE_URL="http://127.0.0.1:8103/v1"
+$env:ROUTERGYM_GATEWAY_LLM2_UPSTREAM_BASE_URL="http://127.0.0.1:8104/v1"
 ```
 
-Serve `llm2`:
+Optional llm2 replicas:
 
-```bash
-vllm serve Qwen/Qwen2.5-14B-Instruct \
-  --api-key replace-with-your-vllm-api-key
+```powershell
+$env:ROUTERGYM_GATEWAY_LLM2_REPLICA_BASE_URLS="http://127.0.0.1:8105/v1,http://127.0.0.1:8106/v1"
 ```
 
-The vLLM OpenAI-compatible server listens on `http://localhost:8000` by default unless you override host or port.
+Optional gateway bind controls:
 
-## Prefix caching for the final benchmark
+```powershell
+$env:ROUTERGYM_GATEWAY_BIND_HOST="127.0.0.1"
+$env:ROUTERGYM_GATEWAY_BIND_PORT="8000"
+```
 
-For the final long benchmark run, enable vLLM automatic prefix caching.
+## 4-GPU layout
 
-Why this is low risk:
+Recommended mapping:
 
-- it is a serving-side KV-cache reuse optimization
-- it does not change RouterGym prompts, routing, pricing, or benchmark semantics
-- it only helps when many requests share the same prompt prefix
+- GPU 0: `slm1`
+- GPU 1: `slm2`
+- GPU 2: `llm1`
+- GPU 3: `llm2`
+- gateway: port `8000`
 
-This fits RouterGym well because benchmark requests share stable prompt scaffolding
-such as task instructions, schema hints, and other repeated prompt boilerplate.
-
-Recommended launch command for `llm1`:
+Launch commands:
 
 ```bash
-vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+CUDA_VISIBLE_DEVICES=0 vllm serve mistralai/Mistral-7B-Instruct-v0.3 \
+  --host 127.0.0.1 --port 8101 \
   --api-key replace-with-your-vllm-api-key \
   --enable-prefix-caching \
   --prefix-caching-hash-algo sha256
 ```
 
-Recommended launch command for `llm2`:
-
 ```bash
-vllm serve Qwen/Qwen2.5-14B-Instruct \
+CUDA_VISIBLE_DEVICES=1 vllm serve meta-llama/Meta-Llama-3-8B-Instruct \
+  --host 127.0.0.1 --port 8102 \
   --api-key replace-with-your-vllm-api-key \
   --enable-prefix-caching \
   --prefix-caching-hash-algo sha256
 ```
 
-Notes:
-
-- `--enable-prefix-caching` turns on vLLM automatic prefix caching
-- `--prefix-caching-hash-algo sha256` makes the safe default explicit
-- this optimization mainly improves the prompt/prefill phase; it does not reduce decode time
-- if prompts do not share prefixes, the benefit will be limited
-- no RouterGym code change is required to use this; it is a launch-time serving setting
-
-## RouterGym smoke test
-
-Dry run:
-
-```powershell
-python -m RouterGym.scripts.smoke_openai_compatible_model --model llm1 --dry-run
+```bash
+CUDA_VISIBLE_DEVICES=2 vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+  --host 127.0.0.1 --port 8103 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
 ```
 
-Live smoke call:
+```bash
+CUDA_VISIBLE_DEVICES=3 vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --host 127.0.0.1 --port 8104 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+Start the RouterGym gateway:
+
+```bash
+python -m RouterGym.scripts.run_local_openai_gateway
+```
+
+## 6-GPU layout
+
+Recommended mapping:
+
+- GPU 0: `slm1`
+- GPU 1: `slm2`
+- GPU 2: `llm1`
+- GPU 3: `llm2`
+- GPU 4: `llm2` replica
+- GPU 5: `llm2` replica
+- gateway: port `8000`
+
+Primary servers:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 vllm serve mistralai/Mistral-7B-Instruct-v0.3 \
+  --host 127.0.0.1 --port 8101 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+```bash
+CUDA_VISIBLE_DEVICES=1 vllm serve meta-llama/Meta-Llama-3-8B-Instruct \
+  --host 127.0.0.1 --port 8102 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+```bash
+CUDA_VISIBLE_DEVICES=2 vllm serve mistralai/Mistral-Small-24B-Instruct-2501 \
+  --host 127.0.0.1 --port 8103 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+```bash
+CUDA_VISIBLE_DEVICES=3 vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --host 127.0.0.1 --port 8104 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+llm2 replicas:
+
+```bash
+CUDA_VISIBLE_DEVICES=4 vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --host 127.0.0.1 --port 8105 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+```bash
+CUDA_VISIBLE_DEVICES=5 vllm serve Qwen/Qwen2.5-14B-Instruct \
+  --host 127.0.0.1 --port 8106 \
+  --api-key replace-with-your-vllm-api-key \
+  --enable-prefix-caching \
+  --prefix-caching-hash-algo sha256
+```
+
+Route the replicas through:
 
 ```powershell
+$env:ROUTERGYM_GATEWAY_LLM2_REPLICA_BASE_URLS="http://127.0.0.1:8105/v1,http://127.0.0.1:8106/v1"
+```
+
+Start the RouterGym gateway:
+
+```bash
+python -m RouterGym.scripts.run_local_openai_gateway
+```
+
+## Smoke and assertion commands
+
+Smoke each logical key:
+
+```powershell
+python -m RouterGym.scripts.smoke_openai_compatible_model --model slm1
+python -m RouterGym.scripts.smoke_openai_compatible_model --model slm2
+python -m RouterGym.scripts.smoke_openai_compatible_model --model llm1
 python -m RouterGym.scripts.smoke_openai_compatible_model --model llm2
 ```
 
-## RunPod / VS Code workflow
-
-Recommended pattern:
-
-1. Create a RunPod Pod with enough VRAM for the target model.
-2. Attach a persistent volume or network volume for model weights and cache.
-3. Start the vLLM server inside the Pod.
-4. Connect from VS Code using Remote SSH.
-5. Point RouterGym to the forwarded or public OpenAI-compatible base URL.
-
-Suggested environment on the development side:
+Assert the full local-serving contract:
 
 ```powershell
-$env:ROUTERGYM_MODEL_BACKEND="openai_compatible"
-$env:ROUTERGYM_OPENAI_BASE_URL="http://127.0.0.1:8000/v1"
-$env:ROUTERGYM_OPENAI_API_KEY="replace-with-your-vllm-api-key"
+python -m RouterGym.scripts.assert_local_openai_serving --models slm1 slm2 llm1 llm2
 ```
 
-## Operational note
+This assertion fails if:
 
-Keep `hf_inference` available for small-model development and lightweight fallback work. Use `openai_compatible` for the dedicated larger-model serving path.
+- any requested model key resolves to HF remote instead of local OpenAI-compatible serving
+- any requested model key is missing from gateway `/v1/models`
+- any gateway model ID mapping does not match RouterGym’s registry
+- any smoke call fails
+
+## Preflight sequence before the corrected rerun
+
+1. Start all vLLM servers.
+2. Start the RouterGym gateway on port `8000`.
+3. Set RouterGym env vars to the gateway endpoint.
+4. Run the four smoke commands above.
+5. Run `assert_local_openai_serving`.
+6. Run the corrected 100-ticket preflight with quality abort enabled.
+
+## RunPod note
+
+This design keeps RouterGym pointed at one local OpenAI-compatible endpoint while
+still letting you place each model server on its own GPU and add llm2 replicas
+when the dominant configs need extra throughput.

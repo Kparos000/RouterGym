@@ -1,7 +1,7 @@
-"""Smoke-test a dedicated OpenAI-compatible / vLLM-served larger model.
+"""Smoke-test a RouterGym logical model key through an OpenAI-compatible gateway.
 
 Examples:
-    python -m RouterGym.scripts.smoke_openai_compatible_model --model llm1 --dry-run
+    python -m RouterGym.scripts.smoke_openai_compatible_model --model slm1 --dry-run
     python -m RouterGym.scripts.smoke_openai_compatible_model --model llm2
 """
 
@@ -12,7 +12,7 @@ import json
 from typing import Any, Dict, Optional
 
 from RouterGym.engines.model_registry import (
-    LLM_MODELS,
+    ALL_MODELS,
     _get_openai_compatible_api_key,
     _get_openai_compatible_base_url,
 )
@@ -24,18 +24,11 @@ DEFAULT_PROMPT = (
     "Ticket: reset VPN access."
 )
 DEFAULT_SMOKE_MAX_NEW_TOKENS = 80
-GPT_OSS_SMOKE_MAX_NEW_TOKENS = 512
-
-
-def _resolve_smoke_max_new_tokens(model_id: str) -> int:
-    if model_id.startswith("openai/gpt-oss"):
-        return GPT_OSS_SMOKE_MAX_NEW_TOKENS
-    return DEFAULT_SMOKE_MAX_NEW_TOKENS
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Smoke-test an OpenAI-compatible larger-model endpoint.")
-    parser.add_argument("--model", choices=sorted(LLM_MODELS.keys()), required=True, help="Logical model key.")
+    parser = argparse.ArgumentParser(description="Smoke-test an OpenAI-compatible RouterGym model endpoint.")
+    parser.add_argument("--model", choices=sorted(ALL_MODELS.keys()), required=True, help="Logical model key.")
     parser.add_argument("--prompt", type=str, default=DEFAULT_PROMPT, help="Prompt to send.")
     parser.add_argument("--base-url", type=str, default=None, help="Override OpenAI-compatible base URL.")
     parser.add_argument("--api-key", type=str, default=None, help="Override OpenAI-compatible API key.")
@@ -51,14 +44,15 @@ def run_smoke_test(
     api_key: Optional[str] = None,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    entry = LLM_MODELS[model_key]
+    entry = ALL_MODELS[model_key]
     resolved_base_url = base_url or _get_openai_compatible_base_url()
     resolved_api_key = api_key or _get_openai_compatible_api_key()
-    max_new_tokens = _resolve_smoke_max_new_tokens(entry.hf_id)
+    max_new_tokens = DEFAULT_SMOKE_MAX_NEW_TOKENS
     payload: Dict[str, Any] = {
         "status": "dry_run" if dry_run else "pending",
         "model_key": model_key,
         "model_id": entry.hf_id,
+        "request_model_name": model_key,
         "backend_used": "openai_compatible",
         "base_url": resolved_base_url,
         "max_new_tokens": max_new_tokens,

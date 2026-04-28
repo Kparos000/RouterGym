@@ -29,6 +29,7 @@ class OpenAICompatibleEngine:
         model_id: str,
         *,
         model_key: Optional[str] = None,
+        request_model_name: Optional[str] = None,
         kind: str = "llm",
         base_url: str = DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
         api_key: str = "EMPTY",
@@ -37,6 +38,7 @@ class OpenAICompatibleEngine:
     ) -> None:
         self.model_key = model_key or model_id
         self.model_name = model_id
+        self.request_model_name = request_model_name or self.model_key
         self.kind = kind
         self.base_url = normalize_openai_compatible_base_url(base_url)
         self.api_key = api_key
@@ -151,7 +153,7 @@ class OpenAICompatibleEngine:
         self.last_error = None
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
-            "model": self.model_name,
+            "model": self.request_model_name,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_new_tokens,
             "temperature": temperature,
