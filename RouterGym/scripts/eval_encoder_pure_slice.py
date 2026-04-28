@@ -68,8 +68,15 @@ def evaluate_slice(ticket_start: int, ticket_limit: int, head_mode: str) -> None
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate encoder classifier on a ticket slice.")
-    parser.add_argument("--ticket-start", type=int, default=0, help="Start index (0-based) into tickets.csv")
-    parser.add_argument("--ticket-limit", type=int, default=30, help="Max tickets to evaluate (default 30; -1 for all)")
+    parser.add_argument(
+        "--ticket-start", type=int, default=0, help="Start index (0-based) into tickets.csv"
+    )
+    parser.add_argument(
+        "--ticket-limit",
+        type=int,
+        default=30,
+        help="Max tickets to evaluate (default 30; -1 for all)",
+    )
     parser.add_argument(
         "--head-mode",
         type=str,

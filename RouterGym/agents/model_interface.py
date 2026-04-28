@@ -28,4 +28,3 @@ class TicketAgent:
                 snippets = []
         prompt = build_prompt(text, snippets)
         return generate_response(prompt)
-

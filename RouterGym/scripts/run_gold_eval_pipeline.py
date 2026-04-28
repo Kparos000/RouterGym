@@ -295,7 +295,9 @@ def _freeze_final(
     _, meta = finalize_gold_files(
         draft_path=output_dir / "gold_eval_auto.jsonl",
         review_queue_path=output_dir / "gold_eval_review_queue.jsonl",
-        reviewed_path=(output_dir / "gold_eval_reviewed.jsonl") if (output_dir / "gold_eval_reviewed.jsonl").exists() else None,
+        reviewed_path=(output_dir / "gold_eval_reviewed.jsonl")
+        if (output_dir / "gold_eval_reviewed.jsonl").exists()
+        else None,
         output_path=final_path,
         metadata_path=metadata_path,
         allow_auto_approved=True,
@@ -317,14 +319,18 @@ def _freeze_final(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run gold eval pipeline with audit and thresholds.")
+    parser = argparse.ArgumentParser(
+        description="Run gold eval pipeline with audit and thresholds."
+    )
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--limit", type=int, default=300)
     parser.add_argument("--output-dir", type=str, default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--final-name", type=str, default="gold_eval_final.jsonl")
     parser.add_argument("--audit-only", action="store_true")
     parser.add_argument("--max-review-queue", type=int, default=0)
-    parser.add_argument("--fail-on-review-queue", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--fail-on-review-queue", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--min_unique_policy_ratio", type=float, default=0.30)
     parser.add_argument("--max_top_policy_share", type=float, default=0.20)
     parser.add_argument("--min_avg_steps", type=float, default=4.0)

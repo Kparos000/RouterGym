@@ -35,9 +35,16 @@ def test_read_jsonl_parses_and_raises(tmp_path: Any) -> None:
 
 def test_autofill_marks_review_on_validation_fail(monkeypatch: Any) -> None:
     records = [
-        {"ticket_index": 0, "topic_group": "Access", "ticket_text": "Need vpn access", "gold_resolution": {}}
+        {
+            "ticket_index": 0,
+            "topic_group": "Access",
+            "ticket_text": "Need vpn access",
+            "gold_resolution": {},
+        }
     ]
-    monkeypatch.setattr(autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("kb1"))
+    monkeypatch.setattr(
+        autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("kb1")
+    )
     monkeypatch.setattr(autofill, "_valid_policy_ids", lambda: {"kb1"})
 
     responses: List[str] = [
@@ -111,9 +118,16 @@ def test_autofill_marks_review_on_validation_fail(monkeypatch: Any) -> None:
 
 def test_autofill_passes_validation(monkeypatch: Any) -> None:
     records = [
-        {"ticket_index": 1, "topic_group": "Access", "ticket_text": "Need vpn setup", "gold_resolution": {}}
+        {
+            "ticket_index": 1,
+            "topic_group": "Access",
+            "ticket_text": "Need vpn setup",
+            "gold_resolution": {},
+        }
     ]
-    monkeypatch.setattr(autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("kb-ok"))
+    monkeypatch.setattr(
+        autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("kb-ok")
+    )
     monkeypatch.setattr(autofill, "_valid_policy_ids", lambda: {"kb-ok"})
 
     responses: List[str] = [
@@ -191,7 +205,14 @@ def test_autofill_passes_validation(monkeypatch: Any) -> None:
 
 
 def test_dynamic_policy_ids_are_filtered(monkeypatch: Any) -> None:
-    records = [{"ticket_index": 2, "topic_group": "Purchase", "ticket_text": "Need laptop", "gold_resolution": {}}]
+    records = [
+        {
+            "ticket_index": 2,
+            "topic_group": "Purchase",
+            "ticket_text": "Need laptop",
+            "gold_resolution": {},
+        }
+    ]
 
     def fake_retrieve(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
         return {
@@ -260,7 +281,15 @@ def test_retrieve_kb_filters_dynamic(monkeypatch: Any) -> None:
         autofill.kb_loader,
         "load_kb_index",
         lambda: [
-            {"id": "kb-valid", "category": "Hardware", "title": "T", "content": "Body", "escalation_notes": "", "path": "p", "tags": []}
+            {
+                "id": "kb-valid",
+                "category": "Hardware",
+                "title": "T",
+                "content": "Body",
+                "escalation_notes": "",
+                "path": "p",
+                "tags": [],
+            }
         ],
     )
 
@@ -309,8 +338,24 @@ def test_retrieve_kb_accepts_id_and_source(monkeypatch: Any) -> None:
         autofill.kb_loader,
         "load_kb_index",
         lambda: [
-            {"id": "kb-one", "category": "Access", "title": "One", "content": "VPN", "escalation_notes": "", "path": "p1", "tags": []},
-            {"id": "kb-two", "category": "Access", "title": "Two", "content": "SSO", "escalation_notes": "", "path": "p2", "tags": []},
+            {
+                "id": "kb-one",
+                "category": "Access",
+                "title": "One",
+                "content": "VPN",
+                "escalation_notes": "",
+                "path": "p1",
+                "tags": [],
+            },
+            {
+                "id": "kb-two",
+                "category": "Access",
+                "title": "Two",
+                "content": "SSO",
+                "escalation_notes": "",
+                "path": "p2",
+                "tags": [],
+            },
         ],
     )
 
@@ -353,7 +398,9 @@ def test_fallback_selects_valid_ids(monkeypatch: Any) -> None:
             }
         ],
     )
-    monkeypatch.setattr(autofill, "retrieve_kb", lambda text, memory_mode, top_k: {"snippets": [], "policy_ids": []})
+    monkeypatch.setattr(
+        autofill, "retrieve_kb", lambda text, memory_mode, top_k: {"snippets": [], "policy_ids": []}
+    )
 
     responses: List[str] = [
         json.dumps(
@@ -381,7 +428,14 @@ def test_fallback_selects_valid_ids(monkeypatch: Any) -> None:
     monkeypatch.setattr(autofill, "call_model", lambda model, prompt: responses.pop(0))
     models = {"llm1": object(), "llm2": object()}
     filled, review_queue = autofill.autofill_records(
-        [{"ticket_index": 3, "topic_group": "Access", "ticket_text": "vpn access", "gold_resolution": {}}],
+        [
+            {
+                "ticket_index": 3,
+                "topic_group": "Access",
+                "ticket_text": "vpn access",
+                "gold_resolution": {},
+            }
+        ],
         models,
         memory_mode="rag_hybrid",
         top_k=2,
@@ -411,10 +465,20 @@ def test_repair_loop_recovers_valid_output(monkeypatch: Any) -> None:
             }
         ],
     )
-    monkeypatch.setattr(autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("access.vpn"))
+    monkeypatch.setattr(
+        autofill, "retrieve_kb", lambda text, memory_mode, top_k: _stub_retrieval("access.vpn")
+    )
 
     responses: List[str] = [
-        json.dumps({"summary": "", "steps": ["x"], "escalation_required": False, "kb_policies": ["access.vpn"], "acceptance_criteria": []}),
+        json.dumps(
+            {
+                "summary": "",
+                "steps": ["x"],
+                "escalation_required": False,
+                "kb_policies": ["access.vpn"],
+                "acceptance_criteria": [],
+            }
+        ),
         json.dumps(
             {
                 "summary": "VPN setup",
@@ -445,7 +509,14 @@ def test_repair_loop_recovers_valid_output(monkeypatch: Any) -> None:
     monkeypatch.setattr(autofill, "call_model", fake_call_model)
     models = {"llm1": object(), "llm2": object()}
     filled, _ = autofill.autofill_records(
-        [{"ticket_index": 4, "topic_group": "Access", "ticket_text": "vpn access", "gold_resolution": {}}],
+        [
+            {
+                "ticket_index": 4,
+                "topic_group": "Access",
+                "ticket_text": "vpn access",
+                "gold_resolution": {},
+            }
+        ],
         models,
         memory_mode="rag_hybrid",
         top_k=2,
@@ -461,7 +532,14 @@ def test_kb_index_missing_queues_review(monkeypatch: Any) -> None:
     autofill._kb_index_by_id.cache_clear()
     monkeypatch.setattr(autofill, "_kb_index_by_id", lambda: {})
     filled, review_queue = autofill.autofill_records(
-        [{"ticket_index": 5, "topic_group": "Access", "ticket_text": "vpn access", "gold_resolution": {}}],
+        [
+            {
+                "ticket_index": 5,
+                "topic_group": "Access",
+                "ticket_text": "vpn access",
+                "gold_resolution": {},
+            }
+        ],
         {"llm1": object(), "llm2": object()},
         memory_mode="rag_hybrid",
         top_k=2,

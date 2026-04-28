@@ -18,7 +18,9 @@ from RouterGym.memory import MEMORY_MODES, get_memory_class
 
 DEFAULT_INPUT = Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval.jsonl"
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval_auto.jsonl"
-DEFAULT_REVIEW = Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval_review_queue.jsonl"
+DEFAULT_REVIEW = (
+    Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval_review_queue.jsonl"
+)
 DEFAULT_MEMORY_MODE = "rag_hybrid"
 DEFAULT_TOP_K = 4
 DEFAULT_ANNOTATOR = "llm2"
@@ -181,7 +183,9 @@ def retrieve_kb(ticket_text: str, memory_mode: str, top_k: int) -> Dict[str, Any
     """Retrieve KB snippets using configured memory backend."""
     mode = memory_mode
     if mode not in ALLOWED_MEMORY_MODES:
-        raise ValueError(f"Unsupported memory_mode '{mode}'. Allowed: {sorted(ALLOWED_MEMORY_MODES)}")
+        raise ValueError(
+            f"Unsupported memory_mode '{mode}'. Allowed: {sorted(ALLOWED_MEMORY_MODES)}"
+        )
     memory_cls = get_memory_class(mode)
     if memory_cls is None:
         raise ValueError(f"No memory class found for mode '{mode}'")
@@ -293,7 +297,9 @@ def build_reviewer_prompt(
     )
 
 
-def _format_allowed_policies(snippets: Sequence[Dict[str, Any]], allowed_policy_ids: Sequence[str]) -> str:
+def _format_allowed_policies(
+    snippets: Sequence[Dict[str, Any]], allowed_policy_ids: Sequence[str]
+) -> str:
     allowed_set = set(allowed_policy_ids)
     parts = []
     for snip in snippets:
@@ -420,7 +426,9 @@ def _is_actionable_step(step: Any) -> bool:
     return len(tokens) >= 2
 
 
-def validate_gold_resolution(resolution: Dict[str, Any], allowed_policy_ids: Iterable[str]) -> Tuple[bool, List[str]]:
+def validate_gold_resolution(
+    resolution: Dict[str, Any], allowed_policy_ids: Iterable[str]
+) -> Tuple[bool, List[str]]:
     reasons: List[str] = []
     allowed = set(allowed_policy_ids)
     if not resolution:
@@ -523,14 +531,18 @@ def process_record(
             "review_reasons": ["kb_index_empty_or_unreadable"],
         }
 
-    annotator_prompt = build_annotator_prompt(ticket_text, topic_group, snippets, allowed_policy_ids)
+    annotator_prompt = build_annotator_prompt(
+        ticket_text, topic_group, snippets, allowed_policy_ids
+    )
     annotator_output_raw = call_model(models.get(annotator_model), annotator_prompt)
     annotator_obj = parse_json_safely(annotator_output_raw)
     annotator_resolution = normalize_gold_resolution(_extract_resolution(annotator_obj))
     annotator_resolution["kb_policies"] = [
         pid for pid in annotator_resolution.get("kb_policies", []) if pid in allowed_set
     ]
-    annotator_ok, annotator_reasons = validate_gold_resolution(annotator_resolution, allowed_policy_ids)
+    annotator_ok, annotator_reasons = validate_gold_resolution(
+        annotator_resolution, allowed_policy_ids
+    )
 
     for _attempt in range(2):
         if annotator_ok:
@@ -549,7 +561,9 @@ def process_record(
         annotator_resolution["kb_policies"] = [
             pid for pid in annotator_resolution.get("kb_policies", []) if pid in allowed_set
         ]
-        annotator_ok, annotator_reasons = validate_gold_resolution(annotator_resolution, allowed_policy_ids)
+        annotator_ok, annotator_reasons = validate_gold_resolution(
+            annotator_resolution, allowed_policy_ids
+        )
 
     reviewer_prompt = build_reviewer_prompt(
         ticket_text, topic_group, snippets, allowed_policy_ids, annotator_resolution
@@ -560,7 +574,9 @@ def process_record(
     reviewer_resolution["kb_policies"] = [
         pid for pid in reviewer_resolution.get("kb_policies", []) if pid in allowed_set
     ]
-    reviewer_ok, reviewer_reasons = validate_gold_resolution(reviewer_resolution, allowed_policy_ids)
+    reviewer_ok, reviewer_reasons = validate_gold_resolution(
+        reviewer_resolution, allowed_policy_ids
+    )
 
     if reviewer_ok:
         final_resolution = reviewer_resolution
@@ -607,7 +623,9 @@ def autofill_records(
     outputs: List[Dict[str, Any]] = []
     review_queue: List[Dict[str, Any]] = []
     for record in slice_records:
-        processed = process_record(record, models, memory_mode, top_k, annotator_model, reviewer_model)
+        processed = process_record(
+            record, models, memory_mode, top_k, annotator_model, reviewer_model
+        )
         outputs.append(processed)
         if processed.get("needs_human_review"):
             review_queue.append(processed)
@@ -623,17 +641,51 @@ def _write_jsonl(records: Iterable[Dict[str, Any]], path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Autofill gold eval set with KB-grounded LLMs.")
-    parser.add_argument("--input-path", type=str, default=str(DEFAULT_INPUT), help="Path to gold_eval.jsonl template.")
-    parser.add_argument("--output-path", type=str, default=str(DEFAULT_OUTPUT), help="Path to write filled gold eval JSONL.")
-    parser.add_argument("--review-queue-path", type=str, default=str(DEFAULT_REVIEW), help="Path to write human review queue JSONL.")
-    parser.add_argument("--memory-mode", type=str, default=DEFAULT_MEMORY_MODE, help="Memory mode for KB retrieval.")
-    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help="Top-k snippets to retrieve from KB.")
-    parser.add_argument("--annotator-model", type=str, default=DEFAULT_ANNOTATOR, help="Model name for annotator pass.")
-    parser.add_argument("--reviewer-model", type=str, default=DEFAULT_REVIEWER, help="Model name for reviewer pass.")
-    parser.add_argument("--limit", type=int, default=None, help="Optional limit on number of records to process.")
+    parser.add_argument(
+        "--input-path",
+        type=str,
+        default=str(DEFAULT_INPUT),
+        help="Path to gold_eval.jsonl template.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=str(DEFAULT_OUTPUT),
+        help="Path to write filled gold eval JSONL.",
+    )
+    parser.add_argument(
+        "--review-queue-path",
+        type=str,
+        default=str(DEFAULT_REVIEW),
+        help="Path to write human review queue JSONL.",
+    )
+    parser.add_argument(
+        "--memory-mode", type=str, default=DEFAULT_MEMORY_MODE, help="Memory mode for KB retrieval."
+    )
+    parser.add_argument(
+        "--top-k", type=int, default=DEFAULT_TOP_K, help="Top-k snippets to retrieve from KB."
+    )
+    parser.add_argument(
+        "--annotator-model",
+        type=str,
+        default=DEFAULT_ANNOTATOR,
+        help="Model name for annotator pass.",
+    )
+    parser.add_argument(
+        "--reviewer-model", type=str, default=DEFAULT_REVIEWER, help="Model name for reviewer pass."
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Optional limit on number of records to process."
+    )
     parser.add_argument("--start", type=int, default=0, help="Optional offset into records.")
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed for deterministic ordering.")
-    parser.add_argument("--offline", action="store_true", help="Skip LLM calls; fill placeholders and mark for review.")
+    parser.add_argument(
+        "--seed", type=int, default=DEFAULT_SEED, help="Random seed for deterministic ordering."
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip LLM calls; fill placeholders and mark for review.",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input_path)
@@ -647,8 +699,10 @@ def main() -> None:
     env_offline = not (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN"))
     offline = args.offline or env_offline
     if offline:
+
         def _offline_model(_prompt: str, **_kwargs: Any) -> str:
             return "{}"
+
         models = {args.annotator_model: _offline_model, args.reviewer_model: _offline_model}
         print("Running in offline mode; model outputs will be empty and marked for review.")
     else:

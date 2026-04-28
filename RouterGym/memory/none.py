@@ -26,7 +26,9 @@ class NoneMemory(MemoryBase):
             retrieved_context_length=0,
         )
 
-    def update(self, item: Any, metadata: Optional[Dict[str, Any]] = None) -> None:  # pragma: no cover - trivial
+    def update(
+        self, item: Any, metadata: Optional[Dict[str, Any]] = None
+    ) -> None:  # pragma: no cover - trivial
         return None
 
     def summarize(self) -> str:

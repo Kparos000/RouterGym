@@ -54,11 +54,7 @@ class HybridRAGMemory(MemoryBase):
             bm25_result.retrieval_latency_ms,
             dense_result.retrieval_latency_ms,
         )
-        relevance = (
-            fused_snippets[0]["score"]
-            if fused_snippets
-            else 0.0
-        )
+        relevance = fused_snippets[0]["score"] if fused_snippets else 0.0
         metadata = {
             "mode": "rag_hybrid",
             "alpha": self.alpha,

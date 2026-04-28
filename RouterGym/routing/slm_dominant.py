@@ -147,9 +147,17 @@ class SLMDominantRouter(BaseRouter):
             final_output["predicted_category"] = infer_category_from_text(text)
 
         steps = [
-            {"stage": "generate_initial", "model": "llm" if force_llm and llm is not None else "slm", "output": final_output},
+            {
+                "stage": "generate_initial",
+                "model": "llm" if force_llm and llm is not None else "slm",
+                "output": final_output,
+            },
         ]
-        if routing_decision.escalated and model_used == "llm" and not (force_llm and llm is not None):
+        if (
+            routing_decision.escalated
+            and model_used == "llm"
+            and not (force_llm and llm is not None)
+        ):
             steps.append({"stage": "escalate_rewrite", "model": "llm", "output": final_output})
 
         result = {

@@ -65,12 +65,27 @@ def run_agentic_eval(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run agentic pipeline over tickets and emit AgentOutput JSONL.")
-    parser.add_argument("--ticket-limit", type=int, default=None, help="Limit number of tickets (optional).")
-    parser.add_argument("--ticket-start", type=int, default=0, help="Row offset to start from (default 0).")
-    parser.add_argument("--router-mode", type=str, default="manual", help="Router strategy name (recorded only).")
-    parser.add_argument("--memory-mode", type=str, default="none", help="Context mode (none, rag_dense, rag_bm25, rag_hybrid).")
-    parser.add_argument("--model-name", type=str, default="slm1", help="Model name (slm1/slm2/llm1/llm2).")
+    parser = argparse.ArgumentParser(
+        description="Run agentic pipeline over tickets and emit AgentOutput JSONL."
+    )
+    parser.add_argument(
+        "--ticket-limit", type=int, default=None, help="Limit number of tickets (optional)."
+    )
+    parser.add_argument(
+        "--ticket-start", type=int, default=0, help="Row offset to start from (default 0)."
+    )
+    parser.add_argument(
+        "--router-mode", type=str, default="manual", help="Router strategy name (recorded only)."
+    )
+    parser.add_argument(
+        "--memory-mode",
+        type=str,
+        default="none",
+        help="Context mode (none, rag_dense, rag_bm25, rag_hybrid).",
+    )
+    parser.add_argument(
+        "--model-name", type=str, default="slm1", help="Model name (slm1/slm2/llm1/llm2)."
+    )
     parser.add_argument(
         "--output-path",
         type=Path,

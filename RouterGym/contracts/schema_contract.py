@@ -177,7 +177,9 @@ class AgentOutputSchema:
                         errors.append("classification.label is not in the allowed label set")
                 if "confidence" in cls:
                     conf_val = cls.get("confidence", 0.0)
-                    if not isinstance(conf_val, (int, float)) or not (0.0 <= float(conf_val) <= 1.0):
+                    if not isinstance(conf_val, (int, float)) or not (
+                        0.0 <= float(conf_val) <= 1.0
+                    ):
                         errors.append("classification.confidence must be between 0 and 1")
                 if "confidence_bucket" in cls:
                     if cls["confidence_bucket"] not in ALLOWED_CONFIDENCE_BUCKETS:
@@ -207,7 +209,9 @@ class AgentOutputSchema:
                     elif not isinstance(esc[key], bool):
                         errors.append(f"escalation_flags field {key} must be a bool")
                 if "reasons" in esc:
-                    if not isinstance(esc["reasons"], list) or not all(isinstance(r, str) for r in esc["reasons"]):
+                    if not isinstance(esc["reasons"], list) or not all(
+                        isinstance(r, str) for r in esc["reasons"]
+                    ):
                         errors.append("escalation_flags.reasons must be a list of strings")
 
         if "kb_policy_ids" in json_obj:
@@ -236,7 +240,10 @@ class AgentOutputSchema:
                         continue
                     if not isinstance(metrics[field], allowed_types):
                         errors.append(f"metrics field {field} has wrong type")
-        if "escalation_model_name" in json_obj and json_obj.get("escalation_model_name") is not None:
+        if (
+            "escalation_model_name" in json_obj
+            and json_obj.get("escalation_model_name") is not None
+        ):
             if not isinstance(json_obj["escalation_model_name"], str):
                 errors.append("escalation_model_name must be a string when provided")
         if "base_model_name" in json_obj and not isinstance(json_obj.get("base_model_name"), str):

@@ -21,6 +21,7 @@ except Exception:  # pragma: no cover
 EMBED_MODEL = "all-MiniLM-L6-v2"
 _embedder = None
 
+
 def _get_embedder():
     global _embedder
     if _embedder is None and SentenceTransformer is not None:
@@ -130,7 +131,9 @@ def estimate_tokens(*texts: str) -> int:
     return sum(estimate_text_tokens(text) for text in texts)
 
 
-def estimate_cost_usd(model_used: str, prompt_text: str, answer_text: str, reasoning: str = "") -> float:
+def estimate_cost_usd(
+    model_used: str, prompt_text: str, answer_text: str, reasoning: str = ""
+) -> float:
     """Estimate cost per call using normalized benchmark pricing."""
     input_tokens = estimate_tokens(prompt_text)
     output_tokens = estimate_tokens(answer_text, reasoning)
@@ -156,7 +159,9 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     output_raw = record.get("output", "")
     output = output_raw.get("final_answer") if isinstance(output_raw, dict) else output_raw
     label = _normalize_label(str(record.get("gold_category", record.get("label", ""))))
-    predicted_label = _normalize_label(str(record.get("predicted_category", record.get("predicted", ""))))
+    predicted_label = _normalize_label(
+        str(record.get("predicted_category", record.get("predicted", "")))
+    )
     kb_snippets = record.get("kb_snippets", [])
     model_used = str(record.get("model_used", "slm")).lower()
     reasoning = ""
@@ -165,12 +170,20 @@ def compute_all_metrics(record: Dict[str, Any]) -> Dict[str, float]:
     prompt_text = record.get("prompt_text", record.get("prompt", ""))
     kb_attached = bool(record.get("kb_attached", False))
 
-    acc = 1.0 if predicted_label and predicted_label == label and predicted_label not in {"unknown", "other"} else 0.0
+    acc = (
+        1.0
+        if predicted_label
+        and predicted_label == label
+        and predicted_label not in {"unknown", "other"}
+        else 0.0
+    )
     grounded = 0.0 if not kb_attached else groundedness_score(str(output), kb_snippets)
     faithful = groundedness_score(reasoning or str(output), kb_snippets) if kb_attached else 0.0
     schema_val = schema_validity(record.get("parsed_output", record.get("output", {})))
     metrics_blob = record.get("metrics", {})
-    if isinstance(metrics_blob, dict) and isinstance(metrics_blob.get("total_cost_usd"), (int, float)):
+    if isinstance(metrics_blob, dict) and isinstance(
+        metrics_blob.get("total_cost_usd"), (int, float)
+    ):
         cost = float(metrics_blob["total_cost_usd"])
     elif isinstance(record.get("total_cost_usd"), (int, float)):
         cost = float(record["total_cost_usd"])

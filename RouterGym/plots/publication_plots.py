@@ -84,10 +84,12 @@ def plot_latency_vs_cost(df: pd.DataFrame, outdir: Path, n_tickets: int) -> None
             ax.set_yscale("log")
 
     router_handles = [
-        Line2D([0], [0], color=router_palette[r], marker="o", linestyle="", label=r) for r in routers
+        Line2D([0], [0], color=router_palette[r], marker="o", linestyle="", label=r)
+        for r in routers
     ]
     memory_handles = [
-        Line2D([0], [0], color="black", marker=memory_markers[m], linestyle="", label=m) for m in memories
+        Line2D([0], [0], color="black", marker=memory_markers[m], linestyle="", label=m)
+        for m in memories
     ]
     leg1 = ax.legend(handles=router_handles, title="Router", loc="upper left")
     ax.add_artist(leg1)
@@ -120,7 +122,9 @@ def plot_confusion_matrix(df: pd.DataFrame, outdir: Path, n_tickets: int) -> Non
         return
     sub = df[mask]
     pivot = (
-        sub.pivot_table(index="gold_category", columns="predicted_category", aggfunc="size", fill_value=0)
+        sub.pivot_table(
+            index="gold_category", columns="predicted_category", aggfunc="size", fill_value=0
+        )
         .sort_index(axis=0)
         .sort_index(axis=1)
     )
@@ -222,7 +226,9 @@ def main(input_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate publication-ready plots for RouterGym experiments.")
+    parser = argparse.ArgumentParser(
+        description="Generate publication-ready plots for RouterGym experiments."
+    )
     parser.add_argument(
         "--input",
         required=True,

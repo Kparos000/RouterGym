@@ -71,7 +71,12 @@ def _encode_batch(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train encoder centroids on tickets dataset.")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help="Encoder model name (default: intfloat/e5-small-v2)")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=DEFAULT_MODEL,
+        help="Encoder model name (default: intfloat/e5-small-v2)",
+    )
     args = parser.parse_args()
 
     dataset_path = _find_dataset()
@@ -86,7 +91,9 @@ def main() -> None:
     if df.empty:
         raise ValueError("No records after label normalization; check dataset columns.")
 
-    train_df, val_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df["label_norm"])
+    train_df, val_df = train_test_split(
+        df, test_size=0.2, random_state=42, stratify=df["label_norm"]
+    )
     print(f"[Centroids] Train size: {len(train_df)} | Val size: {len(val_df)}")
 
     model = SentenceTransformer(args.model)
@@ -125,10 +132,14 @@ def main() -> None:
         total = per_label_total.get(lbl, 0)
         corr = per_label_correct.get(lbl, 0)
         if total:
-            print(f"  {lbl:15s}: {corr}/{total} = {corr/total:.3f}")
+            print(f"  {lbl:15s}: {corr}/{total} = {corr / total:.3f}")
 
     CENTROID_PATH.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(CENTROID_PATH, labels=np.array(centroid_labels, dtype=str), centroids=centroids_np.astype("float32"))
+    np.savez(
+        CENTROID_PATH,
+        labels=np.array(centroid_labels, dtype=str),
+        centroids=centroids_np.astype("float32"),
+    )
     print(f"[Centroids] Saved centroids to {CENTROID_PATH}")
 
 

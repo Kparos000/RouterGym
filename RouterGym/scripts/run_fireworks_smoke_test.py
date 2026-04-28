@@ -24,7 +24,11 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional
 from RouterGym.agents import generator as generator_module
 from RouterGym.agents.generator import run_ticket_pipeline
 from RouterGym.data.tickets.dataset_loader import load_dataset
-from RouterGym.engines.model_registry import LLM_MODELS, ModelEntry, load_models as registry_load_models
+from RouterGym.engines.model_registry import (
+    LLM_MODELS,
+    ModelEntry,
+    load_models as registry_load_models,
+)
 
 FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
 DEFAULT_OUTPUT_DIR = Path("test_logs_fireworks")
@@ -143,7 +147,9 @@ def _extract_backend_error(model: Any) -> Optional[Dict[str, str]]:
     return None
 
 
-def _derive_failure_payload(result: Dict[str, Any], models: Dict[str, Any], llm_model_key: str) -> Optional[Dict[str, str]]:
+def _derive_failure_payload(
+    result: Dict[str, Any], models: Dict[str, Any], llm_model_key: str
+) -> Optional[Dict[str, str]]:
     final_answer = str(result.get("final_answer", "") or "").strip()
     if final_answer not in {"LLM unavailable", "No valid answer produced"}:
         return None
@@ -178,14 +184,18 @@ def _result_record(
         "gold_label": gold_label,
         "smoke_llm_key": llm_model_key,
         "smoke_llm_model_id": llm_model_id,
-        "predicted_category": payload.get("topic_group") or payload.get("classifier_label") or "unknown",
+        "predicted_category": payload.get("topic_group")
+        or payload.get("classifier_label")
+        or "unknown",
         "final_answer": payload.get("final_answer", ""),
         "reasoning": payload.get("reasoning", ""),
         "escalated": bool(payload.get("escalated", False)),
         "final_model": payload.get("final_model", payload.get("model_name", BASE_MODEL_KEY)),
         "latency_ms": float(metrics.get("latency_ms", payload.get("latency_ms", 0.0)) or 0.0),
         "total_tokens": int(payload.get("total_tokens", metrics.get("total_tokens", 0)) or 0),
-        "total_cost_usd": float(payload.get("total_cost_usd", metrics.get("total_cost_usd", 0.0)) or 0.0),
+        "total_cost_usd": float(
+            payload.get("total_cost_usd", metrics.get("total_cost_usd", 0.0)) or 0.0
+        ),
         "routing_policy_version": payload.get("routing_policy_version", ""),
         "error": error,
     }
@@ -199,7 +209,9 @@ def _summarize_run(records: List[Dict[str, Any]], target_count: int) -> Dict[str
     total_tokens = sum(int(record.get("total_tokens", 0) or 0) for record in records)
     total_cost = sum(float(record.get("total_cost_usd", 0.0) or 0.0) for record in records)
     escalated_count = sum(1 for record in records if bool(record.get("escalated", False)))
-    final_model_counter = Counter(str(record.get("final_model", "")) for record in records if record.get("final_model"))
+    final_model_counter = Counter(
+        str(record.get("final_model", "")) for record in records if record.get("final_model")
+    )
     error_counter = Counter(
         str(record["error"].get("error_type", "unknown"))
         for record in records
@@ -252,7 +264,9 @@ def _format_summary(
         lines.append(f"  total_tokens: {summary['total_tokens']}")
         lines.append(f"  total_cost_usd: {summary['total_cost_usd']:.6f}")
         lines.append(f"  escalation_rate: {summary['escalation_rate']:.3f}")
-        lines.append(f"  model_usage_breakdown: {json.dumps(summary['model_usage_breakdown'], ensure_ascii=False)}")
+        lines.append(
+            f"  model_usage_breakdown: {json.dumps(summary['model_usage_breakdown'], ensure_ascii=False)}"
+        )
         lines.append(f"  failure_types: {json.dumps(summary['failure_types'], ensure_ascii=False)}")
         lines.append("")
     lines.append("overall:")
@@ -264,8 +278,12 @@ def _format_summary(
     lines.append(f"  total_tokens: {overall_summary['total_tokens']}")
     lines.append(f"  total_cost_usd: {overall_summary['total_cost_usd']:.6f}")
     lines.append(f"  escalation_rate: {overall_summary['escalation_rate']:.3f}")
-    lines.append(f"  model_usage_breakdown: {json.dumps(overall_summary['model_usage_breakdown'], ensure_ascii=False)}")
-    lines.append(f"  failure_types: {json.dumps(overall_summary['failure_types'], ensure_ascii=False)}")
+    lines.append(
+        f"  model_usage_breakdown: {json.dumps(overall_summary['model_usage_breakdown'], ensure_ascii=False)}"
+    )
+    lines.append(
+        f"  failure_types: {json.dumps(overall_summary['failure_types'], ensure_ascii=False)}"
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -359,9 +377,13 @@ def run_fireworks_smoke_test(output_dir: Path, limit: int, start: int) -> int:
         tickets = _load_smoke_tickets(limit=limit, start=start)
         with _temporary_fireworks_model_mapping():
             for llm_model_key in ("llm1", "llm2"):
-                llm_records[llm_model_key] = _run_model_smoke(llm_model_key=llm_model_key, tickets=tickets)
+                llm_records[llm_model_key] = _run_model_smoke(
+                    llm_model_key=llm_model_key, tickets=tickets
+                )
                 failures.extend(
-                    record for record in llm_records[llm_model_key] if isinstance(record.get("error"), dict)
+                    record
+                    for record in llm_records[llm_model_key]
+                    if isinstance(record.get("error"), dict)
                 )
     except Exception as exc:
         notes.append(
@@ -398,7 +420,9 @@ def run_fireworks_smoke_test(output_dir: Path, limit: int, start: int) -> int:
         "llm1": _summarize_run(llm_records["llm1"], target_count=limit),
         "llm2": _summarize_run(llm_records["llm2"], target_count=limit),
     }
-    overall_summary = _summarize_run(llm_records["llm1"] + llm_records["llm2"], target_count=limit * 2)
+    overall_summary = _summarize_run(
+        llm_records["llm1"] + llm_records["llm2"], target_count=limit * 2
+    )
     if failures:
         overall_summary["failure_count"] = max(int(overall_summary["failure_count"]), len(failures))
         overall_summary["failure_types"] = _summarize_failure_types(failures)
@@ -423,9 +447,15 @@ def run_fireworks_smoke_test(output_dir: Path, limit: int, start: int) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a 50-ticket Fireworks smoke validation.")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for smoke logs.")
-    parser.add_argument("--limit", type=int, default=DEFAULT_TICKET_LIMIT, help="Tickets per LLM run.")
-    parser.add_argument("--start", type=int, default=DEFAULT_TICKET_START, help="0-based ticket start index.")
+    parser.add_argument(
+        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for smoke logs."
+    )
+    parser.add_argument(
+        "--limit", type=int, default=DEFAULT_TICKET_LIMIT, help="Tickets per LLM run."
+    )
+    parser.add_argument(
+        "--start", type=int, default=DEFAULT_TICKET_START, help="0-based ticket start index."
+    )
     return parser
 
 

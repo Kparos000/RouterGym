@@ -35,7 +35,9 @@ def _normalize_dataframe(tickets_df: pd.DataFrame) -> pd.DataFrame:
     required = {"document", "topic_group"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}; expected Document and Topic_group.")
+        raise ValueError(
+            f"Missing required columns: {sorted(missing)}; expected Document and Topic_group."
+        )
     df = df.dropna(subset=["document", "topic_group"])
     df = df[df["document"].astype(str).str.strip() != ""]
     df = df[df["topic_group"].astype(str).str.strip() != ""]
@@ -87,7 +89,9 @@ def build_gold_eval(
         rows = label_to_rows.get(label, [])
         if len(rows) <= target:
             if len(rows) < target:
-                print(f"Warning: requested {target} rows for {label} but only {len(rows)} available; using all.")
+                print(
+                    f"Warning: requested {target} rows for {label} but only {len(rows)} available; using all."
+                )
             chosen = rows
         else:
             chosen = rng.sample(rows, target)

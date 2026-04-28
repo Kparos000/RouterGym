@@ -56,7 +56,12 @@ def test_memory_modes_retrieve(monkeypatch: Any, memory_mode: str) -> None:
     mem.update(ticket["text"])
     payload: MemoryRetrieval = mem.retrieve(ticket["text"])
     data = payload.as_dict()
-    for key in ["retrieved_context", "retrieval_latency_ms", "memory_cost_tokens", "memory_relevance_score"]:
+    for key in [
+        "retrieved_context",
+        "retrieval_latency_ms",
+        "memory_cost_tokens",
+        "memory_relevance_score",
+    ]:
         assert key in data
     assert isinstance(data["retrieved_context"], str)
     assert data["retrieval_latency_ms"] >= 0.0

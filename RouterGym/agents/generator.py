@@ -10,7 +10,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from RouterGym.contracts.json_contract import JSONContract, validate_agent_output
-from RouterGym.contracts.schema_contract import ALLOWED_CONTEXT_MODES, DraftOutputSchema, SchemaContract
+from RouterGym.contracts.schema_contract import (
+    ALLOWED_CONTEXT_MODES,
+    DraftOutputSchema,
+    SchemaContract,
+)
 from RouterGym.engines.telemetry import (
     ModelCallTelemetry,
     aggregate_model_call_telemetry,
@@ -80,6 +84,7 @@ def resolve_max_output_tokens(override: Optional[int] = None) -> int:
         return resolved
     return 256
 
+
 def get_confidence_bucket(conf: float) -> str:
     """Map a numeric confidence into low/medium/high buckets."""
     from RouterGym.routing.policy import get_confidence_bucket as routing_get_confidence_bucket
@@ -96,6 +101,7 @@ def _dedupe_preserve(items: Iterable[str]) -> List[str]:
         seen.add(item)
         ordered.append(item)
     return ordered
+
 
 def classification_instruction() -> str:
     """High-quality instruction prompt for ticket classification with hard boundaries and examples."""
@@ -205,7 +211,11 @@ def _normalize_draft_output(
         reasoning = _compact_text(parsed_output.get("reasoning", ""))
         rewritten_query = _compact_text(parsed_output.get("rewritten_query", ""))
         predicted = _normalize_category(
-            str(parsed_output.get("predicted_category") or parsed_output.get("category") or classifier_label),
+            str(
+                parsed_output.get("predicted_category")
+                or parsed_output.get("category")
+                or classifier_label
+            ),
             context=f"{final_answer} {reasoning}",
         )
         escalation_flags = parsed_output.get("escalation_flags", {})
@@ -246,7 +256,9 @@ def _normalize_draft_output(
         reasoning = "Normalized from non-JSON model output."
 
     predicted = _normalize_category(
-        labeled_values.get("predicted_category") or labeled_values.get("category") or classifier_label,
+        labeled_values.get("predicted_category")
+        or labeled_values.get("category")
+        or classifier_label,
         context=final_answer,
     )
     rewritten_query = labeled_values.get("rewritten_query", "")
@@ -275,7 +287,9 @@ def _parse_draft_output(raw_output: str, classifier_label: str) -> DraftParseRes
         if isinstance(fragment, dict):
             parsed_output = fragment
     parse_error = None if ok_json or parsed_output else "Model output is not valid JSON."
-    normalized_output, parser_mode = _normalize_draft_output(raw_text, parsed_output, classifier_label)
+    normalized_output, parser_mode = _normalize_draft_output(
+        raw_text, parsed_output, classifier_label
+    )
     draft_ok, draft_errors = DraftOutputSchema().validate(normalized_output)
     validation_error = "; ".join(draft_errors) if draft_errors else None
     return DraftParseResult(
@@ -473,7 +487,20 @@ def infer_category_from_text(text: str) -> str:
             },
             "Administrative rights",
         ),
-        ({"laptop", "printer", "device", "hardware", "dock", "keyboard", "mouse", "monitor", "screen"}, "Hardware"),
+        (
+            {
+                "laptop",
+                "printer",
+                "device",
+                "hardware",
+                "dock",
+                "keyboard",
+                "mouse",
+                "monitor",
+                "screen",
+            },
+            "Hardware",
+        ),
         ({"hr", "benefit", "leave", "vacation", "payroll"}, "HR Support"),
         (
             {
@@ -549,7 +576,7 @@ class SelfRepair:
             candidate = normalize_output(parsed if ok_json and parsed else attempt_output)
             ok_schema, _ = schema.validate(candidate)
             if ok_schema:
-                log.info(f"Repair succeeded on attempt {attempt+1}")
+                log.info(f"Repair succeeded on attempt {attempt + 1}")
                 return _ensure_minimum_fields(candidate)
 
         # Best-effort fallback
@@ -580,12 +607,18 @@ class ResponseGenerator:
         self.contract = contracts or SchemaContract()
         self.self_repair = SelfRepair()
 
-    def build_prompt(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> str:
+    def build_prompt(
+        self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]
+    ) -> str:
         """Build a structured prompt from ticket, memory, and KB."""
         base_text = ticket.get("text", "")
         context_mode = ticket.get("context_mode", "none")
-        kb_section = [f"### KB Reference {i+1}:\n> {s.strip()}" for i, s in enumerate(kb_snippets)]
-        memory_section = f"### Memory Context (mode={context_mode}):\n{memory_context}" if memory_context else ""
+        kb_section = [
+            f"### KB Reference {i + 1}:\n> {s.strip()}" for i, s in enumerate(kb_snippets)
+        ]
+        memory_section = (
+            f"### Memory Context (mode={context_mode}):\n{memory_context}" if memory_context else ""
+        )
         kb_intro = (
             "The following KB snippets are internal policies; treat them as primary sources when present."
             if kb_section
@@ -608,7 +641,9 @@ class ResponseGenerator:
         ]
         return "\n\n".join([p for p in parts if p])
 
-    def generate(self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]) -> Dict[str, str]:
+    def generate(
+        self, ticket: Dict[str, Any], memory_context: str, kb_snippets: List[str]
+    ) -> Dict[str, str]:
         """Generate a response and repair if contracts fail."""
         prompt = self.build_prompt(ticket, memory_context, kb_snippets)
         raw_output = _call_model(self.model_interface, prompt)
@@ -628,7 +663,9 @@ def run_ticket_pipeline(
     """Run Classify -> Retrieve -> Respond for a single ticket with optional escalation."""
 
     if memory_mode not in ALLOWED_CONTEXT_MODES:
-        raise ValueError(f"Unsupported memory_mode {memory_mode}; allowed: {sorted(ALLOWED_CONTEXT_MODES)}")
+        raise ValueError(
+            f"Unsupported memory_mode {memory_mode}; allowed: {sorted(ALLOWED_CONTEXT_MODES)}"
+        )
 
     text = str(ticket.get("text") or ticket.get("Document") or ticket.get("document") or "").strip()
     if not text:
@@ -642,7 +679,9 @@ def run_ticket_pipeline(
     # 1) Classification via calibrated encoder
     encoder_classifier_cls: Any = EncoderClassifier
     if encoder_classifier_cls is None:
-        from RouterGym.classifiers.encoder_classifier import EncoderClassifier as encoder_classifier_cls
+        from RouterGym.classifiers.encoder_classifier import (
+            EncoderClassifier as encoder_classifier_cls,
+        )
 
     load_models_fn: Any = load_models
     if load_models_fn is None:
@@ -675,8 +714,12 @@ def run_ticket_pipeline(
         meta_snippets = retrieval.retrieval_metadata.get("snippets", [])
         if isinstance(meta_snippets, list):
             snippets = [s for s in meta_snippets if isinstance(s, dict)]
-    kb_policy_ids = _dedupe_preserve(str(s.get("policy_id", "")) for s in snippets if s.get("policy_id"))
-    kb_categories = _dedupe_preserve(str(s.get("category", "")) for s in snippets if s.get("category"))
+    kb_policy_ids = _dedupe_preserve(
+        str(s.get("policy_id", "")) for s in snippets if s.get("policy_id")
+    )
+    kb_categories = _dedupe_preserve(
+        str(s.get("category", "")) for s in snippets if s.get("category")
+    )
     kb_texts = [str(s.get("text", "")) for s in snippets if s.get("text")]
 
     # Models: load both base and escalation if needed.
@@ -686,10 +729,14 @@ def run_ticket_pipeline(
     models = load_models_fn(sanity=True, slm_subset=subset)
     base_model = models.get(base_model_name)
     if base_model is None:
-        raise RuntimeError(f"Model '{base_model_name}' is not available; check model registry or subset filter.")
+        raise RuntimeError(
+            f"Model '{base_model_name}' is not available; check model registry or subset filter."
+        )
     escalation_model = models.get(escalation_model_name) if escalation_model_name else None
 
-    def _call_and_parse(model: Any, model_key: str) -> Tuple[DraftParseResult, List[ModelCallTelemetry]]:
+    def _call_and_parse(
+        model: Any, model_key: str
+    ) -> Tuple[DraftParseResult, List[ModelCallTelemetry]]:
         prompt = build_prompt(
             ticket_text=text,
             kb_snippets=kb_texts,
@@ -740,7 +787,9 @@ def run_ticket_pipeline(
         {
             "final_answer": initial_answer,
             "reasoning": str(parsed_output.get("reasoning", "") or ""),
-            "predicted_category": str(parsed_output.get("predicted_category", classifier_label) or ""),
+            "predicted_category": str(
+                parsed_output.get("predicted_category", classifier_label) or ""
+            ),
         }
     )
     routing_decision = build_routing_decision(
@@ -782,11 +831,15 @@ def run_ticket_pipeline(
     resolution_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(resolution_steps, list):
         resolution_steps = []
-    invalid_reason = chosen_draft.validation_error or chosen_draft.parse_error or GENERATION_INVALID_REASON
+    invalid_reason = (
+        chosen_draft.validation_error or chosen_draft.parse_error or GENERATION_INVALID_REASON
+    )
     default_reasoning = parsed_output.get("reasoning", "")
     if not default_reasoning:
         if chosen_draft.generation_valid:
-            default_reasoning = f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
+            default_reasoning = (
+                f"Classified as {classifier_label} with confidence {classifier_confidence:.3f}."
+            )
         else:
             default_reasoning = f"{GENERATION_INVALID_REASON}: {invalid_reason}"
     default_answer = parsed_output.get("final_answer", "") or PLACEHOLDER_FINAL_ANSWER
@@ -912,5 +965,8 @@ def run_ticket_pipeline(
         payload["placeholder_answer"] = True
         payload["has_real_final_answer"] = False
         payload["final_answer"] = payload.get("final_answer") or PLACEHOLDER_FINAL_ANSWER
-        payload["reasoning"] = payload.get("reasoning") or f"{GENERATION_INVALID_REASON}: {payload['generation_invalid_reason']}"
+        payload["reasoning"] = (
+            payload.get("reasoning")
+            or f"{GENERATION_INVALID_REASON}: {payload['generation_invalid_reason']}"
+        )
         return payload

@@ -8,12 +8,17 @@ from typing import Any, Dict, List
 from urllib import request
 
 from RouterGym.engines.model_registry import ALL_MODELS, get_model_backend, load_models
-from RouterGym.engines.openai_compatible import OpenAICompatibleEngine, normalize_openai_compatible_base_url
+from RouterGym.engines.openai_compatible import (
+    OpenAICompatibleEngine,
+    normalize_openai_compatible_base_url,
+)
 from RouterGym.scripts.smoke_openai_compatible_model import run_smoke_test
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Assert that all requested RouterGym models are locally served.")
+    parser = argparse.ArgumentParser(
+        description="Assert that all requested RouterGym models are locally served."
+    )
     parser.add_argument(
         "--models",
         nargs="+",
@@ -37,7 +42,9 @@ def _fetch_gateway_models(base_url: str) -> Dict[str, Any]:
     return parsed
 
 
-def run_assertion(*, model_keys: List[str], base_url: str | None = None, api_key: str | None = None) -> Dict[str, Any]:
+def run_assertion(
+    *, model_keys: List[str], base_url: str | None = None, api_key: str | None = None
+) -> Dict[str, Any]:
     backend = get_model_backend()
     if backend != "openai_compatible":
         raise RuntimeError(
@@ -144,7 +151,9 @@ def run_assertion(*, model_keys: List[str], base_url: str | None = None, api_key
 
 def main() -> None:
     args = build_parser().parse_args()
-    result = run_assertion(model_keys=list(args.models), base_url=args.base_url, api_key=args.api_key)
+    result = run_assertion(
+        model_keys=list(args.models), base_url=args.base_url, api_key=args.api_key
+    )
     print(json.dumps(result, indent=2))
     if result["status"] != "success":
         raise SystemExit(1)

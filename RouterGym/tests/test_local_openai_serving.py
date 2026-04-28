@@ -75,7 +75,11 @@ def test_local_serving_assertion_fails_if_slm_is_not_local(monkeypatch: Any) -> 
     monkeypatch.setattr(
         assert_local_openai_serving,
         "_fetch_gateway_models",
-        lambda base_url: {"data": [{"id": "slm1", "routergym_upstream_model_id": "mistralai/Mistral-7B-Instruct-v0.3"}]},
+        lambda base_url: {
+            "data": [
+                {"id": "slm1", "routergym_upstream_model_id": "mistralai/Mistral-7B-Instruct-v0.3"}
+            ]
+        },
     )
     monkeypatch.setattr(
         assert_local_openai_serving,
@@ -87,7 +91,9 @@ def test_local_serving_assertion_fails_if_slm_is_not_local(monkeypatch: Any) -> 
     assert result["failures"][0]["reason"] == "not_local_openai_engine"
 
 
-def test_local_serving_assertion_succeeds_for_all_local_keys(monkeypatch: Any, gateway_env: None) -> None:
+def test_local_serving_assertion_succeeds_for_all_local_keys(
+    monkeypatch: Any, gateway_env: None
+) -> None:
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
     fake_models = {
         key: OpenAICompatibleEngine(
@@ -100,7 +106,9 @@ def test_local_serving_assertion_succeeds_for_all_local_keys(monkeypatch: Any, g
         )
         for key, entry in model_registry.ALL_MODELS.items()
     }
-    monkeypatch.setattr(assert_local_openai_serving, "load_models", lambda sanity=False: fake_models)
+    monkeypatch.setattr(
+        assert_local_openai_serving, "load_models", lambda sanity=False: fake_models
+    )
     monkeypatch.setattr(
         assert_local_openai_serving,
         "_fetch_gateway_models",

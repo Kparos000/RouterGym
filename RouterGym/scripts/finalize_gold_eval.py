@@ -81,7 +81,9 @@ def _is_reviewed_approved(record: Mapping[str, Any]) -> bool:
     return review_status in APPROVED_REVIEW_STATUSES
 
 
-def _merge_record(base_record: Mapping[str, Any], override_record: Mapping[str, Any]) -> Dict[str, Any]:
+def _merge_record(
+    base_record: Mapping[str, Any], override_record: Mapping[str, Any]
+) -> Dict[str, Any]:
     merged = dict(base_record)
     for key in ("topic_group", "ticket_text", "gold_resolution", "review_notes", "review_status"):
         if key in override_record and override_record.get(key) not in (None, ""):
@@ -131,7 +133,9 @@ def finalize_gold_records(
     """Freeze approved records and return final records plus metadata."""
     frozen_timestamp = frozen_at or datetime.now(timezone.utc).isoformat()
     review_queue_ids = {
-        ticket_id for ticket_id in (_ticket_index(record) for record in review_queue_records) if ticket_id is not None
+        ticket_id
+        for ticket_id in (_ticket_index(record) for record in review_queue_records)
+        if ticket_id is not None
     }
 
     reviewed_by_id: Dict[int, Dict[str, Any]] = {}
@@ -155,13 +159,16 @@ def finalize_gold_records(
         if reviewed_override and _is_reviewed_approved(reviewed_override):
             merged = _merge_record(draft_record, reviewed_override)
             if not _record_complete(merged):
-                exclusions.append({"ticket_index": ticket_id, "reason": "reviewed_record_incomplete"})
+                exclusions.append(
+                    {"ticket_index": ticket_id, "reason": "reviewed_record_incomplete"}
+                )
                 continue
             final_records.append(
                 _build_final_record(
                     merged,
                     frozen_at=frozen_timestamp,
-                    review_status=str(reviewed_override.get("review_status", "human_approved")) or "human_approved",
+                    review_status=str(reviewed_override.get("review_status", "human_approved"))
+                    or "human_approved",
                     source_file=draft_source_file,
                     source_record_type="reviewed_override",
                     review_source_file=review_source_file,
@@ -253,7 +260,9 @@ def finalize_gold_files(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Freeze approved gold-eval records into gold_eval_final.jsonl.")
+    parser = argparse.ArgumentParser(
+        description="Freeze approved gold-eval records into gold_eval_final.jsonl."
+    )
     parser.add_argument("--draft-path", type=str, default=str(DEFAULT_DRAFT_PATH))
     parser.add_argument("--review-queue-path", type=str, default=str(DEFAULT_REVIEW_QUEUE_PATH))
     parser.add_argument(
@@ -264,7 +273,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output-path", type=str, default=str(DEFAULT_OUTPUT_PATH))
     parser.add_argument("--metadata-path", type=str, default=str(DEFAULT_METADATA_PATH))
-    parser.add_argument("--allow-auto-approved", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--allow-auto-approved", action=argparse.BooleanOptionalAction, default=True
+    )
     return parser
 
 

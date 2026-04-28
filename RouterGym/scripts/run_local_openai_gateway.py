@@ -113,9 +113,15 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the RouterGym local OpenAI-compatible gateway.")
-    parser.add_argument("--host", type=str, default=get_gateway_bind_host(), help="Gateway bind host.")
-    parser.add_argument("--port", type=int, default=get_gateway_bind_port(), help="Gateway bind port.")
+    parser = argparse.ArgumentParser(
+        description="Run the RouterGym local OpenAI-compatible gateway."
+    )
+    parser.add_argument(
+        "--host", type=str, default=get_gateway_bind_host(), help="Gateway bind host."
+    )
+    parser.add_argument(
+        "--port", type=int, default=get_gateway_bind_port(), help="Gateway bind port."
+    )
     return parser
 
 
@@ -125,7 +131,17 @@ def main() -> None:
     server = _GatewayServer((args.host, args.port), GatewayRequestHandler)
     server.routes = routes
     server.upstream_attempts = defaultdict(int)
-    print(json.dumps({"status": "starting", "host": args.host, "port": args.port, "routes": {key: route.as_dict() for key, route in routes.items()}}, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "starting",
+                "host": args.host,
+                "port": args.port,
+                "routes": {key: route.as_dict() for key, route in routes.items()},
+            },
+            indent=2,
+        )
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:  # pragma: no cover - interactive stop path

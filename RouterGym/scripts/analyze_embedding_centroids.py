@@ -8,7 +8,9 @@ from typing import Iterable, Tuple
 import numpy as np
 
 
-ENCODER_CENTROIDS_PATH = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
+ENCODER_CENTROIDS_PATH = (
+    Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
+)
 
 
 def load_centroids(path: Path) -> Tuple[np.ndarray, np.ndarray]:
@@ -41,7 +43,9 @@ def _format_matrix(labels: Iterable[str], matrix: np.ndarray) -> str:
     return "\n".join(rows)
 
 
-def _off_diagonal_summary(matrix: np.ndarray, labels: np.ndarray) -> tuple[float, tuple[str, str, float], tuple[str, str, float]]:
+def _off_diagonal_summary(
+    matrix: np.ndarray, labels: np.ndarray
+) -> tuple[float, tuple[str, str, float], tuple[str, str, float]]:
     n = matrix.shape[0]
     mean_val = float(np.sum(matrix) - np.trace(matrix)) / (n * (n - 1)) if n > 1 else float("nan")
 

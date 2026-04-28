@@ -115,7 +115,11 @@ def analyze_results(results_path: Path, output_dir: Path | None = None) -> None:
         total_rows = int(len(subset))
         correct_rows = int((subset["gold_category"] == subset["predicted_category"]).sum())
         overall_acc = correct_rows / total_rows if total_rows > 0 else float("nan")
-        overall_stats[mode] = {"correct": float(correct_rows), "total": float(total_rows), "acc": overall_acc}
+        overall_stats[mode] = {
+            "correct": float(correct_rows),
+            "total": float(total_rows),
+            "acc": overall_acc,
+        }
 
         confusion = build_confusion_matrix(subset)
         per_class = compute_per_class_accuracy(subset)

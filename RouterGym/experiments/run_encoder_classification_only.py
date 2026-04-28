@@ -22,7 +22,9 @@ from RouterGym.label_space import CANONICAL_LABELS
 DEFAULT_OUTPUT = Path("RouterGym/results/encoder_classification_full.csv")
 
 
-def classify_dataframe(df: pd.DataFrame, classifier: Any, start_offset: int = 0) -> List[Dict[str, Any]]:
+def classify_dataframe(
+    df: pd.DataFrame, classifier: Any, start_offset: int = 0
+) -> List[Dict[str, Any]]:
     """Run classification over a dataframe of tickets and return per-row dicts."""
     records: List[Dict[str, Any]] = []
     for idx, row in df.iterrows():
@@ -79,7 +81,9 @@ def _summaries(records: List[Dict[str, Any]]) -> Tuple[float, Dict[str, float], 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run calibrated encoder classification over tickets.")
+    parser = argparse.ArgumentParser(
+        description="Run calibrated encoder classification over tickets."
+    )
     parser.add_argument(
         "--ticket-path",
         type=Path,
@@ -92,7 +96,9 @@ def main() -> None:
         default=DEFAULT_OUTPUT,
         help="Path to write classification results CSV.",
     )
-    parser.add_argument("--limit", type=int, default=None, help="Optional limit on number of tickets.")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Optional limit on number of tickets."
+    )
     parser.add_argument("--start", type=int, default=0, help="Optional start offset.")
     args = parser.parse_args()
 

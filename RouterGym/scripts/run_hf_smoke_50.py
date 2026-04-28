@@ -83,7 +83,9 @@ def _exception_payload(exc: BaseException, *, phase: str, llm_model_key: str) ->
     }
 
 
-def _extract_backend_error(model: Any, *, llm_model_key: str, phase: str) -> Optional[Dict[str, str]]:
+def _extract_backend_error(
+    model: Any, *, llm_model_key: str, phase: str
+) -> Optional[Dict[str, str]]:
     error = getattr(model, "last_error", None)
     if isinstance(error, dict) and error.get("error_type"):
         payload = {
@@ -98,7 +100,9 @@ def _extract_backend_error(model: Any, *, llm_model_key: str, phase: str) -> Opt
     return None
 
 
-def _derive_failure_payload(result: Dict[str, Any], models: Dict[str, Any], llm_model_key: str) -> Optional[Dict[str, str]]:
+def _derive_failure_payload(
+    result: Dict[str, Any], models: Dict[str, Any], llm_model_key: str
+) -> Optional[Dict[str, str]]:
     final_answer = str(result.get("final_answer", "") or "").strip()
     if final_answer not in {"LLM unavailable", "No valid answer produced"}:
         return None
@@ -108,7 +112,9 @@ def _derive_failure_payload(result: Dict[str, Any], models: Dict[str, Any], llm_
     for engine in (llm_engine, slm_engine):
         if engine is None:
             continue
-        backend_error = _extract_backend_error(engine, llm_model_key=llm_model_key, phase="generate")
+        backend_error = _extract_backend_error(
+            engine, llm_model_key=llm_model_key, phase="generate"
+        )
         if backend_error is not None:
             return backend_error
     return {
@@ -140,10 +146,14 @@ def _result_record(
         "success": error is None,
         "escalated": bool(payload.get("escalated", False)),
         "final_model": payload.get("final_model", payload.get("model_name", BASE_MODEL_KEY)),
-        "predicted_category": payload.get("topic_group") or payload.get("classifier_label") or "unknown",
+        "predicted_category": payload.get("topic_group")
+        or payload.get("classifier_label")
+        or "unknown",
         "latency_ms": float(metrics.get("latency_ms", payload.get("latency_ms", 0.0)) or 0.0),
         "total_tokens": int(payload.get("total_tokens", metrics.get("total_tokens", 0)) or 0),
-        "total_cost_usd": float(payload.get("total_cost_usd", metrics.get("total_cost_usd", 0.0)) or 0.0),
+        "total_cost_usd": float(
+            payload.get("total_cost_usd", metrics.get("total_cost_usd", 0.0)) or 0.0
+        ),
         "backend_used": "hf_inference",
         "error": error,
     }
@@ -157,7 +167,9 @@ def _summarize_run(records: List[Dict[str, Any]], target_count: int) -> Dict[str
     total_tokens = sum(int(record.get("total_tokens", 0) or 0) for record in records)
     total_cost = sum(float(record.get("total_cost_usd", 0.0) or 0.0) for record in records)
     escalated_count = sum(1 for record in records if bool(record.get("escalated", False)))
-    model_usage = Counter(str(record.get("final_model", "")) for record in records if record.get("final_model"))
+    model_usage = Counter(
+        str(record.get("final_model", "")) for record in records if record.get("final_model")
+    )
     failure_types = Counter(
         str(record["error"].get("error_type", "unknown"))
         for record in records
@@ -177,7 +189,9 @@ def _summarize_run(records: List[Dict[str, Any]], target_count: int) -> Dict[str
     }
 
 
-def _format_summary(run_summaries: Dict[str, Dict[str, Any]], overall_summary: Dict[str, Any]) -> str:
+def _format_summary(
+    run_summaries: Dict[str, Dict[str, Any]], overall_summary: Dict[str, Any]
+) -> str:
     lines: List[str] = []
     lines.append("HF Smoke 50 Summary")
     lines.append("===================")
@@ -192,7 +206,9 @@ def _format_summary(run_summaries: Dict[str, Dict[str, Any]], overall_summary: D
         lines.append(f"  total_tokens: {summary['total_tokens']}")
         lines.append(f"  total_cost_usd: {summary['total_cost_usd']:.6f}")
         lines.append(f"  escalation_rate: {summary['escalation_rate']:.3f}")
-        lines.append(f"  model_usage_breakdown: {json.dumps(summary['model_usage_breakdown'], ensure_ascii=False)}")
+        lines.append(
+            f"  model_usage_breakdown: {json.dumps(summary['model_usage_breakdown'], ensure_ascii=False)}"
+        )
         lines.append(f"  failure_types: {json.dumps(summary['failure_types'], ensure_ascii=False)}")
         lines.append("")
     lines.append("overall:")
@@ -204,8 +220,12 @@ def _format_summary(run_summaries: Dict[str, Dict[str, Any]], overall_summary: D
     lines.append(f"  total_tokens: {overall_summary['total_tokens']}")
     lines.append(f"  total_cost_usd: {overall_summary['total_cost_usd']:.6f}")
     lines.append(f"  escalation_rate: {overall_summary['escalation_rate']:.3f}")
-    lines.append(f"  model_usage_breakdown: {json.dumps(overall_summary['model_usage_breakdown'], ensure_ascii=False)}")
-    lines.append(f"  failure_types: {json.dumps(overall_summary['failure_types'], ensure_ascii=False)}")
+    lines.append(
+        f"  model_usage_breakdown: {json.dumps(overall_summary['model_usage_breakdown'], ensure_ascii=False)}"
+    )
+    lines.append(
+        f"  failure_types: {json.dumps(overall_summary['failure_types'], ensure_ascii=False)}"
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -266,7 +286,9 @@ def _run_model_smoke(*, llm_model_key: str, tickets: List[Dict[str, str]]) -> Li
                 )
                 error = _derive_failure_payload(result, models, llm_model_key)
             except Exception as exc:
-                error = _exception_payload(exc, phase="ticket_pipeline", llm_model_key=llm_model_key)
+                error = _exception_payload(
+                    exc, phase="ticket_pipeline", llm_model_key=llm_model_key
+                )
             record = _result_record(
                 ticket_id=ticket["ticket_id"],
                 gold_label=ticket["gold_label"],
@@ -285,7 +307,9 @@ def run_hf_smoke_50(output_dir: Path, limit: int, start: int) -> int:
 
     llm1_results = _run_model_smoke(llm_model_key="llm1", tickets=tickets)
     llm2_results = _run_model_smoke(llm_model_key="llm2", tickets=tickets)
-    failures = [record for record in llm1_results + llm2_results if isinstance(record.get("error"), dict)]
+    failures = [
+        record for record in llm1_results + llm2_results if isinstance(record.get("error"), dict)
+    ]
 
     llm1_results_path = output_dir / "smoke50_llm1_results.jsonl"
     llm2_results_path = output_dir / "smoke50_llm2_results.jsonl"
@@ -325,10 +349,21 @@ def run_hf_smoke_50(output_dir: Path, limit: int, start: int) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run 50-ticket HF smoke validation for llm1 and llm2.")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for HF smoke logs.")
-    parser.add_argument("--limit", type=int, default=DEFAULT_TICKET_LIMIT, help="Tickets per llm run.")
-    parser.add_argument("--start", type=int, default=DEFAULT_TICKET_START, help="0-based start index in tickets.csv.")
+    parser = argparse.ArgumentParser(
+        description="Run 50-ticket HF smoke validation for llm1 and llm2."
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for HF smoke logs."
+    )
+    parser.add_argument(
+        "--limit", type=int, default=DEFAULT_TICKET_LIMIT, help="Tickets per llm run."
+    )
+    parser.add_argument(
+        "--start",
+        type=int,
+        default=DEFAULT_TICKET_START,
+        help="0-based start index in tickets.csv.",
+    )
     return parser
 
 

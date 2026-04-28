@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
+
 CENTROID_FILE = Path(__file__).resolve().parents[1] / "classifiers" / "encoder_centroids.npz"
 
 

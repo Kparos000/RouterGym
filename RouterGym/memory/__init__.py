@@ -57,7 +57,9 @@ def resolve_memory_mode(name: str) -> str:
     """Map legacy names to canonical modes."""
     if name in _LEGACY_MAP:
         canonical = _LEGACY_MAP[name]
-        warnings.warn(f"Memory mode '{name}' is deprecated; using '{canonical}' instead.", RuntimeWarning)
+        warnings.warn(
+            f"Memory mode '{name}' is deprecated; using '{canonical}' instead.", RuntimeWarning
+        )
         return canonical
     return name
 

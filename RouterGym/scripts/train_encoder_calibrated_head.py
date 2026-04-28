@@ -54,7 +54,9 @@ def _train_val_split(
     val_fraction: float,
     seed: int,
 ) -> Tuple[List[str], List[str], np.ndarray, np.ndarray]:
-    return train_test_split(texts, labels, test_size=val_fraction, random_state=seed, stratify=labels)
+    return train_test_split(
+        texts, labels, test_size=val_fraction, random_state=seed, stratify=labels
+    )
 
 
 def _compute_features(
@@ -73,10 +75,15 @@ def _compute_features(
 
 
 def _encode_texts(model: SentenceTransformer, texts: List[str]) -> np.ndarray:
-    return np.array(model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True), dtype="float32")
+    return np.array(
+        model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True),
+        dtype="float32",
+    )
 
 
-def _compute_class_weights(y_labels: np.ndarray, weight_mode: str = "balanced_plus_boosts") -> Dict[str, float]:
+def _compute_class_weights(
+    y_labels: np.ndarray, weight_mode: str = "balanced_plus_boosts"
+) -> Dict[str, float]:
     """Compute balanced class weights from canonical string labels."""
     # Accept either canonical strings or integer IDs and normalize to strings for validation.
     normalized_labels_list: List[str] = []
@@ -96,8 +103,12 @@ def _compute_class_weights(y_labels: np.ndarray, weight_mode: str = "balanced_pl
     unexpected = set(unique_y) - set(CANONICAL_LABELS)
     if unexpected:
         raise RuntimeError(f"Unexpected labels in y_labels: {sorted(unexpected)}")
-    base_weights = compute_class_weight(class_weight="balanced", classes=unique_y, y=normalized_labels)
-    weights: Dict[str, float] = {label: float(weight) for label, weight in zip(unique_y, base_weights)}
+    base_weights = compute_class_weight(
+        class_weight="balanced", classes=unique_y, y=normalized_labels
+    )
+    weights: Dict[str, float] = {
+        label: float(weight) for label, weight in zip(unique_y, base_weights)
+    }
     weights = {label: weights.get(label, 1.0) for label in CANONICAL_LABELS}
 
     if weight_mode == "balanced_plus_boosts":
@@ -119,7 +130,9 @@ def _select_best_config(
     """Select the best candidate by val_acc, then macro_f1, then tie-breaker on alpha/weight order."""
 
     def weight_mode_rank(mode: str) -> int:
-        return weight_mode_order.index(mode) if mode in weight_mode_order else len(weight_mode_order)
+        return (
+            weight_mode_order.index(mode) if mode in weight_mode_order else len(weight_mode_order)
+        )
 
     candidates_sorted = sorted(
         candidates,
@@ -153,8 +166,10 @@ def train_head(
     y_labels = df[label_col].to_numpy(dtype=object)
     y_ids = df[label_col].map(LABEL_TO_ID).to_numpy(dtype="int64")
     texts = df[text_col].tolist()
-    X_train_texts, X_val_texts, y_train_ids, y_val_ids, y_train_labels, y_val_labels = train_test_split(
-        texts, y_ids, y_labels, test_size=val_fraction, random_state=seed, stratify=y_ids
+    X_train_texts, X_val_texts, y_train_ids, y_val_ids, y_train_labels, y_val_labels = (
+        train_test_split(
+            texts, y_ids, y_labels, test_size=val_fraction, random_state=seed, stratify=y_ids
+        )
     )
 
     tfidf_clf = TFIDFClassifier(labels=CANONICAL_LABELS)
@@ -171,7 +186,10 @@ def train_head(
         axis=0,
     )
     X_val_feat = np.stack(
-        [_compute_features(emb, CANONICAL_LABELS, txt, tfidf_clf) for emb, txt in zip(emb_val, X_val_texts)],
+        [
+            _compute_features(emb, CANONICAL_LABELS, txt, tfidf_clf)
+            for emb, txt in zip(emb_val, X_val_texts)
+        ],
         axis=0,
     )
 
@@ -191,8 +209,12 @@ def train_head(
     for alpha_value in sweep_alphas:
         for weight_mode in sweep_weight_modes:
             class_weights_label = _compute_class_weights(y_train_labels, weight_mode=weight_mode)
-            class_weights = {LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()}
-            sample_weight = np.array([class_weights[int(idx)] for idx in y_train_ids], dtype="float32")
+            class_weights = {
+                LABEL_TO_ID[label]: weight for label, weight in class_weights_label.items()
+            }
+            sample_weight = np.array(
+                [class_weights[int(idx)] for idx in y_train_ids], dtype="float32"
+            )
             clf = MLPClassifier(
                 hidden_layer_sizes=(256, 128),
                 activation="relu",
@@ -271,13 +293,26 @@ def train_head(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train calibrated logistic head on encoder similarities + priors.")
-    parser.add_argument("--ticket-path", type=Path, default=DEFAULT_TICKET_PATH, help="Path to tickets CSV.")
-    parser.add_argument("--text-column", type=str, default=DEFAULT_TEXT_COL, help="Text column name.")
-    parser.add_argument("--label-column", type=str, default=DEFAULT_LABEL_COL, help="Label column name.")
+    parser = argparse.ArgumentParser(
+        description="Train calibrated logistic head on encoder similarities + priors."
+    )
+    parser.add_argument(
+        "--ticket-path", type=Path, default=DEFAULT_TICKET_PATH, help="Path to tickets CSV."
+    )
+    parser.add_argument(
+        "--text-column", type=str, default=DEFAULT_TEXT_COL, help="Text column name."
+    )
+    parser.add_argument(
+        "--label-column", type=str, default=DEFAULT_LABEL_COL, help="Label column name."
+    )
     parser.add_argument("--val-fraction", type=float, default=0.2, help="Validation fraction.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
-    parser.add_argument("--C", type=float, default=None, help="Inverse regularization strength for LogisticRegression.")
+    parser.add_argument(
+        "--C",
+        type=float,
+        default=None,
+        help="Inverse regularization strength for LogisticRegression.",
+    )
     args = parser.parse_args()
 
     train_head(

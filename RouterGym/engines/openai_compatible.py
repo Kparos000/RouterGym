@@ -88,9 +88,7 @@ class OpenAICompatibleEngine:
             return 0
 
         input_tokens = _coerce(usage.get("prompt_tokens", usage.get("input_tokens", 0)))
-        output_tokens = _coerce(
-            usage.get("completion_tokens", usage.get("output_tokens", 0))
-        )
+        output_tokens = _coerce(usage.get("completion_tokens", usage.get("output_tokens", 0)))
         total_tokens = _coerce(usage.get("total_tokens", input_tokens + output_tokens))
         return {
             "input_tokens": input_tokens,
@@ -202,7 +200,9 @@ class OpenAICompatibleEngine:
         temperature: float = 0.2,
         **kwargs: Any,
     ) -> str:
-        return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
+        return self.generate(
+            prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs
+        )
 
 
 __all__ = [

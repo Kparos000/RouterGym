@@ -137,7 +137,9 @@ def should_escalate_heuristic(
         schema_valid=True,
         force_llm=False,
     )
-    reasons = [reason for reason in reasons if reason not in {"no_answer", "no_steps", "short_answer"}]
+    reasons = [
+        reason for reason in reasons if reason not in {"no_answer", "no_steps", "short_answer"}
+    ]
     score = _slm_dominant_score(
         text=text,
         category=category,
@@ -257,7 +259,9 @@ def build_routing_decision(
         )
 
     if router_mode == "hybrid_specialist":
-        risk, reason = risk_score(text, category=category, classifier_confidence=classifier_confidence)
+        risk, reason = risk_score(
+            text, category=category, classifier_confidence=classifier_confidence
+        )
         if force_llm or risk >= RISK_HIGH:
             return RoutingDecision(
                 router_mode=router_mode,

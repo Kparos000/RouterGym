@@ -36,9 +36,14 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
     data.setdefault("router_mode", data.get("router_name", ""))
     data.setdefault("base_model_name", data.get("base_model_name", data.get("model_name", "")))
     data.setdefault("escalation_model_name", data.get("escalation_model_name"))
-    data.setdefault("classifier_label", data.get("classification", {}).get("label", data.get("topic_group", "")))
+    data.setdefault(
+        "classifier_label", data.get("classification", {}).get("label", data.get("topic_group", ""))
+    )
     data.setdefault("classifier_confidence", data.get("classification", {}).get("confidence", 0.0))
-    data.setdefault("classifier_confidence_bucket", data.get("classification", {}).get("confidence_bucket", "low"))
+    data.setdefault(
+        "classifier_confidence_bucket",
+        data.get("classification", {}).get("confidence_bucket", "low"),
+    )
     data.setdefault("memory_mode", data.get("context_mode", "none"))
     data.setdefault("kb_policy_ids", [])
     data.setdefault("kb_categories", [])
@@ -47,7 +52,12 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
         {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []},
     )
     if not isinstance(esc, dict):
-        esc = {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []}
+        esc = {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
+            "reasons": [],
+        }
     esc.setdefault("needs_human", False)
     esc.setdefault("needs_llm_escalation", False)
     esc.setdefault("policy_gap", False)

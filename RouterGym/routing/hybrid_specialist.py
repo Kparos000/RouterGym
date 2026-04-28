@@ -59,7 +59,11 @@ class HybridSpecialistRouter(BaseRouter):
                 f"Use predicted_category from: {', '.join(CLASS_LABELS)}.",
             ]
         )
-        classify_output = _call_model(llm if force_llm else slm, classify_prompt) if (llm if force_llm else slm) else ""
+        classify_output = (
+            _call_model(llm if force_llm else slm, classify_prompt)
+            if (llm if force_llm else slm)
+            else ""
+        )
 
         snippet_text = ""
         if kb is not None:
@@ -79,7 +83,11 @@ class HybridSpecialistRouter(BaseRouter):
                 "Draft JSON with final_answer, reasoning, predicted_category (classify the ticket).",
             ]
         )
-        draft_raw = _call_model(llm if force_llm else slm, draft_prompt) if (llm if force_llm else slm) else ""
+        draft_raw = (
+            _call_model(llm if force_llm else slm, draft_prompt)
+            if (llm if force_llm else slm)
+            else ""
+        )
 
         contract = SchemaContract()
         json_contract = JSONContract()
@@ -93,7 +101,11 @@ class HybridSpecialistRouter(BaseRouter):
         draft_norm = normalize_output(parsed_dict if parsed_dict else draft_raw)
         draft_valid = ok_json and contract.validate(draft_norm)[0]
         if not draft_valid:
-            repaired = self_repair.repair(llm if force_llm else slm, draft_prompt, draft_raw, contract) if (llm or slm) else draft_norm
+            repaired = (
+                self_repair.repair(llm if force_llm else slm, draft_prompt, draft_raw, contract)
+                if (llm or slm)
+                else draft_norm
+            )
             draft_norm = normalize_output(repaired)
             draft_valid, _ = contract.validate(draft_norm)
             if isinstance(repaired, dict):
@@ -122,7 +134,11 @@ class HybridSpecialistRouter(BaseRouter):
 
         model_used = "llm" if force_llm and llm is not None else "slm"
         final_output = draft_norm
-        if routing_decision.final_model == "llm" and llm is not None and not (force_llm and llm is not None):
+        if (
+            routing_decision.final_model == "llm"
+            and llm is not None
+            and not (force_llm and llm is not None)
+        ):
             rewrite_prompt = f"Rewrite for clarity keeping JSON structure:\n{draft_norm}"
             final_output_raw = _call_model(llm, rewrite_prompt)
             ok_json, parsed = (
@@ -145,7 +161,11 @@ class HybridSpecialistRouter(BaseRouter):
         steps = [
             {"stage": "classify", "output": normalize_output(classify_output)},
             {"stage": "retrieve_snippet", "snippet": snippet_text},
-            {"stage": "draft", "model": "llm" if force_llm and llm is not None else "slm", "output": draft_norm},
+            {
+                "stage": "draft",
+                "model": "llm" if force_llm and llm is not None else "slm",
+                "output": draft_norm,
+            },
         ]
         if model_used == "llm":
             steps.append({"stage": "rewrite_final", "model": "llm", "output": final_output})

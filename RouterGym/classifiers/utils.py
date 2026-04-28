@@ -152,11 +152,21 @@ CATEGORY_KEYWORDS: Dict[str, List[str]] = {
     "Internal Project": ["internal project", "project work", "initiative", "internal program"],
     "Storage": ["storage", "quota", "disk", "drive", "backup", "archive", "archival"],
     # Keep miscellaneous extremely low-signal; it should only win when nothing else fits.
-    "Miscellaneous": ["general", "question", "enquiry", "inquiry", "other", "misc", "miscellaneous"],
+    "Miscellaneous": [
+        "general",
+        "question",
+        "enquiry",
+        "inquiry",
+        "other",
+        "misc",
+        "miscellaneous",
+    ],
 }
 
 
-def apply_lexical_prior(text: str, probs: Dict[str, float], alpha: float = 0.75, beta: float = 0.25) -> Dict[str, float]:
+def apply_lexical_prior(
+    text: str, probs: Dict[str, float], alpha: float = 0.75, beta: float = 0.25
+) -> Dict[str, float]:
     """Blend model probabilities with a simple keyword-based prior.
 
     The prior is a gentle nudge, not an override. We intentionally down-weight
@@ -220,7 +230,9 @@ class ClassifierMetadata:
 class ClassifierProtocol(Protocol):
     metadata: ClassifierMetadata
 
-    def predict_proba(self, text: str) -> Dict[str, float]:  # pragma: no cover - Protocol definition only
+    def predict_proba(
+        self, text: str
+    ) -> Dict[str, float]:  # pragma: no cover - Protocol definition only
         ...
 
     def predict_label(self, text: str) -> str:  # pragma: no cover - Protocol definition only

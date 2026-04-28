@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from RouterGym.scripts.analyze_encoder_confidence_curve import _compute_metrics, _load_calibrated_head
+from RouterGym.scripts.analyze_encoder_confidence_curve import (
+    _compute_metrics,
+    _load_calibrated_head,
+)
 from pathlib import Path
 
 
@@ -36,7 +39,9 @@ def test_load_calibrated_head_mlp(tmp_path: Path) -> None:
         [np.ones((feature_dim, 2), dtype="float32"), np.ones((2, len(labels)), dtype="float32")],
         dtype=object,
     )
-    layer_biases = np.array([np.zeros(2, dtype="float32"), np.zeros(len(labels), dtype="float32")], dtype=object)
+    layer_biases = np.array(
+        [np.zeros(2, dtype="float32"), np.zeros(len(labels), dtype="float32")], dtype=object
+    )
     head_path = tmp_path / "head.npz"
     np.savez(
         head_path,

@@ -58,7 +58,10 @@ class BM25Memory(MemoryBase):
             items = sorted(index.items())
             keys = [path for path, _ in items]
             texts = [_normalize_text(text) for _, text in items]
-            meta = [{"id": key, "content": text, "path": key, "title": key, "category": ""} for key, text in items]
+            meta = [
+                {"id": key, "content": text, "path": key, "title": key, "category": ""}
+                for key, text in items
+            ]
             return keys, texts, meta
         return [], [], []
 

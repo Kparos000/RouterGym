@@ -45,7 +45,9 @@ def compute_global_statistics(results: pd.DataFrame) -> Dict[str, float]:
     if results.empty:
         return {}
     return {
-        "conversion_rate": (results["model_used"] != "llm").mean() if "model_used" in results else 0.0,
+        "conversion_rate": (results["model_used"] != "llm").mean()
+        if "model_used" in results
+        else 0.0,
         "mean_latency_ms": results.get("latency_ms", pd.Series(dtype=float)).mean(),
         "mean_cost_usd": results.get("cost_usd", pd.Series(dtype=float)).mean(),
     }
@@ -56,7 +58,11 @@ def aggregate_grid_results(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
     group_cols = [c for c in ["router", "memory", "model"] if c in df.columns]
-    agg_cols = [c for c in ["accuracy", "groundedness", "schema_validity", "latency_ms", "cost_usd"] if c in df.columns]
+    agg_cols = [
+        c
+        for c in ["accuracy", "groundedness", "schema_validity", "latency_ms", "cost_usd"]
+        if c in df.columns
+    ]
     return df.groupby(group_cols)[agg_cols].mean().reset_index()
 
 

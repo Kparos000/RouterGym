@@ -76,9 +76,7 @@ def _read_route(model_key: str, entry: ModelEntry) -> GatewayRoute:
     replica_name = _replica_var_name(model_key)
     primary_value = os.getenv(primary_name, "")
     replica_values = [
-        value.strip()
-        for value in str(os.getenv(replica_name, "")).split(",")
-        if value.strip()
+        value.strip() for value in str(os.getenv(replica_name, "")).split(",") if value.strip()
     ]
     upstream_base_urls = _normalize_url_list([primary_value, *replica_values])
     if not upstream_base_urls:

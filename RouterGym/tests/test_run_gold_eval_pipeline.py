@@ -142,13 +142,23 @@ def test_pipeline_avg_steps_threshold(tmp_path: Path, monkeypatch: Any) -> None:
     out_dir = tmp_path / "gold_eval"
     out_dir.mkdir()
     _write_jsonl(out_dir / "gold_eval.jsonl", [{"ticket_index": 0}])
-    _write_jsonl(out_dir / "gold_eval_auto.jsonl", [_make_auto_record(0, "Access", ["kb-0"], steps_count=2)])
+    _write_jsonl(
+        out_dir / "gold_eval_auto.jsonl", [_make_auto_record(0, "Access", ["kb-0"], steps_count=2)]
+    )
     _write_jsonl(out_dir / "gold_eval_review_queue.jsonl", [])
 
     monkeypatch.setattr(pipeline, "_load_kb_index", lambda: _mock_kb_index(10))
     args = _make_args(
         out_dir,
-        ["--audit-only", "--min_avg_steps", "4", "--min_unique_policy_ratio", "0.0", "--max_top_policy_share", "1.0"],
+        [
+            "--audit-only",
+            "--min_avg_steps",
+            "4",
+            "--min_unique_policy_ratio",
+            "0.0",
+            "--max_top_policy_share",
+            "1.0",
+        ],
     )
     exit_code = pipeline.run_pipeline(args)
     assert exit_code == 5
@@ -187,7 +197,10 @@ def test_pipeline_freezes_final(tmp_path: Path, monkeypatch: Any) -> None:
     _write_jsonl(out_dir / "gold_eval.jsonl", [{"ticket_index": 0}])
     _write_jsonl(
         out_dir / "gold_eval_auto.jsonl",
-        [_make_auto_record(0, "Access", ["kb-0", "kb-1"]), _make_auto_record(1, "Hardware", ["kb-2"])],
+        [
+            _make_auto_record(0, "Access", ["kb-0", "kb-1"]),
+            _make_auto_record(1, "Hardware", ["kb-2"]),
+        ],
     )
     _write_jsonl(out_dir / "gold_eval_review_queue.jsonl", [])
 

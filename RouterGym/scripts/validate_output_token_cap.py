@@ -24,13 +24,26 @@ FALLBACK_ANSWERS = {"No valid answer produced", "LLM unavailable"}
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Compare the default output cap with a lower cap.")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for report files.")
+    parser.add_argument(
+        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for report files."
+    )
     parser.add_argument("--sample-size", type=int, default=6, help="Number of tickets to evaluate.")
     parser.add_argument("--start", type=int, default=0, help="0-based dataset start index.")
-    parser.add_argument("--tight-cap", type=int, default=200, help="Lower cap to compare against the current default.")
-    parser.add_argument("--router-mode", type=str, default="slm_dominant", help="Router mode for validation.")
-    parser.add_argument("--memory-mode", type=str, default="rag_bm25", help="Memory mode for validation.")
-    parser.add_argument("--base-model-name", type=str, default="slm1", help="Base model for validation.")
+    parser.add_argument(
+        "--tight-cap",
+        type=int,
+        default=200,
+        help="Lower cap to compare against the current default.",
+    )
+    parser.add_argument(
+        "--router-mode", type=str, default="slm_dominant", help="Router mode for validation."
+    )
+    parser.add_argument(
+        "--memory-mode", type=str, default="rag_bm25", help="Memory mode for validation."
+    )
+    parser.add_argument(
+        "--base-model-name", type=str, default="slm1", help="Base model for validation."
+    )
     parser.add_argument(
         "--escalation-model-name",
         type=str,
@@ -51,10 +64,26 @@ def _obvious_truncation(result: Dict[str, Any], cap: int) -> bool:
     final_answer = str(result.get("final_answer", "") or "").strip()
     if not final_answer or final_answer in FALLBACK_ANSWERS:
         return False
-    total_output_tokens = int(result.get("total_output_tokens", result.get("metrics", {}).get("total_output_tokens", 0)) or 0)
+    total_output_tokens = int(
+        result.get("total_output_tokens", result.get("metrics", {}).get("total_output_tokens", 0))
+        or 0
+    )
     near_cap = total_output_tokens >= max(int(cap * 0.9), cap - 8)
     lowered = final_answer.lower().rstrip()
-    bad_suffixes = (" and", " or", " to", " for", " with", " because", " if", " then", " -", ":", ",", "(")
+    bad_suffixes = (
+        " and",
+        " or",
+        " to",
+        " for",
+        " with",
+        " because",
+        " if",
+        " then",
+        " -",
+        ":",
+        ",",
+        "(",
+    )
     ends_abruptly = lowered.endswith(bad_suffixes) or final_answer[-1] not in ".!?)]}\"'"
     return near_cap and ends_abruptly
 
@@ -104,8 +133,12 @@ def _aggregate_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "usable_response_rate": round(len(usable_rows) / len(rows), 3) if rows else 0.0,
         "obvious_truncation_count": len(truncated_rows),
         "obvious_truncation_rate": round(len(truncated_rows) / len(rows), 3) if rows else 0.0,
-        "avg_latency_ms": round(fmean(float(row["latency_ms"]) for row in success_rows), 2) if success_rows else 0.0,
-        "avg_total_tokens": round(fmean(int(row["total_tokens"]) for row in success_rows), 2) if success_rows else 0.0,
+        "avg_latency_ms": round(fmean(float(row["latency_ms"]) for row in success_rows), 2)
+        if success_rows
+        else 0.0,
+        "avg_total_tokens": round(fmean(int(row["total_tokens"]) for row in success_rows), 2)
+        if success_rows
+        else 0.0,
         "avg_total_output_tokens": round(
             fmean(int(row["total_output_tokens"]) for row in success_rows), 2
         )
@@ -165,7 +198,9 @@ def _run_scenario(
     }
 
 
-def _recommendation(default_summary: Dict[str, Any], tight_summary: Dict[str, Any], default_cap: int, tight_cap: int) -> str:
+def _recommendation(
+    default_summary: Dict[str, Any], tight_summary: Dict[str, Any], default_cap: int, tight_cap: int
+) -> str:
     if (
         float(default_summary["usable_response_rate"]) == 0.0
         and float(tight_summary["usable_response_rate"]) == 0.0
@@ -174,11 +209,21 @@ def _recommendation(default_summary: Dict[str, Any], tight_summary: Dict[str, An
             f"Keep the current default cap of {default_cap}. "
             f"This sample was inconclusive because neither cap produced usable benchmark answers on the active backend."
         )
-    schema_drop = float(default_summary["schema_valid_rate"]) - float(tight_summary["schema_valid_rate"])
-    usable_drop = float(default_summary["usable_response_rate"]) - float(tight_summary["usable_response_rate"])
-    truncation_increase = int(tight_summary["obvious_truncation_count"]) - int(default_summary["obvious_truncation_count"])
-    latency_reduction = float(default_summary["avg_latency_ms"]) - float(tight_summary["avg_latency_ms"])
-    cost_reduction = float(default_summary["total_cost_usd"]) - float(tight_summary["total_cost_usd"])
+    schema_drop = float(default_summary["schema_valid_rate"]) - float(
+        tight_summary["schema_valid_rate"]
+    )
+    usable_drop = float(default_summary["usable_response_rate"]) - float(
+        tight_summary["usable_response_rate"]
+    )
+    truncation_increase = int(tight_summary["obvious_truncation_count"]) - int(
+        default_summary["obvious_truncation_count"]
+    )
+    latency_reduction = float(default_summary["avg_latency_ms"]) - float(
+        tight_summary["avg_latency_ms"]
+    )
+    cost_reduction = float(default_summary["total_cost_usd"]) - float(
+        tight_summary["total_cost_usd"]
+    )
 
     if schema_drop > 0.05 or usable_drop > 0.05 or truncation_increase > 0:
         return (
@@ -278,9 +323,21 @@ def main() -> None:
 
     json_path = output_dir / "output_token_cap_validation.json"
     txt_path = output_dir / "output_token_cap_validation.txt"
-    json_path.write_text(json.dumps(report_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(report_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     _write_text_report(txt_path, report_payload)
-    print(json.dumps({"json_report_path": str(json_path), "text_report_path": str(txt_path), **report_payload}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "json_report_path": str(json_path),
+                "text_report_path": str(txt_path),
+                **report_payload,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":

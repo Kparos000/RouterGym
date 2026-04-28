@@ -101,7 +101,9 @@ class TFIDFClassifier(ClassifierProtocol):
         self.pipeline.fit(X, y)
         # Align class order to the canonical labels for stable downstream usage.
         fitted_classes = list(self.pipeline.named_steps["clf"].classes_)
-        self.classes_ = np.array([lbl for lbl in self.labels if lbl in fitted_classes], dtype=object)
+        self.classes_ = np.array(
+            [lbl for lbl in self.labels if lbl in fitted_classes], dtype=object
+        )
         self._fitted = True
         return self
 
@@ -114,7 +116,9 @@ class TFIDFClassifier(ClassifierProtocol):
         proba_matrix = self.pipeline.predict_proba([text or ""])
         raw_probs = proba_matrix[0]
         clf_classes = self.pipeline.named_steps["clf"].classes_
-        prob_by_class = {canonical_label(cls): float(prob) for cls, prob in zip(clf_classes, raw_probs)}
+        prob_by_class = {
+            canonical_label(cls): float(prob) for cls, prob in zip(clf_classes, raw_probs)
+        }
         ordered = np.array([prob_by_class.get(lbl, 0.0) for lbl in self.classes_], dtype=float)
         if ordered.sum() <= 0:
             ordered = np.full_like(ordered, 1.0 / max(len(ordered), 1))

@@ -41,7 +41,9 @@ from RouterGym.scripts.check_generation_quality_gate import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Chunked/resumable production benchmark runner.")
-    parser.add_argument("--config-id", type=str, default=None, help="Run only one frozen config identifier.")
+    parser.add_argument(
+        "--config-id", type=str, default=None, help="Run only one frozen config identifier."
+    )
     parser.add_argument(
         "--config-ids",
         nargs="+",
@@ -173,7 +175,10 @@ def _merge_selection(
     config_ids: Optional[Sequence[str]],
     backend_name: str,
 ) -> List[dict]:
-    selected_ids = [selected_id for selected_id, _ in resolve_selected_configs(config_id=config_id, config_ids=config_ids)]
+    selected_ids = [
+        selected_id
+        for selected_id, _ in resolve_selected_configs(config_id=config_id, config_ids=config_ids)
+    ]
     merged_results = []
     for selected_id in selected_ids:
         manifest_path = get_manifest_path(output_root, backend_name, selected_id)
@@ -297,7 +302,11 @@ def _run_parallel_selection(
         free_slots = [slot for slot in range(worker_limit) if slot not in active_slots]
         for free_slot in free_slots:
             match_index = next(
-                (idx for idx, candidate in enumerate(pending) if int(candidate["worker_slot"]) == free_slot),
+                (
+                    idx
+                    for idx, candidate in enumerate(pending)
+                    if int(candidate["worker_slot"]) == free_slot
+                ),
                 None,
             )
             if match_index is None:
@@ -371,7 +380,9 @@ def _run_parallel_selection(
                     "manifest_path": entry["manifest_path"],
                     "progress_log_path": str(item["progress_log_path"]),
                     "status_path": str(item["status_path"]),
-                    "backend_status_summary_path": str(backend_status_summary_path(output_root, resolved_backend)),
+                    "backend_status_summary_path": str(
+                        backend_status_summary_path(output_root, resolved_backend)
+                    ),
                     "exit_code": int(process.returncode or 0),
                     "status": "completed" if int(process.returncode or 0) == 0 else "worker_failed",
                 }

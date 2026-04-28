@@ -9,7 +9,9 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from RouterGym.evaluation.gold_scoring import build_gold_index, score_record_against_gold
 
-DEFAULT_GOLD_PATH = Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval_final.jsonl"
+DEFAULT_GOLD_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "gold_eval" / "gold_eval_final.jsonl"
+)
 
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -71,7 +73,9 @@ def score_records_against_gold(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Score JSONL outputs against gold_eval_final.jsonl.")
+    parser = argparse.ArgumentParser(
+        description="Score JSONL outputs against gold_eval_final.jsonl."
+    )
     parser.add_argument("--input-path", type=str, required=True, help="JSONL outputs to score.")
     parser.add_argument("--gold-path", type=str, default=str(DEFAULT_GOLD_PATH))
     parser.add_argument("--output-path", type=str, default=None)
@@ -90,7 +94,9 @@ def main() -> None:
 
     records = _read_jsonl(input_path)
     gold_records = _read_jsonl(gold_path)
-    sliced_records = records[args.start : args.start + args.limit if args.limit is not None else None]
+    sliced_records = records[
+        args.start : args.start + args.limit if args.limit is not None else None
+    ]
     scored = score_records_against_gold(sliced_records, gold_records)
     _write_jsonl(scored, output_path)
 

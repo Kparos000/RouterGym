@@ -27,12 +27,22 @@ DEFAULT_SMOKE_MAX_NEW_TOKENS = 80
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Smoke-test an OpenAI-compatible RouterGym model endpoint.")
-    parser.add_argument("--model", choices=sorted(ALL_MODELS.keys()), required=True, help="Logical model key.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test an OpenAI-compatible RouterGym model endpoint."
+    )
+    parser.add_argument(
+        "--model", choices=sorted(ALL_MODELS.keys()), required=True, help="Logical model key."
+    )
     parser.add_argument("--prompt", type=str, default=DEFAULT_PROMPT, help="Prompt to send.")
-    parser.add_argument("--base-url", type=str, default=None, help="Override OpenAI-compatible base URL.")
-    parser.add_argument("--api-key", type=str, default=None, help="Override OpenAI-compatible API key.")
-    parser.add_argument("--dry-run", action="store_true", help="Print resolved config without sending a request.")
+    parser.add_argument(
+        "--base-url", type=str, default=None, help="Override OpenAI-compatible base URL."
+    )
+    parser.add_argument(
+        "--api-key", type=str, default=None, help="Override OpenAI-compatible API key."
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print resolved config without sending a request."
+    )
     return parser
 
 

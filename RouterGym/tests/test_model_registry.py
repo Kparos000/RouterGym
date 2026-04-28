@@ -50,24 +50,32 @@ def test_load_models_all_remote(monkeypatch: Any) -> None:
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "hf_inference")
     models = model_registry.load_models(sanity=False)
     assert set(models.keys()) == {"slm1", "slm2", "llm1", "llm2"}
-    assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
+    assert all(
+        isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values()
+    )
     assert "mistralai/Mistral-Small-24B-Instruct-2501" in created
     assert "Qwen/Qwen2.5-14B-Instruct" in created
 
 
 def test_sanity_includes_slm_and_llm(monkeypatch: Any) -> None:
     """Sanity mode should still produce one SLM and one LLM engine."""
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs)
+    )
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "hf_inference")
     models = model_registry.load_models(sanity=True)
     kinds = {getattr(engine, "kind", "") for engine in models.values()}
     assert "slm" in kinds
     assert "llm" in kinds
-    assert all(isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values())
+    assert all(
+        isinstance(engine, model_registry.RemoteInferenceEngine) for engine in models.values()
+    )
 
 
 def test_sanity_openai_backend_includes_local_slm_and_llm(monkeypatch: Any) -> None:
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs)
+    )
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
     monkeypatch.setenv("ROUTERGYM_OPENAI_BASE_URL", "http://localhost:9000")
     monkeypatch.setenv("ROUTERGYM_OPENAI_API_KEY", "secret-key")
@@ -87,7 +95,9 @@ def test_remote_engine_response_format(monkeypatch: Any) -> None:
             captured.update(kwargs)
             return super().chat_completion(**kwargs)
 
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: CapturingClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: CapturingClient(*args, **kwargs)
+    )
     engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
     _ = engine.generate("hi")
     assert captured.get("model") == "model"
@@ -107,7 +117,9 @@ def test_remote_engine_falls_back_to_text_generation(monkeypatch: Any) -> None:
             self.calls.append({"prompt": prompt, **kwargs})
             return '{"final_answer":"ok","reasoning":"r","predicted_category":"access"}'
 
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: FallbackClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: FallbackClient(*args, **kwargs)
+    )
     engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
     text = engine.generate("hi")
     assert "final_answer" in text
@@ -142,7 +154,11 @@ def test_remote_engine_falls_back_to_plain_chat_when_json_mode_fails(monkeypatch
                 },
             )
 
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: PlainChatFallbackClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry,
+        "InferenceClient",
+        lambda *args, **kwargs: PlainChatFallbackClient(*args, **kwargs),
+    )
     engine = model_registry.RemoteInferenceEngine("model", token="tkn", max_retries=0)
     text = engine.generate("hi", max_new_tokens=80)
     assert "final_answer" in text
@@ -163,10 +179,14 @@ def test_conversational_hf_models_do_not_fall_back_to_text_generation(monkeypatc
             self.text_generation_calls += 1
             raise AssertionError("text_generation should not be called for llm1/llm2")
 
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: ChatOnlyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: ChatOnlyClient(*args, **kwargs)
+    )
 
     for model_key in ("slm1", "slm2", "llm1", "llm2"):
-        engine = model_registry.RemoteInferenceEngine("model", model_key=model_key, token="tkn", max_retries=0)
+        engine = model_registry.RemoteInferenceEngine(
+            "model", model_key=model_key, token="tkn", max_retries=0
+        )
         text = engine.generate("hi")
         assert "LLM unavailable" in text
         assert engine.last_endpoint_path == ""
@@ -177,7 +197,9 @@ def test_conversational_hf_models_do_not_fall_back_to_text_generation(monkeypatc
 
 def test_get_repair_model(monkeypatch: Any) -> None:
     """Repair model should return strongest LLM remote engine."""
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs)
+    )
     engine = model_registry.get_repair_model()
     assert isinstance(engine, model_registry.RemoteInferenceEngine)
     assert engine.kind == "llm"

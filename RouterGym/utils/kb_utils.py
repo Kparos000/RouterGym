@@ -15,7 +15,9 @@ def coerce_kb_hits(hits: Any) -> List[Dict[str, str]]:
             normalized.append(
                 {
                     "text": str(h.get("text") or h.get("chunk") or h.get("content") or ""),
-                    "source": str(h.get("source") or h.get("path") or h.get("id") or h.get("filename") or ""),
+                    "source": str(
+                        h.get("source") or h.get("path") or h.get("id") or h.get("filename") or ""
+                    ),
                 }
             )
         else:

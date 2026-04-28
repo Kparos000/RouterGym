@@ -41,11 +41,20 @@ def _load_calibrated_head(path: Path) -> Dict[str, Any]:
     data = np.load(path, allow_pickle=True)
     head_type = str(data.get("head_type", "logreg"))
     if head_type == "mlp":
-        required = ["labels", "feature_mean", "feature_std", "feature_dim", "layer_weights", "layer_biases"]
+        required = [
+            "labels",
+            "feature_mean",
+            "feature_std",
+            "feature_dim",
+            "layer_weights",
+            "layer_biases",
+        ]
     elif head_type == "logreg":
         required = ["labels", "W", "b", "feature_mean", "feature_std", "feature_dim"]
     else:
-        raise RuntimeError(f"Unknown head_type '{head_type}' in calibrated head file at {path}. Supported: logreg, mlp.")
+        raise RuntimeError(
+            f"Unknown head_type '{head_type}' in calibrated head file at {path}. Supported: logreg, mlp."
+        )
     for key in required:
         if key not in data:
             raise RuntimeError(f"Missing key '{key}' in calibrated head file at {path}")
@@ -142,7 +151,9 @@ def run_analysis(
 
     tfidf_clf = TFIDFClassifier(labels=CANONICAL_LABELS)
     model = SentenceTransformer("intfloat/e5-small-v2")
-    embeddings = model.encode(val_texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True)
+    embeddings = model.encode(
+        val_texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True
+    )
     X_val = np.stack(
         [
             _compute_features(np.array(emb, dtype="float32"), CANONICAL_LABELS, text, tfidf_clf)
@@ -151,7 +162,9 @@ def run_analysis(
         axis=0,
     )
     if X_val.shape[1] != feature_dim:
-        raise RuntimeError(f"Feature dimension mismatch: built {X_val.shape[1]}, expected {feature_dim}")
+        raise RuntimeError(
+            f"Feature dimension mismatch: built {X_val.shape[1]}, expected {feature_dim}"
+        )
 
     # Normalize features
     mean = head["feature_mean"]
@@ -171,15 +184,28 @@ def run_analysis(
     print("Threshold\tCoverage\tAccuracy\tN_examples")
     for _, row in df_metrics.iterrows():
         acc_display = "nan" if pd.isna(row["accuracy"]) else f"{row['accuracy']:.3f}"
-        print(f"{row['threshold']:.2f}\t\t{row['coverage']:.3f}\t\t{acc_display}\t{int(row['n_examples'])}")
+        print(
+            f"{row['threshold']:.2f}\t\t{row['coverage']:.3f}\t\t{acc_display}\t{int(row['n_examples'])}"
+        )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze calibrated encoder confidence vs accuracy on validation split.")
-    parser.add_argument("--ticket-path", type=Path, default=Path("RouterGym/data/tickets/tickets.csv"), help="Tickets CSV.")
+    parser = argparse.ArgumentParser(
+        description="Analyze calibrated encoder confidence vs accuracy on validation split."
+    )
+    parser.add_argument(
+        "--ticket-path",
+        type=Path,
+        default=Path("RouterGym/data/tickets/tickets.csv"),
+        help="Tickets CSV.",
+    )
     parser.add_argument("--text-column", type=str, default="Document", help="Text column name.")
-    parser.add_argument("--label-column", type=str, default="Topic_group", help="Label column name.")
-    parser.add_argument("--val-fraction", type=float, default=0.2, help="Validation fraction (must match training).")
+    parser.add_argument(
+        "--label-column", type=str, default="Topic_group", help="Label column name."
+    )
+    parser.add_argument(
+        "--val-fraction", type=float, default=0.2, help="Validation fraction (must match training)."
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed (must match training).")
     parser.add_argument("--head-path", type=Path, default=HEAD_PATH)
     parser.add_argument(

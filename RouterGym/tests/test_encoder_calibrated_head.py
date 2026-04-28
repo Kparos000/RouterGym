@@ -15,7 +15,9 @@ class DummyEncoder:
     def __init__(self, vector: np.ndarray) -> None:
         self.vector = vector
 
-    def encode(self, text: str, normalize_embeddings: bool = True) -> np.ndarray:  # pragma: no cover - simple stub
+    def encode(
+        self, text: str, normalize_embeddings: bool = True
+    ) -> np.ndarray:  # pragma: no cover - simple stub
         return self.vector
 
 
@@ -47,7 +49,9 @@ def test_calibrated_head_probability_flow(monkeypatch: Any, tmp_path: Path) -> N
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2
+    )
     classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
     classifier._tfidf_classifier = type(
         "DummyTFIDF",
@@ -88,9 +92,15 @@ def test_calibrated_head_mlp_inference(monkeypatch: Any, tmp_path: Path) -> None
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2
+    )
     classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
-    monkeypatch.setattr(classifier, "_compute_calibrated_features", lambda text, emb: np.ones(feature_dim, dtype="float32"))  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        classifier,
+        "_compute_calibrated_features",
+        lambda text, emb: np.ones(feature_dim, dtype="float32"),
+    )  # type: ignore[method-assign]
     classifier._tfidf_classifier = object()  # type: ignore[assignment]
     probs = classifier.predict_proba("text")
     assert classifier._head_mode_active == "calibrated"
@@ -117,9 +127,15 @@ def test_logreg_head_defaults_when_missing_head_type(monkeypatch: Any, tmp_path:
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="calibrated", embedding_dimension=2
+    )
     classifier._encoder = DummyEncoder(np.array([1.0, 0.0], dtype="float32"))  # type: ignore[attr-defined, assignment]
-    monkeypatch.setattr(classifier, "_compute_calibrated_features", lambda text, emb: np.ones(feature_dim, dtype="float32"))  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        classifier,
+        "_compute_calibrated_features",
+        lambda text, emb: np.ones(feature_dim, dtype="float32"),
+    )  # type: ignore[method-assign]
     classifier._tfidf_classifier = object()  # type: ignore[assignment]
     probs = classifier.predict_proba("text")
     assert classifier._head_type == "logreg"
@@ -132,7 +148,9 @@ def test_head_mode_centroid(monkeypatch: Any, tmp_path: Path) -> None:
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="centroid", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="centroid", embedding_dimension=2
+    )
     assert classifier._head_mode_active == "centroid"
 
 
@@ -184,7 +202,9 @@ def test_auto_mode_raises_without_calibrated_head(monkeypatch: Any, tmp_path: Pa
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
     with pytest.raises(RuntimeError):
-        enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+        enc.EncoderClassifier(
+            labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2
+        )
 
 
 def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path) -> None:
@@ -192,7 +212,9 @@ def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2
+    )
     assert classifier._backend_name == "encoder_centroid"
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
@@ -204,7 +226,9 @@ def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
     monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", head_path)
     monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
-    classifier = enc.EncoderClassifier(labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2)
+    classifier = enc.EncoderClassifier(
+        labels=labels, use_lexical_prior=False, head_mode="auto", embedding_dimension=2
+    )
     assert classifier._backend_name == "encoder_calibrated"
 
 

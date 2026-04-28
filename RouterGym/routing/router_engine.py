@@ -8,7 +8,12 @@ from typing import Any, Dict, Optional
 
 from RouterGym.classifiers import CLASSIFIER_MODES as REGISTERED_MODES, get_classifier_instance
 from RouterGym.classifiers.encoder_classifier import EncoderClassifier
-from RouterGym.classifiers.utils import ClassifierMetadata, ClassifierProtocol, canonical_label, canonical_mode
+from RouterGym.classifiers.utils import (
+    ClassifierMetadata,
+    ClassifierProtocol,
+    canonical_label,
+    canonical_mode,
+)
 from RouterGym.memory.base import MemoryRetrieval
 
 CLASSIFIER_MODES = REGISTERED_MODES
@@ -56,7 +61,9 @@ class ClassificationSummary:
 class RouterEngine:
     """Coordinates classifier selection and summary generation."""
 
-    def __init__(self, classifier_mode: str = "tfidf", encoder_use_lexical_prior: Optional[bool] = None) -> None:
+    def __init__(
+        self, classifier_mode: str = "tfidf", encoder_use_lexical_prior: Optional[bool] = None
+    ) -> None:
         self.classifier_mode = canonical_mode(classifier_mode)
         self.encoder_use_lexical_prior = encoder_use_lexical_prior
         self.classifier_backend: str = ""

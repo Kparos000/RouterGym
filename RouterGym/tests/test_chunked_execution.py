@@ -60,7 +60,9 @@ def _write_fake_chunk_outputs(
     backend_name: str,
     chunk_spec: Dict[str, int],
 ) -> Dict[str, Any]:
-    config_dir = chunked_execution.get_config_output_dir(output_root, backend_name, config_identifier)
+    config_dir = chunked_execution.get_config_output_dir(
+        output_root, backend_name, config_identifier
+    )
     results_path = chunked_execution.chunk_results_path(config_dir, chunk_spec)
     failures_path = chunked_execution.chunk_failures_path(config_dir, chunk_spec)
     metadata_path = chunked_execution.chunk_metadata_path(config_dir, chunk_spec)
@@ -68,7 +70,12 @@ def _write_fake_chunk_outputs(
     results_path.parent.mkdir(parents=True, exist_ok=True)
     with results_path.open("w", encoding="utf-8") as handle:
         for ticket_index in range(int(chunk_spec["start"]), int(chunk_spec["end_exclusive"])):
-            handle.write(json.dumps({"ticket_index": ticket_index, "chunk_index": int(chunk_spec["chunk_index"])}) + "\n")
+            handle.write(
+                json.dumps(
+                    {"ticket_index": ticket_index, "chunk_index": int(chunk_spec["chunk_index"])}
+                )
+                + "\n"
+            )
     failures_path.write_text("", encoding="utf-8")
 
     metadata = {
@@ -150,9 +157,7 @@ def test_emit_progress_update_keeps_running_when_backend_summary_races(monkeypat
         current_status="running",
     )
 
-    status_path = chunked_execution.config_status_path(
-        Path(manifest["output_files"]["config_dir"])
-    )
+    status_path = chunked_execution.config_status_path(Path(manifest["output_files"]["config_dir"]))
     stored_status = json.loads(status_path.read_text(encoding="utf-8"))
     assert status_payload["current_status"] == "running"
     assert stored_status["config_identifier"] == config_identifier
@@ -236,7 +241,9 @@ def test_manifest_creation_and_update(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -259,7 +266,9 @@ def test_manifest_creation_and_update(monkeypatch: Any) -> None:
     assert len(manifest["completed_chunks"]) == 2
     assert manifest["failed_chunks"] == []
     status_path = chunked_execution.config_status_path(Path(manifest["output_files"]["config_dir"]))
-    progress_log = chunked_execution.config_progress_log_path(Path(manifest["output_files"]["config_dir"]))
+    progress_log = chunked_execution.config_progress_log_path(
+        Path(manifest["output_files"]["config_dir"])
+    )
     backend_summary = chunked_execution.backend_status_summary_path(tmp_path, "openai_compatible")
     assert status_path.exists()
     assert progress_log.exists()
@@ -303,7 +312,9 @@ def test_manifest_records_100_ticket_chunk_outputs(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -354,7 +365,9 @@ def test_execute_chunk_marks_generation_invalid_rows_as_failures(monkeypatch: An
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     metadata = chunked_execution.execute_chunk(
         config_identifier=chunked_execution.build_config_identifier(_sample_config()),
@@ -366,8 +379,16 @@ def test_execute_chunk_marks_generation_invalid_rows_as_failures(monkeypatch: An
 
     results_path = Path(metadata["results_path"])
     failures_path = Path(metadata["failures_path"])
-    rows = [json.loads(line) for line in results_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    failures = [json.loads(line) for line in failures_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in results_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    failures = [
+        json.loads(line)
+        for line in failures_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert metadata["failure_count"] == 1
     assert rows[0]["success"] is False
     assert rows[0]["error"]["error_type"] == "GenerationInvalidError"
@@ -393,7 +414,7 @@ def test_quality_abort_passes_when_rows_are_valid(monkeypatch: Any) -> None:
             "has_real_final_answer": True,
             "has_resolution_steps": True,
             "raw_response_saved": True,
-            "raw_model_response_text": "{\"final_answer\":\"ok\"}",
+            "raw_model_response_text": '{"final_answer":"ok"}',
             "metrics": {
                 "latency_ms": 1.0,
                 "total_input_tokens": 10,
@@ -405,7 +426,9 @@ def test_quality_abort_passes_when_rows_are_valid(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -457,7 +480,9 @@ def test_quality_abort_fails_and_writes_report(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -515,7 +540,7 @@ def test_runtime_manifest_includes_git_sha_and_model_ids(monkeypatch: Any) -> No
             "has_real_final_answer": True,
             "has_resolution_steps": True,
             "raw_response_saved": True,
-            "raw_model_response_text": "{\"final_answer\":\"ok\"}",
+            "raw_model_response_text": '{"final_answer":"ok"}',
             "metrics": {
                 "latency_ms": 1.0,
                 "total_input_tokens": 10,
@@ -527,7 +552,9 @@ def test_runtime_manifest_includes_git_sha_and_model_ids(monkeypatch: Any) -> No
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -577,7 +604,9 @@ def test_chunked_execution_persists_and_passes_max_output_tokens(monkeypatch: An
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -620,7 +649,9 @@ def test_progress_log_contains_chunk_save_lines(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
     result = chunked_execution.run_config_chunked(
         config=_sample_config(),
         output_root=tmp_path,
@@ -665,7 +696,9 @@ def test_resume_skips_completed_chunks(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     chunked_execution.run_config_chunked(
         config=_sample_config(),
@@ -691,7 +724,9 @@ def test_resume_skips_completed_chunks(monkeypatch: Any) -> None:
         dry_run=False,
     )
     assert seen_ticket_ids == []
-    merged_results = Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    merged_results = (
+        Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    )
     assert len(merged_results) == 4
     shutil.rmtree(tmp_path, ignore_errors=True)
 
@@ -722,7 +757,9 @@ def test_resume_is_independent_per_config(monkeypatch: Any) -> None:
             "total_cost_usd": 0.001,
         }
 
-    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
 
     chunked_execution.run_benchmark_matrix_chunked(
         output_root=tmp_path,
@@ -790,7 +827,9 @@ def test_interrupted_run_resumes_from_last_completed_chunk(monkeypatch: Any) -> 
             dry_run=False,
         )
 
-    manifest_path = chunked_execution.get_manifest_path(tmp_path, "openai_compatible", config_identifier)
+    manifest_path = chunked_execution.get_manifest_path(
+        tmp_path, "openai_compatible", config_identifier
+    )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert executed_chunks == [0, 1]
     assert [entry["chunk_index"] for entry in manifest["completed_chunks"]] == [0]
@@ -877,7 +916,9 @@ def test_failed_chunks_retry_without_duplicating_completed_output(monkeypatch: A
         "total_chunks": 3,
     }
 
-    manifest_path = chunked_execution.get_manifest_path(tmp_path, "openai_compatible", config_identifier)
+    manifest_path = chunked_execution.get_manifest_path(
+        tmp_path, "openai_compatible", config_identifier
+    )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert [entry["chunk_index"] for entry in manifest["completed_chunks"]] == [0, 2]
     assert [entry["chunk_index"] for entry in manifest["failed_chunks"]] == [1]
@@ -915,7 +956,9 @@ def test_failed_chunks_retry_without_duplicating_completed_output(monkeypatch: A
         "total_chunks": 3,
     }
     assert retry_attempts == [1]
-    merged_results = Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    merged_results = (
+        Path(second_result["merged_results_path"]).read_text(encoding="utf-8").splitlines()
+    )
     assert len(merged_results) == 6
     assert [json.loads(line)["ticket_index"] for line in merged_results] == [0, 1, 2, 3, 4, 5]
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

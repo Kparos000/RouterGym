@@ -28,7 +28,9 @@ def _build_tree_lines(root: Path) -> List[str]:
     lines: List[str] = [root.name or "."]
 
     def walk(current: Path, prefix: str) -> None:
-        entries = sorted([p for p in current.iterdir() if not _should_skip(p)], key=lambda p: p.name.lower())
+        entries = sorted(
+            [p for p in current.iterdir() if not _should_skip(p)], key=lambda p: p.name.lower()
+        )
         for idx, entry in enumerate(entries):
             connector = "+---"
             is_last = idx == len(entries) - 1

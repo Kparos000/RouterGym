@@ -29,7 +29,9 @@ def test_groundedness_similarity(monkeypatch: Any) -> None:
 
 
 def test_schema_validity() -> None:
-    valid = metrics.schema_validity({"reasoning": "r", "final_answer": "a", "predicted_category": "access"})
+    valid = metrics.schema_validity(
+        {"reasoning": "r", "final_answer": "a", "predicted_category": "access"}
+    )
     assert valid == 1
 
 

@@ -162,6 +162,7 @@ def load_kb_index(base_path: Path | None = None, index_path: Path | None = None)
         articles.append(article)
     return articles
 
+
 def kb_hash(base_path: Path | None = None) -> str:
     base = base_path or KB_ROOT
     h = hashlib.sha256()

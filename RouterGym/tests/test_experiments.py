@@ -30,7 +30,15 @@ class DummyClient:
         return type(
             "Resp",
             (),
-            {"choices": [{"message": {"content": '{"final_answer":"ok","reasoning":"r","predicted_category":"Access"}'}}]},
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"final_answer":"ok","reasoning":"r","predicted_category":"Access"}'
+                        }
+                    }
+                ]
+            },
         )
 
 
@@ -68,7 +76,9 @@ def test_run_pipeline_with_mocked_outputs(tmp_path: Path, monkeypatch: Any) -> N
     def fake_grid(**kwargs):
         return dummy_df
 
-    monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
+    monkeypatch.setattr(
+        run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None
+    )
     monkeypatch.setattr(
         run_experiments.eval_stats,
         "export_anova_results",
@@ -88,7 +98,9 @@ def test_sanity_forces_llm(monkeypatch: Any, tmp_path: Path) -> None:
         return pd.DataFrame([{"router": "llm_first"}])
 
     monkeypatch.setattr(run_experiments, "run_full_grid", fake_grid_runner)
-    monkeypatch.setattr(run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None)
+    monkeypatch.setattr(
+        run_experiments.analyzer, "export_all_figures", lambda df, output_dir=None: None
+    )
     monkeypatch.setattr(
         run_experiments.eval_stats,
         "export_anova_results",
@@ -154,6 +166,7 @@ def test_grid_outputs_vary_per_ticket(monkeypatch: Any) -> None:
 def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
     """Grid should not crash if routers or KB return unexpected types."""
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
+
     class FakeKB:
         def retrieve(self, query: str, top_k: int = 3):
             return ["snippet"]  # not a dict
@@ -178,7 +191,9 @@ def test_run_grid_handles_bad_router_and_kb(monkeypatch: Any) -> None:
 
 def test_kb_attached_depends_on_memory(monkeypatch: Any) -> None:
     """kb_attached should reflect prompt inclusion, not retriever existence."""
-    monkeypatch.setattr(eval_metrics, "groundedness_score", lambda answer, snippets: 0.9 if snippets else 0.0)
+    monkeypatch.setattr(
+        eval_metrics, "groundedness_score", lambda answer, snippets: 0.9 if snippets else 0.0
+    )
 
     class FakeRouter:
         def route(self, *args: Any, **kwargs: Any):
@@ -226,7 +241,11 @@ def test_encoder_grid_uses_calibrated_backend(monkeypatch: Any, tmp_path: Path) 
                 "strategy": "llm_first",
                 "target_model": "slm",
                 "model_used": "slm",
-                "final_output": {"final_answer": "ok", "reasoning": "r", "predicted_category": "access"},
+                "final_output": {
+                    "final_answer": "ok",
+                    "reasoning": "r",
+                    "predicted_category": "access",
+                },
                 "json_valid": True,
                 "schema_valid": True,
                 "kb_attached": False,
@@ -261,7 +280,9 @@ def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Pa
     """predicted_category should mirror classifier_label, preserving llm_category separately."""
 
     class FakeEngine:
-        def __init__(self, classifier_mode: str = "tfidf", encoder_use_lexical_prior: Any = None) -> None:
+        def __init__(
+            self, classifier_mode: str = "tfidf", encoder_use_lexical_prior: Any = None
+        ) -> None:
             self.classifier_mode = classifier_mode
             self.classifier_backend = "fake_backend"
 
@@ -290,7 +311,11 @@ def test_predicted_category_comes_from_classifier(monkeypatch: Any, tmp_path: Pa
                 "strategy": "llm_first",
                 "target_model": "slm",
                 "model_used": "slm",
-                "final_output": {"final_answer": "ok", "reasoning": "r", "predicted_category": "access"},
+                "final_output": {
+                    "final_answer": "ok",
+                    "reasoning": "r",
+                    "predicted_category": "access",
+                },
                 "json_valid": True,
                 "schema_valid": True,
                 "kb_attached": False,
@@ -328,7 +353,9 @@ def test_full_grid_remote_smoke(monkeypatch: Any) -> None:
     monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
 
     # Ensure load_models can initialize without network
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs)
+    )
     _ = model_registry.load_models(sanity=True)
 
     df = run_grid.run_full_grid(

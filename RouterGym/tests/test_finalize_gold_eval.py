@@ -16,7 +16,9 @@ def _write_jsonl(path: Path, records: List[Dict[str, Any]]) -> None:
     )
 
 
-def _draft_record(ticket_index: int, *, needs_review: bool = False, summary: str = "Summary") -> Dict[str, Any]:
+def _draft_record(
+    ticket_index: int, *, needs_review: bool = False, summary: str = "Summary"
+) -> Dict[str, Any]:
     return {
         "ticket_index": ticket_index,
         "topic_group": "Access",

@@ -16,6 +16,7 @@ from huggingface_hub import InferenceClient  # type: ignore
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv as _load_dotenv  # type: ignore
 except Exception:  # pragma: no cover
+
     def _load_dotenv(
         dotenv_path: Optional[str | PathLike[str]] = None,
         stream: Optional[IO[str]] = None,
@@ -25,6 +26,8 @@ except Exception:  # pragma: no cover
         encoding: Optional[str] = None,
     ) -> bool:
         return False
+
+
 DotenvCallable = Callable[..., bool]
 _dotenv_loader: DotenvCallable = _load_dotenv
 _ENV_LOADED = False
@@ -133,12 +136,12 @@ class RemoteInferenceEngine:
 
         if isinstance(usage, dict):
             prompt_tokens = _coerce(usage.get("prompt_tokens", usage.get("input_tokens")))
-            completion_tokens = _coerce(
-                usage.get("completion_tokens", usage.get("output_tokens"))
-            )
+            completion_tokens = _coerce(usage.get("completion_tokens", usage.get("output_tokens")))
             total_tokens = _coerce(usage.get("total_tokens"))
         else:
-            prompt_tokens = _coerce(getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", None)))
+            prompt_tokens = _coerce(
+                getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", None))
+            )
             completion_tokens = _coerce(
                 getattr(usage, "completion_tokens", getattr(usage, "output_tokens", None))
             )
@@ -256,7 +259,9 @@ class RemoteInferenceEngine:
         temperature: float = 0.2,
         **kwargs: Any,
     ) -> str:
-        return self.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs)
+        return self.generate(
+            prompt, max_new_tokens=max_new_tokens, temperature=temperature, **kwargs
+        )
 
 
 def _get_token() -> Optional[str]:
@@ -275,11 +280,7 @@ def _get_openai_compatible_base_url() -> str:
 
 def _get_openai_compatible_api_key() -> str:
     _ensure_env_loaded()
-    return (
-        os.getenv("ROUTERGYM_OPENAI_API_KEY")
-        or os.getenv("ROUTERGYM_VLLM_API_KEY")
-        or "EMPTY"
-    )
+    return os.getenv("ROUTERGYM_OPENAI_API_KEY") or os.getenv("ROUTERGYM_VLLM_API_KEY") or "EMPTY"
 
 
 def _ensure_env_loaded() -> None:
@@ -325,7 +326,9 @@ def _get_openai_compatible_engine_class():
     return OpenAICompatibleEngine
 
 
-def _filter_entries(entries: Dict[str, ModelEntry], subset: Optional[list[str]]) -> list[ModelEntry]:
+def _filter_entries(
+    entries: Dict[str, ModelEntry], subset: Optional[list[str]]
+) -> list[ModelEntry]:
     if subset:
         allowed = set(subset)
         return [entry for entry in entries.values() if entry.name in allowed]
@@ -365,7 +368,9 @@ def _build_entry_for_backend(entry: ModelEntry, backend: str, token: Optional[st
     return _build_engine(entry, token)
 
 
-def load_models(sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False) -> Dict[str, Any]:
+def load_models(
+    sanity: bool = False, slm_subset: Optional[list[str]] = None, force_llm: bool = False
+) -> Dict[str, Any]:
     """Load all models using the configured backend (HF Inference or vLLM local)."""
     backend = get_model_backend()
     token = _get_token()

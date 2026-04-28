@@ -42,7 +42,9 @@ def merge_results(pattern: str, output: Path) -> None:
                     header = file_header
                     writer.writerow(header)
                 elif header != file_header:
-                    raise ValueError(f"Header mismatch in file {file}: expected {header}, got {file_header}")
+                    raise ValueError(
+                        f"Header mismatch in file {file}: expected {header}, got {file_header}"
+                    )
 
                 for row in reader:
                     writer.writerow(row)
@@ -53,7 +55,11 @@ def merge_results(pattern: str, output: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Merge per-chunk results CSVs into a single file.")
-    parser.add_argument("--pattern", required=True, help="Glob pattern for input files (e.g., 'results_*_part*.csv')")
+    parser.add_argument(
+        "--pattern",
+        required=True,
+        help="Glob pattern for input files (e.g., 'results_*_part*.csv')",
+    )
     parser.add_argument("--output", required=True, help="Output CSV path for merged results")
     args = parser.parse_args()
 

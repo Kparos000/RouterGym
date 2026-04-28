@@ -47,7 +47,9 @@ class RAGMemory(MemoryBase):
         except Exception:
             return None
 
-    def _collect_docs(self, index: Dict[str, str] | List[Dict[str, Any]] | Any) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
+    def _collect_docs(
+        self, index: Dict[str, str] | List[Dict[str, Any]] | Any
+    ) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
         if isinstance(index, list):
             keys: List[str] = []
             texts: List[str] = []
@@ -63,7 +65,10 @@ class RAGMemory(MemoryBase):
             items = sorted(index.items())
             keys = [path for path, _ in items]
             texts = [text for _, text in items]
-            meta = [{"id": key, "content": text, "path": key, "title": key, "category": ""} for key, text in items]
+            meta = [
+                {"id": key, "content": text, "path": key, "title": key, "category": ""}
+                for key, text in items
+            ]
             return keys, texts, meta
         return [], [], []
 
@@ -207,7 +212,9 @@ class RAGMemory(MemoryBase):
             if not text:
                 continue
             pid = article.get("id", "")
-            formatted.append(f"### KB Reference {idx} [{pid}] (score={score:.2f}):\n> {text.strip()}")
+            formatted.append(
+                f"### KB Reference {idx} [{pid}] (score={score:.2f}):\n> {text.strip()}"
+            )
         return "\n\n".join(formatted)
 
 

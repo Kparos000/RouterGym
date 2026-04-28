@@ -125,7 +125,9 @@ def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]], fieldnames: Sequen
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def _load_manifest(results_root: Path, config_id: str) -> Dict[str, Any]:
@@ -293,11 +295,17 @@ def analyze_config(
         "classification_accuracy": classification_accuracy,
         "classification_comparable_count": classification_comparable_count,
         "escalation_rate": escalation_rate,
-        "retrieval_score_available_rate": (retrieval_score_count / row_count) if row_count > 0 else None,
+        "retrieval_score_available_rate": (retrieval_score_count / row_count)
+        if row_count > 0
+        else None,
         "retrieval_score_mean": retrieval_score_mean,
         "retrieval_score_p95": retrieval_score_p95,
-        "kb_policy_ref_nonempty_rate": (kb_policy_nonempty_count / row_count) if row_count > 0 else None,
-        "avg_kb_policy_refs_per_ticket": (total_kb_policy_refs / row_count) if row_count > 0 else None,
+        "kb_policy_ref_nonempty_rate": (kb_policy_nonempty_count / row_count)
+        if row_count > 0
+        else None,
+        "avg_kb_policy_refs_per_ticket": (total_kb_policy_refs / row_count)
+        if row_count > 0
+        else None,
         "groundedness_metric_available": False,
     }
 
@@ -377,7 +385,9 @@ def _plot_scatter(
     plt.figure(figsize=(8, 6))
     for label, x_value, y_value in filtered:
         plt.scatter(x_value, y_value)
-        plt.annotate(label, (x_value, y_value), textcoords="offset points", xytext=(5, 5), fontsize=8)
+        plt.annotate(
+            label, (x_value, y_value), textcoords="offset points", xytext=(5, 5), fontsize=8
+        )
 
     if frontier and len(filtered) >= 2:
         frontier_points: List[tuple[str, float, float]] = []
@@ -537,14 +547,24 @@ def main() -> None:
         "median latency": any(row.get("median_latency_ms") is not None for row in config_summaries),
         "p95 latency": any(row.get("p95_latency_ms") is not None for row in config_summaries),
         "total cost": any(row.get("total_cost_usd") is not None for row in config_summaries),
-        "mean cost per ticket": any(row.get("mean_cost_per_ticket_usd") is not None for row in config_summaries),
+        "mean cost per ticket": any(
+            row.get("mean_cost_per_ticket_usd") is not None for row in config_summaries
+        ),
         "input tokens": any(row.get("total_input_tokens") is not None for row in config_summaries),
-        "output tokens": any(row.get("total_output_tokens") is not None for row in config_summaries),
+        "output tokens": any(
+            row.get("total_output_tokens") is not None for row in config_summaries
+        ),
         "total tokens": any(row.get("total_tokens") is not None for row in config_summaries),
-        "schema validity rate": any(row.get("schema_validity_rate") is not None for row in config_summaries),
-        "classification accuracy": any(row.get("classification_accuracy") is not None for row in config_summaries),
+        "schema validity rate": any(
+            row.get("schema_validity_rate") is not None for row in config_summaries
+        ),
+        "classification accuracy": any(
+            row.get("classification_accuracy") is not None for row in config_summaries
+        ),
         "escalation rate": any(row.get("escalation_rate") is not None for row in config_summaries),
-        "retrieval score": any(row.get("retrieval_score_mean") is not None for row in config_summaries),
+        "retrieval score": any(
+            row.get("retrieval_score_mean") is not None for row in config_summaries
+        ),
         "groundedness metric": False,
     }
     schema_reports["metric_availability"] = metric_availability
@@ -601,7 +621,11 @@ def main() -> None:
         "avg_kb_policy_refs_per_ticket",
     ]
 
-    _write_csv(output_root / "merged_output_index.csv", merged_output_rows, list(merged_output_rows[0].keys()))
+    _write_csv(
+        output_root / "merged_output_index.csv",
+        merged_output_rows,
+        list(merged_output_rows[0].keys()),
+    )
     _write_json(output_root / "schema_report.json", schema_reports)
     _write_csv(output_root / "overall_config_summary.csv", config_summaries, overall_summary_fields)
     _write_csv(output_root / "cost_latency_summary.csv", config_summaries, cost_latency_fields)
@@ -672,7 +696,9 @@ def main() -> None:
     summary_payload = {
         "output_root": str(output_root),
         "config_count": len(config_summaries),
-        "created_files": sorted(str(path.relative_to(output_root)) for path in output_root.rglob("*") if path.is_file()),
+        "created_files": sorted(
+            str(path.relative_to(output_root)) for path in output_root.rglob("*") if path.is_file()
+        ),
         "metric_availability": metric_availability,
     }
     _write_json(output_root / "analysis_manifest.json", summary_payload)

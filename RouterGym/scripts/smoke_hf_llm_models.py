@@ -31,10 +31,16 @@ def _exception_payload(exc: BaseException, *, phase: str) -> Dict[str, str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Smoke-test llm1/llm2 through Hugging Face Inference.")
-    parser.add_argument("--model", choices=sorted(LLM_MODELS.keys()), required=True, help="Logical model key.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test llm1/llm2 through Hugging Face Inference."
+    )
+    parser.add_argument(
+        "--model", choices=sorted(LLM_MODELS.keys()), required=True, help="Logical model key."
+    )
     parser.add_argument("--prompt", type=str, default=DEFAULT_PROMPT, help="Prompt to send.")
-    parser.add_argument("--output-path", type=Path, default=None, help="Optional path to write the JSON result.")
+    parser.add_argument(
+        "--output-path", type=Path, default=None, help="Optional path to write the JSON result."
+    )
     return parser
 
 

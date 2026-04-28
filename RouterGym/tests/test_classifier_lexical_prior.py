@@ -50,7 +50,16 @@ def test_misc_prior_is_downweighted() -> None:
 
 def test_classification_instruction_mentions_all_labels_and_misc_rule() -> None:
     prompt = classification_instruction()
-    for label in ["Access", "Administrative rights", "Hardware", "HR Support", "Purchase", "Internal Project", "Storage", "Miscellaneous"]:
+    for label in [
+        "Access",
+        "Administrative rights",
+        "Hardware",
+        "HR Support",
+        "Purchase",
+        "Internal Project",
+        "Storage",
+        "Miscellaneous",
+    ]:
         assert label in prompt
     assert "miscellaneous" in prompt.lower()
     assert "only" in prompt.lower()

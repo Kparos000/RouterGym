@@ -29,7 +29,17 @@ _KEYWORDS: Dict[str, List[str]] = {
         "group",
         "security group",
     ],
-    "Hardware": ["laptop", "printer", "dock", "monitor", "battery", "device", "keyboard", "mouse", "screen"],
+    "Hardware": [
+        "laptop",
+        "printer",
+        "dock",
+        "monitor",
+        "battery",
+        "device",
+        "keyboard",
+        "mouse",
+        "screen",
+    ],
     "HR Support": [
         "benefit",
         "benefits",
@@ -135,13 +145,18 @@ class SLMClassifier(ClassifierProtocol):
             return None
         try:
             category = canonical_label(
-                parsed.get("category") or parsed.get("label") or parsed.get("predicted_category") or ""
+                parsed.get("category")
+                or parsed.get("label")
+                or parsed.get("predicted_category")
+                or ""
             )
         except RuntimeError:
             category = None
         if category not in self.label_set:
             # Fall back to lexical prior if the model produced an unexpected label.
-            prior = apply_lexical_prior(text, {lbl: 1.0 / max(len(self.labels), 1) for lbl in self.labels})
+            prior = apply_lexical_prior(
+                text, {lbl: 1.0 / max(len(self.labels), 1) for lbl in self.labels}
+            )
             category = max(prior, key=lambda k: prior[k])
         base = {lbl: 1.0 / max(len(self.labels), 1) for lbl in self.labels}
         probs = apply_lexical_prior(text, base, alpha=0.6, beta=0.4)
@@ -198,7 +213,9 @@ class SLMClassifier(ClassifierProtocol):
                     top_score = miscless[top_label] / max(total_hits, 1e-9)
                     if top_score >= 0.65:
                         label = top_label
-                        self.metadata.description = self.metadata.description + " (misc overridden by lexical prior)"
+                        self.metadata.description = (
+                            self.metadata.description + " (misc overridden by lexical prior)"
+                        )
         return label
 
 

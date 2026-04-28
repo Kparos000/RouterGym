@@ -12,7 +12,9 @@ from RouterGym.scripts import smoke_openai_compatible_model as smoke_script
 
 
 class DummyClient:
-    def __init__(self, model: str | None = None, token: str | None = None, timeout: int | None = None) -> None:
+    def __init__(
+        self, model: str | None = None, token: str | None = None, timeout: int | None = None
+    ) -> None:
         self.model = model
         self.token = token
         self.timeout = timeout
@@ -26,7 +28,9 @@ def test_backend_selection_accepts_openai_aliases(monkeypatch: Any) -> None:
 
 
 def test_load_models_openai_backend_uses_openai_for_all_model_keys(monkeypatch: Any) -> None:
-    monkeypatch.setattr(model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs))
+    monkeypatch.setattr(
+        model_registry, "InferenceClient", lambda *args, **kwargs: DummyClient(*args, **kwargs)
+    )
     monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
     monkeypatch.setenv("ROUTERGYM_OPENAI_BASE_URL", "http://localhost:9000")
     monkeypatch.setenv("ROUTERGYM_OPENAI_API_KEY", "secret-key")
@@ -183,7 +187,9 @@ def test_smoke_script_surfaces_backend_error_on_failure(monkeypatch: Any) -> Non
     ],
 )
 def test_smoke_script_dry_run(model_key: str, expected_model_id: str) -> None:
-    result = smoke_script.run_smoke_test(model_key=model_key, dry_run=True, base_url="http://localhost:8123")
+    result = smoke_script.run_smoke_test(
+        model_key=model_key, dry_run=True, base_url="http://localhost:8123"
+    )
     assert result["status"] == "dry_run"
     assert result["model_key"] == model_key
     assert result["model_id"] == expected_model_id

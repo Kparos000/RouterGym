@@ -183,7 +183,9 @@ def _extract_generated_escalation_required(record: Mapping[str, Any]) -> bool:
     if isinstance(record.get("escalation_required"), bool):
         return bool(record.get("escalation_required"))
     gold_resolution = record.get("gold_resolution")
-    if isinstance(gold_resolution, dict) and isinstance(gold_resolution.get("escalation_required"), bool):
+    if isinstance(gold_resolution, dict) and isinstance(
+        gold_resolution.get("escalation_required"), bool
+    ):
         return bool(gold_resolution.get("escalation_required"))
     flags = record.get("escalation_flags")
     if isinstance(flags, dict):

@@ -18,7 +18,11 @@ def test_log_run_metadata_smoke(tmp_path: Path, monkeypatch: Any) -> None:
                 "strategy": "llm_first",
                 "target_model": "slm",
                 "model_used": "slm",
-                "final_output": {"final_answer": "ans", "reasoning": "r", "predicted_category": "access"},
+                "final_output": {
+                    "final_answer": "ans",
+                    "reasoning": "r",
+                    "predicted_category": "access",
+                },
                 "json_valid": True,
                 "schema_valid": True,
                 "kb_attached": False,
@@ -32,7 +36,13 @@ def test_log_run_metadata_smoke(tmp_path: Path, monkeypatch: Any) -> None:
     log_path = tmp_path / "run_metadata.csv"
     monkeypatch.setattr(run_grid, "init_router", lambda name=None: FakeRouter())
     monkeypatch.setattr(run_grid, "RESULTS_DIR", tmp_path)
-    monkeypatch.setattr(run_grid, "_results_output_path", lambda ticket_count, override=None: tmp_path / "results.csv" if override is None else override)
+    monkeypatch.setattr(
+        run_grid,
+        "_results_output_path",
+        lambda ticket_count, override=None: (
+            tmp_path / "results.csv" if override is None else override
+        ),
+    )
     df = run_grid.run_full_grid(
         tickets=tickets,
         kb_retriever=FakeKB(),

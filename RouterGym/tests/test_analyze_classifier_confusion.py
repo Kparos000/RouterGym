@@ -15,9 +15,21 @@ def _sample_results() -> pd.DataFrame:
     return pd.DataFrame(
         [
             {"classifier_mode": "tfidf", "gold_category": "access", "predicted_category": "access"},
-            {"classifier_mode": "tfidf", "gold_category": "access", "predicted_category": "hardware"},
-            {"classifier_mode": "encoder", "gold_category": "hardware", "predicted_category": "hardware"},
-            {"classifier_mode": "encoder", "gold_category": "hardware", "predicted_category": "hardware"},
+            {
+                "classifier_mode": "tfidf",
+                "gold_category": "access",
+                "predicted_category": "hardware",
+            },
+            {
+                "classifier_mode": "encoder",
+                "gold_category": "hardware",
+                "predicted_category": "hardware",
+            },
+            {
+                "classifier_mode": "encoder",
+                "gold_category": "hardware",
+                "predicted_category": "hardware",
+            },
         ]
     )
 

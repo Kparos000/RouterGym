@@ -99,7 +99,9 @@ def canonical_label(label: str | None) -> str:
     """Map any free-form label into the canonical 8-label space."""
     text = (label or "").strip()
     if not text:
-        raise RuntimeError("Empty label encountered; provide one of the canonical labels or extend the mapping.")
+        raise RuntimeError(
+            "Empty label encountered; provide one of the canonical labels or extend the mapping."
+        )
     normalized = " ".join(text.lower().replace("_", " ").split())
     if normalized in LABEL_NORMALIZATION_MAP:
         return LABEL_NORMALIZATION_MAP[normalized]

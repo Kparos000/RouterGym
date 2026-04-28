@@ -49,7 +49,11 @@ def __getattr__(name: str) -> Any:
 
         return HybridSpecialistRouter
     if name in {"RoutingDecision", "ROUTING_POLICY_VERSION", "build_routing_decision"}:
-        from RouterGym.routing.policy import ROUTING_POLICY_VERSION, RoutingDecision, build_routing_decision
+        from RouterGym.routing.policy import (
+            ROUTING_POLICY_VERSION,
+            RoutingDecision,
+            build_routing_decision,
+        )
 
         return {
             "RoutingDecision": RoutingDecision,

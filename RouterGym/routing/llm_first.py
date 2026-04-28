@@ -63,7 +63,9 @@ class LLMFirstRouter(BaseRouter):
 
         use_slm = (
             self.router_mode != "llm_only"
-            and (tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"}))
+            and (
+                tokens < 40 or (category and str(category).lower() in {"access", "hardware", "hr"})
+            )
             and not force_llm
         )
         chosen_model = llm if force_llm else (slm if use_slm and slm is not None else llm or slm)
@@ -118,13 +120,21 @@ class LLMFirstRouter(BaseRouter):
         contract = SchemaContract()
         jc = JSONContract()
         sr = SelfRepair()
-        ok_json, parsed = jc.validate(raw_output) if isinstance(raw_output, str) else (True, raw_output if isinstance(raw_output, dict) else None)
+        ok_json, parsed = (
+            jc.validate(raw_output)
+            if isinstance(raw_output, str)
+            else (True, raw_output if isinstance(raw_output, dict) else None)
+        )
         ok_schema = False
         final_output = normalize_output(raw_output)
         if ok_json and parsed:
             ok_schema, _ = contract.validate(normalize_output(parsed))
         if not (ok_json and ok_schema):
-            repaired = sr.repair(chosen_model or slm, prompt, raw_output, contract) if chosen_model else final_output
+            repaired = (
+                sr.repair(chosen_model or slm, prompt, raw_output, contract)
+                if chosen_model
+                else final_output
+            )
             final_output = normalize_output(repaired)
         else:
             final_output = normalize_output(parsed)

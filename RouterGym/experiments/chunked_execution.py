@@ -103,8 +103,7 @@ def get_frozen_config_map() -> Dict[str, Dict[str, str]]:
     """Return the frozen benchmark matrix indexed by config identifier."""
 
     return {
-        build_config_identifier(config): dict(config)
-        for config in build_final_benchmark_matrix()
+        build_config_identifier(config): dict(config) for config in build_final_benchmark_matrix()
     }
 
 
@@ -574,7 +573,9 @@ def _write_runtime_manifest(config_dir: Path, payload: Mapping[str, Any]) -> Pat
     return output_path
 
 
-def _write_quality_gate_failure_reports(config_dir: Path, summary: Mapping[str, Any]) -> Dict[str, str]:
+def _write_quality_gate_failure_reports(
+    config_dir: Path, summary: Mapping[str, Any]
+) -> Dict[str, str]:
     json_path = quality_gate_report_json_path(config_dir)
     md_path = quality_gate_report_md_path(config_dir)
     _write_json(json_path, summary)
@@ -662,7 +663,9 @@ def initialize_manifest(
         "ticket_limit": ticket_limit,
         "chunk_size": int(chunk_size),
         "generation_settings": {
-            "max_output_tokens": (int(max_output_tokens) if max_output_tokens is not None else None),
+            "max_output_tokens": (
+                int(max_output_tokens) if max_output_tokens is not None else None
+            ),
         },
         "quality_gate": dict(quality_gate_settings or {}),
         "created_at": _utc_now(),
@@ -680,7 +683,9 @@ def initialize_manifest(
             "runtime_manifest_path": str(runtime_manifest_path(config_dir)),
             "quality_gate_failure_report_json": str(quality_gate_report_json_path(config_dir)),
             "quality_gate_failure_report_md": str(quality_gate_report_md_path(config_dir)),
-            "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name)),
+            "backend_status_summary_path": str(
+                backend_status_summary_path(output_root, backend_name)
+            ),
             "merged_results_path": "",
             "merged_failures_path": "",
         },
@@ -704,7 +709,9 @@ def ensure_manifest(
 ) -> Dict[str, Any]:
     """Load or initialize a manifest, rejecting incompatible resume settings."""
 
-    manifest_path = get_manifest_path(output_root, str(backend_details["backend_name"]), config_identifier)
+    manifest_path = get_manifest_path(
+        output_root, str(backend_details["backend_name"]), config_identifier
+    )
     existing = _load_manifest(manifest_path)
     if existing is None:
         manifest = initialize_manifest(
@@ -724,15 +731,17 @@ def ensure_manifest(
 
     if int(existing.get("chunk_size", chunk_size)) != int(chunk_size):
         raise ValueError("Existing manifest chunk_size does not match requested chunk_size.")
-    if int(existing.get("total_tickets_expected", total_tickets_expected)) != int(total_tickets_expected):
-        raise ValueError("Existing manifest total_tickets_expected does not match requested ticket set.")
+    if int(existing.get("total_tickets_expected", total_tickets_expected)) != int(
+        total_tickets_expected
+    ):
+        raise ValueError(
+            "Existing manifest total_tickets_expected does not match requested ticket set."
+        )
     if str(existing.get("backend_name", "")) != str(backend_details["backend_name"]):
         raise ValueError("Existing manifest backend_name does not match requested backend.")
     generation_settings = existing.setdefault("generation_settings", {})
     existing_max_output_tokens = generation_settings.get("max_output_tokens")
-    requested_max_output_tokens = (
-        int(max_output_tokens) if max_output_tokens is not None else None
-    )
+    requested_max_output_tokens = int(max_output_tokens) if max_output_tokens is not None else None
     if existing_max_output_tokens is None and "max_output_tokens" not in generation_settings:
         generation_settings["max_output_tokens"] = requested_max_output_tokens
     elif existing_max_output_tokens != requested_max_output_tokens:
@@ -740,15 +749,21 @@ def ensure_manifest(
             "Existing manifest max_output_tokens does not match requested max_output_tokens."
         )
     output_files = existing.setdefault("output_files", {})
-    config_dir = get_config_output_dir(output_root, str(backend_details["backend_name"]), config_identifier)
+    config_dir = get_config_output_dir(
+        output_root, str(backend_details["backend_name"]), config_identifier
+    )
     output_files.setdefault("config_dir", str(config_dir))
     output_files.setdefault("chunks_dir", str(config_dir / "chunks"))
     output_files.setdefault("merged_dir", str(config_dir / "merged"))
     output_files.setdefault("progress_log_path", str(config_progress_log_path(config_dir)))
     output_files.setdefault("status_path", str(config_status_path(config_dir)))
     output_files.setdefault("runtime_manifest_path", str(runtime_manifest_path(config_dir)))
-    output_files.setdefault("quality_gate_failure_report_json", str(quality_gate_report_json_path(config_dir)))
-    output_files.setdefault("quality_gate_failure_report_md", str(quality_gate_report_md_path(config_dir)))
+    output_files.setdefault(
+        "quality_gate_failure_report_json", str(quality_gate_report_json_path(config_dir))
+    )
+    output_files.setdefault(
+        "quality_gate_failure_report_md", str(quality_gate_report_md_path(config_dir))
+    )
     output_files.setdefault(
         "backend_status_summary_path",
         str(backend_status_summary_path(output_root, str(backend_details["backend_name"]))),
@@ -794,7 +809,9 @@ def _set_failed_chunk(manifest: Dict[str, Any], entry: Mapping[str, Any]) -> Non
     manifest["failed_chunks"] = [failed[idx] for idx in sorted(failed)]
 
 
-def _update_manifest_status(manifest: Dict[str, Any], chunk_plan: Sequence[Mapping[str, int]]) -> None:
+def _update_manifest_status(
+    manifest: Dict[str, Any], chunk_plan: Sequence[Mapping[str, int]]
+) -> None:
     if str(manifest.get("run_status", "")).strip() == "failed_quality_gate":
         manifest["updated_at"] = _utc_now()
         return
@@ -822,7 +839,9 @@ def _reset_manifest_for_fresh_run(manifest: Dict[str, Any]) -> None:
     output_files["merged_failures_path"] = ""
 
 
-def describe_resume_behavior(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]]) -> str:
+def describe_resume_behavior(
+    manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]]
+) -> str:
     """Return a short, human-readable summary of resume behavior."""
 
     config_dir = Path(str(manifest.get("output_files", {}).get("config_dir", "")))
@@ -834,13 +853,17 @@ def describe_resume_behavior(manifest: Mapping[str, Any], chunk_plan: Sequence[M
     )
 
 
-def _is_chunk_complete(config_dir: Path, manifest: Mapping[str, Any], chunk_spec: Mapping[str, int]) -> bool:
+def _is_chunk_complete(
+    config_dir: Path, manifest: Mapping[str, Any], chunk_spec: Mapping[str, int]
+) -> bool:
     completed = _completed_chunk_map(manifest)
     entry = completed.get(int(chunk_spec["chunk_index"]))
     if entry is None:
         return False
     results_path = Path(str(entry.get("results_path", chunk_results_path(config_dir, chunk_spec))))
-    metadata_path = Path(str(entry.get("metadata_path", chunk_metadata_path(config_dir, chunk_spec))))
+    metadata_path = Path(
+        str(entry.get("metadata_path", chunk_metadata_path(config_dir, chunk_spec)))
+    )
     return results_path.exists() and metadata_path.exists()
 
 
@@ -873,7 +896,9 @@ def summarize_resume_state(
     }
 
 
-def _completed_tickets_count(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path) -> int:
+def _completed_tickets_count(
+    manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path
+) -> int:
     return sum(
         int(chunk_spec["ticket_count"])
         for chunk_spec in chunk_plan
@@ -881,7 +906,9 @@ def _completed_tickets_count(manifest: Mapping[str, Any], chunk_plan: Sequence[M
     )
 
 
-def _last_completed_ticket_index(manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path) -> int:
+def _last_completed_ticket_index(
+    manifest: Mapping[str, Any], chunk_plan: Sequence[Mapping[str, int]], config_dir: Path
+) -> int:
     completed_ticket_indices = [
         int(chunk_spec["end_exclusive"]) - 1
         for chunk_spec in chunk_plan
@@ -928,7 +955,9 @@ def build_config_status_payload(
     return {
         "config_identifier": str(manifest["config_identifier"]),
         "backend_name": backend_name,
-        "manifest_path": str(get_manifest_path(output_root, backend_name, str(manifest["config_identifier"]))),
+        "manifest_path": str(
+            get_manifest_path(output_root, backend_name, str(manifest["config_identifier"]))
+        ),
         "progress_log_path": str(config_progress_log_path(config_dir)),
         "status_path": str(config_status_path(config_dir)),
         "worker_slot": execution_context["worker_slot"],
@@ -1080,15 +1109,25 @@ def _maybe_evaluate_quality_gate(
         return None
     thresholds_raw = settings.get("thresholds", {})
     thresholds = build_thresholds(
-        placeholder_answer_max_rate=float(thresholds_raw.get("placeholder_answer_max_rate", PLACEHOLDER_THRESHOLD)),
-        empty_steps_max_rate=float(thresholds_raw.get("empty_steps_max_rate", EMPTY_STEPS_THRESHOLD)),
-        min_raw_response_saved_rate=float(thresholds_raw.get("min_raw_response_saved_rate", RAW_RESPONSE_THRESHOLD)),
-        min_generation_valid_rate=float(thresholds_raw.get("min_generation_valid_rate", GENERATION_VALID_THRESHOLD)),
+        placeholder_answer_max_rate=float(
+            thresholds_raw.get("placeholder_answer_max_rate", PLACEHOLDER_THRESHOLD)
+        ),
+        empty_steps_max_rate=float(
+            thresholds_raw.get("empty_steps_max_rate", EMPTY_STEPS_THRESHOLD)
+        ),
+        min_raw_response_saved_rate=float(
+            thresholds_raw.get("min_raw_response_saved_rate", RAW_RESPONSE_THRESHOLD)
+        ),
+        min_generation_valid_rate=float(
+            thresholds_raw.get("min_generation_valid_rate", GENERATION_VALID_THRESHOLD)
+        ),
     )
     summary = summarize_quality(
         config_dir,
         thresholds=thresholds,
-        allow_full_slm_dominant_escalation=bool(settings.get("allow_slm_dominant_full_escalation", False)),
+        allow_full_slm_dominant_escalation=bool(
+            settings.get("allow_slm_dominant_full_escalation", False)
+        ),
     )
     summary["checked_at"] = _utc_now()
     summary["config_identifier"] = config_identifier
@@ -1158,7 +1197,9 @@ def execute_chunk(
                 router_mode=str(config["router_mode"]),
                 memory_mode=str(config["memory_mode"]),
                 base_model_name=str(config["base_model"]),
-                escalation_model_name=(str(config["escalation_model"]) if config.get("escalation_model") else None),
+                escalation_model_name=(
+                    str(config["escalation_model"]) if config.get("escalation_model") else None
+                ),
                 max_output_tokens=max_output_tokens,
             )
             if not bool(result.get("generation_valid", True)):
@@ -1210,7 +1251,9 @@ def execute_chunk(
     _jsonl_write(temp_results, results)
     _jsonl_write(temp_failures, failures)
     temp_metadata.parent.mkdir(parents=True, exist_ok=True)
-    temp_metadata.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temp_metadata.write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     temp_results.replace(results_path)
     temp_failures.replace(failures_path)
     temp_metadata.replace(metadata_path)
@@ -1307,7 +1350,9 @@ def run_config_chunked(
             ),
             "resume_state": dict(resume_state),
             "status_path": str(config_status_path(config_dir)),
-            "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name_resolved)),
+            "backend_status_summary_path": str(
+                backend_status_summary_path(output_root, backend_name_resolved)
+            ),
             "progress_log_path": str(config_progress_log_path(config_dir)),
             "runtime_manifest_path": str(runtime_manifest_path(config_dir)),
             "status_payload": dict(dry_run_status),
@@ -1406,7 +1451,9 @@ def run_config_chunked(
                     bool(quality_gate_settings["enabled"])
                     and message_suffix == "saved"
                     and int(progress_status["completed_chunks"]) > 0
-                    and int(progress_status["completed_chunks"]) % int(quality_gate_settings["check_after_chunks"]) == 0
+                    and int(progress_status["completed_chunks"])
+                    % int(quality_gate_settings["check_after_chunks"])
+                    == 0
                 )
                 if should_check_quality:
                     quality_summary = _maybe_evaluate_quality_gate(
@@ -1414,12 +1461,16 @@ def run_config_chunked(
                         config_identifier=config_identifier,
                         settings=quality_gate_settings,
                     )
-                    if quality_summary is not None and not bool(quality_summary.get("passes_quality_gate", True)):
+                    if quality_summary is not None and not bool(
+                        quality_summary.get("passes_quality_gate", True)
+                    ):
                         manifest["run_status"] = "failed_quality_gate"
                         manifest["last_run_completed_at"] = _utc_now()
                         manifest["updated_at"] = _utc_now()
                         manifest["quality_gate_failure"] = dict(quality_summary)
-                        manifest["output_files"].update(_write_quality_gate_failure_reports(config_dir, quality_summary))
+                        manifest["output_files"].update(
+                            _write_quality_gate_failure_reports(config_dir, quality_summary)
+                        )
                         _write_manifest(manifest_path, manifest)
                         failure_status = _emit_progress_update(
                             output_root=output_root,
@@ -1439,19 +1490,31 @@ def run_config_chunked(
                             "status": "failed_quality_gate",
                             "config_identifier": config_identifier,
                             "manifest_path": str(manifest_path),
-                            "merged_results_path": str(manifest["output_files"].get("merged_results_path", "")),
-                            "merged_failures_path": str(manifest["output_files"].get("merged_failures_path", "")),
+                            "merged_results_path": str(
+                                manifest["output_files"].get("merged_results_path", "")
+                            ),
+                            "merged_failures_path": str(
+                                manifest["output_files"].get("merged_failures_path", "")
+                            ),
                             "progress_log_path": str(config_progress_log_path(config_dir)),
                             "status_path": str(config_status_path(config_dir)),
                             "runtime_manifest_path": str(runtime_manifest_path(config_dir)),
-                            "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name_resolved)),
+                            "backend_status_summary_path": str(
+                                backend_status_summary_path(output_root, backend_name_resolved)
+                            ),
                             "startup_resume_state": dict(resume_state),
-                            "final_resume_state": dict(summarize_resume_state(config_dir, manifest, chunk_plan)),
+                            "final_resume_state": dict(
+                                summarize_resume_state(config_dir, manifest, chunk_plan)
+                            ),
                             "final_status_payload": dict(failure_status),
                             "resume_behavior_summary": resume_summary,
                             "quality_gate": dict(quality_gate_settings),
-                            "quality_gate_failure_report_json": str(quality_gate_report_json_path(config_dir)),
-                            "quality_gate_failure_report_md": str(quality_gate_report_md_path(config_dir)),
+                            "quality_gate_failure_report_json": str(
+                                quality_gate_report_json_path(config_dir)
+                            ),
+                            "quality_gate_failure_report_md": str(
+                                quality_gate_report_md_path(config_dir)
+                            ),
                         }
         except BaseException:
             _update_manifest_status(manifest, chunk_plan)
@@ -1506,7 +1569,9 @@ def run_config_chunked(
         "progress_log_path": str(config_progress_log_path(config_dir)),
         "status_path": str(config_status_path(config_dir)),
         "runtime_manifest_path": str(runtime_manifest_path(config_dir)),
-        "backend_status_summary_path": str(backend_status_summary_path(output_root, backend_name_resolved)),
+        "backend_status_summary_path": str(
+            backend_status_summary_path(output_root, backend_name_resolved)
+        ),
         "startup_resume_state": dict(resume_state),
         "final_resume_state": dict(final_resume_state),
         "final_status_payload": dict(final_status),

@@ -43,7 +43,12 @@ def test_gold_scoring_good_match() -> None:
             "User confirms remote access works.",
         ],
         "kb_policy_ids": ["access.vpn"],
-        "escalation_flags": {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []},
+        "escalation_flags": {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
+            "reasons": [],
+        },
     }
 
     scores = gold_scoring.score_record_against_gold(generated, _gold_record()).as_dict()
@@ -54,7 +59,10 @@ def test_gold_scoring_good_match() -> None:
         and scores["acceptance_criteria_alignment_score"] > 0.60
     )
     assert scores["policy_grounding_match_score"] == 1.0
-    assert scores["overall_gold_quality_score"] is not None and scores["overall_gold_quality_score"] > 0.75
+    assert (
+        scores["overall_gold_quality_score"] is not None
+        and scores["overall_gold_quality_score"] > 0.75
+    )
 
 
 def test_gold_scoring_partial_match() -> None:
@@ -66,7 +74,12 @@ def test_gold_scoring_partial_match() -> None:
         ],
         "final_answer": "User should confirm whether VPN access is working after a retry.",
         "kb_policy_ids": [],
-        "escalation_flags": {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False, "reasons": []},
+        "escalation_flags": {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
+            "reasons": [],
+        },
     }
 
     scores = gold_scoring.score_record_against_gold(generated, _gold_record()).as_dict()
@@ -76,7 +89,10 @@ def test_gold_scoring_partial_match() -> None:
         and 0.10 < scores["acceptance_criteria_alignment_score"] < 0.75
     )
     assert scores["policy_grounding_match_score"] == 0.0
-    assert scores["overall_gold_quality_score"] is not None and 0.10 < scores["overall_gold_quality_score"] < 0.70
+    assert (
+        scores["overall_gold_quality_score"] is not None
+        and 0.10 < scores["overall_gold_quality_score"] < 0.70
+    )
 
 
 def test_gold_scoring_bad_match() -> None:
@@ -105,7 +121,10 @@ def test_gold_scoring_bad_match() -> None:
     )
     assert scores["escalation_correctness_score"] == 0.0
     assert scores["policy_grounding_match_score"] == 0.0
-    assert scores["overall_gold_quality_score"] is not None and scores["overall_gold_quality_score"] < 0.20
+    assert (
+        scores["overall_gold_quality_score"] is not None
+        and scores["overall_gold_quality_score"] < 0.20
+    )
 
 
 def test_score_records_against_gold_merges_fields() -> None:
@@ -135,7 +154,11 @@ def test_score_records_against_gold_merges_fields() -> None:
 def test_compute_all_metrics_includes_gold_scores() -> None:
     metrics_out = metrics.compute_all_metrics(
         {
-            "output": {"final_answer": "VPN is working", "reasoning": "Used the VPN policy", "predicted_category": "Access"},
+            "output": {
+                "final_answer": "VPN is working",
+                "reasoning": "Used the VPN policy",
+                "predicted_category": "Access",
+            },
             "gold_category": "Access",
             "predicted_category": "Access",
             "kb_snippets": ["VPN access policy"],

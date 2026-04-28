@@ -73,7 +73,7 @@ class SalienceGatedMemory(MemoryBase):
         overlap = len(set(tokens) & set(self._last_tokens)) / max(len(tokens), 1)
         continuity = 1.0 + (1.0 - overlap) * 0.5
         length_weight = min(len(tokens) / 20.0, 2.0)
-        decay_factor = self.decay ** self.turn
+        decay_factor = self.decay**self.turn
         return (rarity * sentence_weight * continuity + length_weight) * decay_factor
 
 

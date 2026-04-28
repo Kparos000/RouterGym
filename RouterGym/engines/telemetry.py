@@ -42,9 +42,7 @@ def _extract_usage_dict(data: Any) -> Optional[Dict[str, int]]:
     total_tokens: Optional[int] = None
 
     if isinstance(usage, dict):
-        prompt_tokens = _coerce_usage_value(
-            usage.get("prompt_tokens", usage.get("input_tokens"))
-        )
+        prompt_tokens = _coerce_usage_value(usage.get("prompt_tokens", usage.get("input_tokens")))
         completion_tokens = _coerce_usage_value(
             usage.get("completion_tokens", usage.get("output_tokens"))
         )
@@ -126,7 +124,9 @@ def _call_model_raw(
             return model.generate(prompt)  # type: ignore[call-arg]
     if callable(model):
         try:
-            return model(prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_p=top_p)
+            return model(
+                prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_p=top_p
+            )
         except TypeError:
             return model(prompt)
     return str(prompt)

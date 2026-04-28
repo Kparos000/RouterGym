@@ -33,7 +33,11 @@ def _fake_agent_output(category: str) -> Dict[str, Any]:
         "resolution_steps": [],
         "final_answer": "stub",
         "reasoning": "stub",
-        "escalation_flags": {"needs_human": False, "needs_llm_escalation": False, "policy_gap": False},
+        "escalation_flags": {
+            "needs_human": False,
+            "needs_llm_escalation": False,
+            "policy_gap": False,
+        },
         "metrics": {
             "latency_ms": 1.0,
             "total_input_tokens": 0,

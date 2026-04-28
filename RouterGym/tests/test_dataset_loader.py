@@ -25,7 +25,9 @@ def test_load_dataset_success(tmp_path: Path, monkeypatch: Any) -> None:
 
 def test_load_dataset_raises_on_unknown_label(tmp_path: Path, monkeypatch: Any) -> None:
     csv_path = tmp_path / "tickets.csv"
-    pd.DataFrame({"Document": ["hello"], "Topic_group": ["unknown_label"]}).to_csv(csv_path, index=False)
+    pd.DataFrame({"Document": ["hello"], "Topic_group": ["unknown_label"]}).to_csv(
+        csv_path, index=False
+    )
     monkeypatch.setattr(dataset_loader, "DEFAULT_PATH", csv_path)
     with pytest.raises(RuntimeError):
         dataset_loader.load_dataset(1)

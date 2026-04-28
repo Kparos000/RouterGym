@@ -93,7 +93,9 @@ def summarize_quality_for_file(
 
     for row in rows:
         final_answer = str(row.get("final_answer", "") or "")
-        placeholder = bool(row.get("placeholder_answer")) or final_answer == PLACEHOLDER_FINAL_ANSWER
+        placeholder = (
+            bool(row.get("placeholder_answer")) or final_answer == PLACEHOLDER_FINAL_ANSWER
+        )
         if placeholder:
             placeholder_count += 1
 
@@ -101,7 +103,10 @@ def summarize_quality_for_file(
         if not isinstance(resolution_steps, list) or not resolution_steps:
             empty_steps_count += 1
 
-        if bool(row.get("raw_response_saved")) and str(row.get("raw_model_response_text", "") or "").strip():
+        if (
+            bool(row.get("raw_response_saved"))
+            and str(row.get("raw_model_response_text", "") or "").strip()
+        ):
             raw_response_saved_count += 1
 
         if bool(row.get("generation_valid")):
@@ -174,7 +179,9 @@ def summarize_quality(
         )
         for path in result_files
     ]
-    failed_configs = [summary["config_identifier"] for summary in configs if not summary["passes_quality_gate"]]
+    failed_configs = [
+        summary["config_identifier"] for summary in configs if not summary["passes_quality_gate"]
+    ]
     return {
         "input_path": str(input_path),
         "result_file_count": len(result_files),
@@ -187,8 +194,12 @@ def summarize_quality(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Fail a preflight run when generation quality regressions appear.")
-    parser.add_argument("--input-path", required=True, help="Merged results file, config directory, or output root.")
+    parser = argparse.ArgumentParser(
+        description="Fail a preflight run when generation quality regressions appear."
+    )
+    parser.add_argument(
+        "--input-path", required=True, help="Merged results file, config directory, or output root."
+    )
     parser.add_argument("--output-path", help="Optional path to write the gate summary as JSON.")
     parser.add_argument(
         "--placeholder-answer-max-rate",
@@ -239,7 +250,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.output_path:
         output_path = Path(args.output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        output_path.write_text(
+            json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0 if summary["passes_quality_gate"] else 1

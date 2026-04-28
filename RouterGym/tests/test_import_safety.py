@@ -11,7 +11,9 @@ import huggingface_hub
 
 
 def _fresh_import(module_name: str):
-    for name in [key for key in sys.modules if key == module_name or key.startswith(f"{module_name}.")]:
+    for name in [
+        key for key in sys.modules if key == module_name or key.startswith(f"{module_name}.")
+    ]:
         sys.modules.pop(name, None)
     return importlib.import_module(module_name)
 

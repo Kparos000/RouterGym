@@ -42,7 +42,9 @@ def test_hybrid_router_category_routing() -> None:
 
 def test_routing_metadata_fields_present() -> None:
     router = SLMDominantRouter()
-    result = router.route({"text": "reset my password", "classifier_confidence": 0.9, "category": "Access"})
+    result = router.route(
+        {"text": "reset my password", "classifier_confidence": 0.9, "category": "Access"}
+    )
     for key in (
         "router_mode",
         "initial_model",

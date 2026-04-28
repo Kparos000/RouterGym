@@ -33,7 +33,12 @@ def _resolve_path(path_str: str) -> Path:
         return path
     # If the marker already includes RouterGym/data/policy_kb, strip the prefix.
     parts = list(path.parts)
-    if len(parts) >= 4 and parts[0].lower() == "routergym" and parts[1] == "data" and parts[2] == "policy_kb":
+    if (
+        len(parts) >= 4
+        and parts[0].lower() == "routergym"
+        and parts[1] == "data"
+        and parts[2] == "policy_kb"
+    ):
         path = Path(*parts[3:])
     return KB_ROOT / path
 

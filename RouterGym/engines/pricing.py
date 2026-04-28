@@ -81,7 +81,9 @@ def resolve_pricing_entry(model_key_or_name: str) -> PricingEntry:
     raise KeyError(f"Unknown pricing key: {model_key_or_name}")
 
 
-def calculate_call_costs(model_key_or_name: str, input_tokens: int, output_tokens: int) -> Dict[str, float | str]:
+def calculate_call_costs(
+    model_key_or_name: str, input_tokens: int, output_tokens: int
+) -> Dict[str, float | str]:
     """Calculate normalized input/output/total costs for a model call."""
 
     entry = resolve_pricing_entry(model_key_or_name)

@@ -198,7 +198,9 @@ def _build_result_row(
         "router_confidence_score": record.get("router_confidence_score", 0.0),
         "router_decision_reason": record.get("router_decision_reason", ""),
         "classifier_mode": record.get("classifier_mode", classifier_mode),
-        "classifier_backend": record.get("classifier_backend", record.get("classifier_mode", classifier_mode)),
+        "classifier_backend": record.get(
+            "classifier_backend", record.get("classifier_mode", classifier_mode)
+        ),
         "classifier_label": record.get("classifier_label", ""),
         "classifier_confidence": record.get("classifier_confidence", 0.0),
         "classifier_latency_ms": record.get("classifier_latency_ms", 0.0),
@@ -214,7 +216,9 @@ def _build_result_row(
         "latency_ms": record.get("latency_ms", 0.0),
         "cost_usd": record.get("cost_usd", 0.0),
         "retrieved_context_length": record.get("retrieved_context_length", 0),
-        "retrieval_latency_ms": record.get("retrieval_latency_ms", record.get("retrieval_time", 0.0)),
+        "retrieval_latency_ms": record.get(
+            "retrieval_latency_ms", record.get("retrieval_time", 0.0)
+        ),
         "memory_cost_tokens": record.get("memory_cost_tokens", 0),
         "memory_relevance_score": record.get("memory_relevance_score", 0.0),
         "memory_context_used": record.get("memory_context", record.get("memory_context_used", "")),
@@ -274,7 +278,9 @@ def _coerce_tickets(tickets: Any) -> List[Dict[str, Any]]:
                     }
                 )
             else:
-                records.append({"id": idx, "text": str(t), "category": "unknown", "gold_category": "unknown"})
+                records.append(
+                    {"id": idx, "text": str(t), "category": "unknown", "gold_category": "unknown"}
+                )
     return records
 
 
@@ -285,14 +291,18 @@ def release_local_models(models: Optional[Dict[str, Any]]) -> None:
     gc.collect()
 
 
-def load_tickets(path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+def load_tickets(
+    path: Path = DEFAULT_TICKETS_PATH, limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Load and preprocess tickets."""
     try:
         df = dataset_loader.load_dataset(limit if limit is not None else None)
         records: List[Dict[str, Any]] = []
         for idx, row in df.iterrows():
             label = _norm_label(row.get("label"))
-            records.append({"id": idx, "text": row.get("text", ""), "category": label, "gold_category": label})
+            records.append(
+                {"id": idx, "text": row.get("text", ""), "category": label, "gold_category": label}
+            )
         return records
     except Exception:
         return []
@@ -400,23 +410,39 @@ def run_single(
     retrieval_latency_ms = retrieval_result.retrieval_latency_ms
     retrieved_context_length = retrieval_result.retrieved_context_length
     classifier_summary = (
-        router_engine.classify_ticket(ticket, retrieval_result, memory_mode) if router_engine else None
+        router_engine.classify_ticket(ticket, retrieval_result, memory_mode)
+        if router_engine
+        else None
     )
     try:
         t_route_start = time.perf_counter()
         router_kb = kb_retriever if memory_mode in {"rag_dense", "rag_bm25", "rag_hybrid"} else None
-        routing_meta = router.route(ticket, kb=router_kb, models=models, memory=memory, force_llm=force_llm) if router else {}
-        routing_meta = _as_dict(routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False})
+        routing_meta = (
+            router.route(ticket, kb=router_kb, models=models, memory=memory, force_llm=force_llm)
+            if router
+            else {}
+        )
+        routing_meta = _as_dict(
+            routing_meta, {"model_used": "unknown", "json_valid": False, "schema_valid": False}
+        )
         routing_time = (time.perf_counter() - t_route_start) * 1000
         t_gen_start = time.perf_counter()
         final_output = normalize_output(routing_meta.get("final_output", ""))
         generation_time = (time.perf_counter() - t_gen_start) * 1000
         schema = SchemaContract()
         schema_valid, _ = schema.validate(final_output)
-        kb_texts = list(routing_meta.get("kb_snippets", [])) if isinstance(routing_meta, dict) else []
-        kb_used_in_prompt = bool(kb_texts) and memory_mode in {"rag_dense", "rag_bm25", "rag_hybrid"}
+        kb_texts = (
+            list(routing_meta.get("kb_snippets", [])) if isinstance(routing_meta, dict) else []
+        )
+        kb_used_in_prompt = bool(kb_texts) and memory_mode in {
+            "rag_dense",
+            "rag_bm25",
+            "rag_hybrid",
+        }
         gold_category = _norm_label(ticket.get("gold_category", ticket.get("category", "")))
-        predicted_category = _norm_label(final_output.get("predicted_category", routing_meta.get("predicted_category", "")))
+        predicted_category = _norm_label(
+            final_output.get("predicted_category", routing_meta.get("predicted_category", ""))
+        )
         if predicted_category not in CLASS_LABELS or predicted_category == "unknown":
             predicted_category = infer_category_from_text(ticket.get("text", ""))
         elif predicted_category == "miscellaneous":
@@ -482,7 +508,9 @@ def run_single(
                 "latency_ms": record["latency_ms"],
                 "kb_attached": record["kb_attached"],
                 "prompt_text": record.get("prompt", ""),
-                "reasoning": record["output"].get("reasoning", "") if isinstance(record["output"], dict) else "",
+                "reasoning": record["output"].get("reasoning", "")
+                if isinstance(record["output"], dict)
+                else "",
             }
         )
         record.update(
@@ -574,7 +602,9 @@ def run_full_grid(
     t_start = time.time()
     all_tickets = _coerce_tickets(tickets if tickets is not None else load_tickets(limit=limit))
     start = max(ticket_start, 0)
-    end = start + ticket_limit if ticket_limit is not None and ticket_limit >= 0 else len(all_tickets)
+    end = (
+        start + ticket_limit if ticket_limit is not None and ticket_limit >= 0 else len(all_tickets)
+    )
     tickets = all_tickets[start:end]
     ticket_count = len(tickets)
     kb_retriever = kb_retriever if kb_retriever is not None else load_kb()
@@ -592,7 +622,11 @@ def run_full_grid(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     aggregate: List[Dict[str, Any]] = []
 
-    router_list = ROUTER_CONFIGS if routers is None else [cfg for cfg in ROUTER_CONFIGS if cfg["router_mode"] in routers]
+    router_list = (
+        ROUTER_CONFIGS
+        if routers is None
+        else [cfg for cfg in ROUTER_CONFIGS if cfg["router_mode"] in routers]
+    )
     if models:
         filtered = [
             cfg
@@ -626,7 +660,9 @@ def run_full_grid(
 
         for classifier_mode in classifier_list:
             encoder_use_lexical_prior = None
-            engine = RouterEngine(classifier_mode, encoder_use_lexical_prior=encoder_use_lexical_prior)
+            engine = RouterEngine(
+                classifier_mode, encoder_use_lexical_prior=encoder_use_lexical_prior
+            )
             for router_cfg in router_list:
                 router_name = router_cfg["router_mode"]
                 base_model = router_cfg.get("base_model", "")
@@ -650,7 +686,10 @@ def run_full_grid(
                             classifier_mode=classifier_mode,
                         )
                         esc_suffix = f"__esc_{escalation_model}" if escalation_model else ""
-                        raw_path = RAW_DIR / f"{router_name}__base_{base_model}{esc_suffix}__{memory_mode}__{classifier_mode}.jsonl"
+                        raw_path = (
+                            RAW_DIR
+                            / f"{router_name}__base_{base_model}{esc_suffix}__{memory_mode}__{classifier_mode}.jsonl"
+                        )
                         with raw_path.open("w", encoding="utf-8") as f:
                             for rec in records:
                                 safe_rec = _coerce_record(rec)
@@ -666,7 +705,12 @@ def run_full_grid(
                             )
                             row_dict.setdefault("base_model_name", base_model)
                             row_dict.setdefault("escalation_model_name", escalation_model or "")
-                            csv_writer.writerow([_clean_csv_value(col, row_dict.get(col, "")) for col in RESULT_COLUMNS])
+                            csv_writer.writerow(
+                                [
+                                    _clean_csv_value(col, row_dict.get(col, ""))
+                                    for col in RESULT_COLUMNS
+                                ]
+                            )
                             if not streaming_output:
                                 aggregate.append(row_dict)
                     except Exception:
@@ -720,12 +764,31 @@ def main() -> None:
     """CLI entrypoint for running the grid."""
     parser = argparse.ArgumentParser(description="RouterGym grid runner")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tickets")
-    parser.add_argument("--ticket-start", type=int, default=0, help="0-based start index into tickets.csv")
-    parser.add_argument("--ticket-limit", type=int, default=-1, help="Max tickets from start; -1 means all remaining")
+    parser.add_argument(
+        "--ticket-start", type=int, default=0, help="0-based start index into tickets.csv"
+    )
+    parser.add_argument(
+        "--ticket-limit",
+        type=int,
+        default=-1,
+        help="Max tickets from start; -1 means all remaining",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print progress")
-    parser.add_argument("--config", type=str, default=None, help="Path to config YAML (not used yet)")
-    parser.add_argument("--force-llm", action="store_true", dest="force_llm", help="Force LLM for all routing/generation")
-    parser.add_argument("--slm_subset", type=str, default=None, help=f"Comma-separated SLM keys to enable (default all: {', '.join(MODEL_NAMES)})")
+    parser.add_argument(
+        "--config", type=str, default=None, help="Path to config YAML (not used yet)"
+    )
+    parser.add_argument(
+        "--force-llm",
+        action="store_true",
+        dest="force_llm",
+        help="Force LLM for all routing/generation",
+    )
+    parser.add_argument(
+        "--slm_subset",
+        type=str,
+        default=None,
+        help=f"Comma-separated SLM keys to enable (default all: {', '.join(MODEL_NAMES)})",
+    )
     parser.add_argument(
         "--classifier-modes",
         type=str,
@@ -765,7 +828,9 @@ def main() -> None:
     args = parser.parse_args()
 
     slm_subset = [s.strip() for s in args.slm_subset.split(",")] if args.slm_subset else None
-    classifier_modes = [s.strip() for s in args.classifier_modes.split(",")] if args.classifier_modes else None
+    classifier_modes = (
+        [s.strip() for s in args.classifier_modes.split(",")] if args.classifier_modes else None
+    )
     routers = [s.strip() for s in args.routers.split(",")] if args.routers else None
     memories = [s.strip() for s in args.memories.split(",")] if args.memories else None
     models = [s.strip() for s in args.models.split(",")] if args.models else None
@@ -774,7 +839,11 @@ def main() -> None:
     try:
         if args.verbose:
             print("[Grid] Loading dataset...")
-        tickets_loaded = dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit) if hasattr(dataset_loader, "load_and_preprocess") else dataset_loader.load_dataset(args.limit)
+        tickets_loaded = (
+            dataset_loader.load_and_preprocess(DEFAULT_TICKETS_PATH, limit=args.limit)
+            if hasattr(dataset_loader, "load_and_preprocess")
+            else dataset_loader.load_dataset(args.limit)
+        )
         tickets = _coerce_tickets(tickets_loaded)
         if args.smoke10:
             tickets = tickets[:10]

@@ -65,7 +65,9 @@ def test_repair_uses_llm(monkeypatch):
     class RepairModel:
         def __call__(self, prompt: str, **kwargs):
             called["used"] = True
-            return json.dumps({"reasoning": "r", "final_answer": "a", "predicted_category": "access"})
+            return json.dumps(
+                {"reasoning": "r", "final_answer": "a", "predicted_category": "access"}
+            )
 
     monkeypatch.setattr(gen, "get_repair_model", lambda: RepairModel())
     model = DummyModel()
@@ -91,6 +93,7 @@ class DummyEncoderClassifier:
 
 def test_run_ticket_pipeline(monkeypatch):
     monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
     # Stub model registry to avoid real network calls.
     class FakeModel:
         def __call__(self, prompt: str, **kwargs):
@@ -102,7 +105,9 @@ def test_run_ticket_pipeline(monkeypatch):
                 }
             )
 
-    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()}
+    )
 
     result = gen.run_ticket_pipeline(
         ticket={"text": "simple hardware test ticket text"},
@@ -182,7 +187,9 @@ def test_run_ticket_pipeline_with_kb(monkeypatch):
                 retrieval_latency_ms=1.0,
             )
 
-    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()}
+    )
     monkeypatch.setattr(gen, "get_memory_class", lambda mode: DummyMemory)
 
     result = gen.run_ticket_pipeline(
@@ -209,7 +216,9 @@ def test_run_ticket_pipeline_normalizes_natural_language_output(monkeypatch):
                 "2. Reconnect using SSO.\n"
             )
 
-    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()}
+    )
 
     result = gen.run_ticket_pipeline(
         ticket={"text": "vpn issue"},
@@ -234,7 +243,9 @@ def test_run_ticket_pipeline_preserves_raw_text_on_malformed_output(monkeypatch)
         def __call__(self, prompt: str, **kwargs):
             return "???"
 
-    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()})
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": FakeModel()}
+    )
 
     result = gen.run_ticket_pipeline(
         ticket={"text": "bad output case"},
@@ -250,7 +261,10 @@ def test_run_ticket_pipeline_preserves_raw_text_on_malformed_output(monkeypatch)
     assert result["raw_response_saved"] is True
     assert result["raw_model_response_text"] == "???"
     assert result["parse_error"] == "Model output is not valid JSON."
-    assert "Draft output must include a non-empty final_answer or reasoning" in result["validation_error"]
+    assert (
+        "Draft output must include a non-empty final_answer or reasoning"
+        in result["validation_error"]
+    )
 
 
 def test_slm_dominant_escalates_with_reasons(monkeypatch):
@@ -291,11 +305,19 @@ def test_slm_dominant_escalates_with_reasons(monkeypatch):
     class EscalationModel:
         def __call__(self, prompt: str, **kwargs):
             return json.dumps(
-                {"final_answer": "This is a longer detailed answer for the user", "reasoning": "rr", "resolution_steps": ["step1"]}
+                {
+                    "final_answer": "This is a longer detailed answer for the user",
+                    "reasoning": "rr",
+                    "resolution_steps": ["step1"],
+                }
             )
 
     monkeypatch.setattr(gen, "EncoderClassifier", LowConfClassifier)
-    monkeypatch.setattr(gen, "load_models", lambda sanity=True, slm_subset=None: {"slm1": BaseModel(), "llm1": EscalationModel()})
+    monkeypatch.setattr(
+        gen,
+        "load_models",
+        lambda sanity=True, slm_subset=None: {"slm1": BaseModel(), "llm1": EscalationModel()},
+    )
     monkeypatch.setattr(gen, "get_memory_class", lambda mode: DummyMemory)
     monkeypatch.setattr(gen, "validate_agent_output", lambda payload: dict(payload))
 

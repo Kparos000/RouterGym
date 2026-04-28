@@ -8,7 +8,13 @@ from typing import Any, Dict
 class Ticket:
     """Simple ticket container with prompt formatting."""
 
-    def __init__(self, id: Any, text: str, category: str | None = None, metadata: Dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        id: Any,
+        text: str,
+        category: str | None = None,
+        metadata: Dict[str, Any] | None = None,
+    ) -> None:
         self.id = id
         self.text = text
         self.category = category
