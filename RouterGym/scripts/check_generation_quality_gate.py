@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -12,6 +13,37 @@ PLACEHOLDER_THRESHOLD = 0.02
 EMPTY_STEPS_THRESHOLD = 0.05
 RAW_RESPONSE_THRESHOLD = 1.0
 GENERATION_VALID_THRESHOLD = 0.95
+
+
+@dataclass(frozen=True)
+class QualityGateThresholds:
+    placeholder_answer_max_rate: float = PLACEHOLDER_THRESHOLD
+    empty_steps_max_rate: float = EMPTY_STEPS_THRESHOLD
+    min_raw_response_saved_rate: float = RAW_RESPONSE_THRESHOLD
+    min_generation_valid_rate: float = GENERATION_VALID_THRESHOLD
+
+    def as_dict(self) -> Dict[str, float]:
+        return {
+            "placeholder_answer_max_rate": float(self.placeholder_answer_max_rate),
+            "empty_steps_max_rate": float(self.empty_steps_max_rate),
+            "min_raw_response_saved_rate": float(self.min_raw_response_saved_rate),
+            "min_generation_valid_rate": float(self.min_generation_valid_rate),
+        }
+
+
+def build_thresholds(
+    *,
+    placeholder_answer_max_rate: float = PLACEHOLDER_THRESHOLD,
+    empty_steps_max_rate: float = EMPTY_STEPS_THRESHOLD,
+    min_raw_response_saved_rate: float = RAW_RESPONSE_THRESHOLD,
+    min_generation_valid_rate: float = GENERATION_VALID_THRESHOLD,
+) -> QualityGateThresholds:
+    return QualityGateThresholds(
+        placeholder_answer_max_rate=float(placeholder_answer_max_rate),
+        empty_steps_max_rate=float(empty_steps_max_rate),
+        min_raw_response_saved_rate=float(min_raw_response_saved_rate),
+        min_generation_valid_rate=float(min_generation_valid_rate),
+    )
 
 
 def _discover_result_files(input_path: Path) -> List[Path]:
@@ -38,7 +70,13 @@ def _rate(numerator: int, denominator: int) -> float:
     return float(numerator) / float(denominator)
 
 
-def summarize_quality_for_file(path: Path, *, allow_full_slm_dominant_escalation: bool = False) -> Dict[str, Any]:
+def summarize_quality_for_file(
+    path: Path,
+    *,
+    thresholds: Optional[QualityGateThresholds] = None,
+    allow_full_slm_dominant_escalation: bool = False,
+) -> Dict[str, Any]:
+    active_thresholds = thresholds or build_thresholds()
     rows = list(_iter_jsonl_rows(path))
     row_count = len(rows)
     config_identifier = str(
@@ -83,25 +121,30 @@ def summarize_quality_for_file(path: Path, *, allow_full_slm_dominant_escalation
         "raw_response_saved_rate": _rate(raw_response_saved_count, row_count),
         "generation_valid_rate": _rate(generation_valid_count, row_count),
         "escalation_rate": _rate(escalated_count, row_count) if has_escalation_field else None,
+        "thresholds": active_thresholds.as_dict(),
         "failures": [],
     }
 
     failures: List[str] = []
-    if summary["placeholder_answer_rate"] > PLACEHOLDER_THRESHOLD:
+    if summary["placeholder_answer_rate"] > active_thresholds.placeholder_answer_max_rate:
         failures.append(
-            f"placeholder_answer_rate {summary['placeholder_answer_rate']:.4f} exceeds {PLACEHOLDER_THRESHOLD:.2f}"
+            "placeholder_answer_rate "
+            f"{summary['placeholder_answer_rate']:.4f} exceeds {active_thresholds.placeholder_answer_max_rate:.2f}"
         )
-    if summary["empty_resolution_steps_rate"] > EMPTY_STEPS_THRESHOLD:
+    if summary["empty_resolution_steps_rate"] > active_thresholds.empty_steps_max_rate:
         failures.append(
-            f"empty_resolution_steps_rate {summary['empty_resolution_steps_rate']:.4f} exceeds {EMPTY_STEPS_THRESHOLD:.2f}"
+            "empty_resolution_steps_rate "
+            f"{summary['empty_resolution_steps_rate']:.4f} exceeds {active_thresholds.empty_steps_max_rate:.2f}"
         )
-    if summary["raw_response_saved_rate"] < RAW_RESPONSE_THRESHOLD:
+    if summary["raw_response_saved_rate"] < active_thresholds.min_raw_response_saved_rate:
         failures.append(
-            f"raw_response_saved_rate {summary['raw_response_saved_rate']:.4f} is below {RAW_RESPONSE_THRESHOLD:.2f}"
+            "raw_response_saved_rate "
+            f"{summary['raw_response_saved_rate']:.4f} is below {active_thresholds.min_raw_response_saved_rate:.2f}"
         )
-    if summary["generation_valid_rate"] < GENERATION_VALID_THRESHOLD:
+    if summary["generation_valid_rate"] < active_thresholds.min_generation_valid_rate:
         failures.append(
-            f"generation_valid_rate {summary['generation_valid_rate']:.4f} is below {GENERATION_VALID_THRESHOLD:.2f}"
+            "generation_valid_rate "
+            f"{summary['generation_valid_rate']:.4f} is below {active_thresholds.min_generation_valid_rate:.2f}"
         )
     escalation_rate = summary["escalation_rate"]
     if (
@@ -115,11 +158,18 @@ def summarize_quality_for_file(path: Path, *, allow_full_slm_dominant_escalation
     return summary
 
 
-def summarize_quality(input_path: Path, *, allow_full_slm_dominant_escalation: bool = False) -> Dict[str, Any]:
+def summarize_quality(
+    input_path: Path,
+    *,
+    thresholds: Optional[QualityGateThresholds] = None,
+    allow_full_slm_dominant_escalation: bool = False,
+) -> Dict[str, Any]:
+    active_thresholds = thresholds or build_thresholds()
     result_files = _discover_result_files(input_path)
     configs = [
         summarize_quality_for_file(
             path,
+            thresholds=active_thresholds,
             allow_full_slm_dominant_escalation=allow_full_slm_dominant_escalation,
         )
         for path in result_files
@@ -130,6 +180,7 @@ def summarize_quality(input_path: Path, *, allow_full_slm_dominant_escalation: b
         "result_file_count": len(result_files),
         "failed_config_count": len(failed_configs),
         "failed_configs": failed_configs,
+        "thresholds": active_thresholds.as_dict(),
         "passes_quality_gate": not failed_configs,
         "configs": configs,
     }
@@ -139,6 +190,30 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Fail a preflight run when generation quality regressions appear.")
     parser.add_argument("--input-path", required=True, help="Merged results file, config directory, or output root.")
     parser.add_argument("--output-path", help="Optional path to write the gate summary as JSON.")
+    parser.add_argument(
+        "--placeholder-answer-max-rate",
+        type=float,
+        default=PLACEHOLDER_THRESHOLD,
+        help=f"Fail when placeholder answer rate exceeds this value (default {PLACEHOLDER_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--empty-steps-max-rate",
+        type=float,
+        default=EMPTY_STEPS_THRESHOLD,
+        help=f"Fail when empty resolution step rate exceeds this value (default {EMPTY_STEPS_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--min-raw-response-saved-rate",
+        type=float,
+        default=RAW_RESPONSE_THRESHOLD,
+        help=f"Fail when raw_response_saved rate falls below this value (default {RAW_RESPONSE_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--min-generation-valid-rate",
+        type=float,
+        default=GENERATION_VALID_THRESHOLD,
+        help=f"Fail when generation_valid rate falls below this value (default {GENERATION_VALID_THRESHOLD}).",
+    )
     parser.add_argument(
         "--allow-slm-dominant-full-escalation",
         action="store_true",
@@ -150,8 +225,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+    thresholds = build_thresholds(
+        placeholder_answer_max_rate=args.placeholder_answer_max_rate,
+        empty_steps_max_rate=args.empty_steps_max_rate,
+        min_raw_response_saved_rate=args.min_raw_response_saved_rate,
+        min_generation_valid_rate=args.min_generation_valid_rate,
+    )
     summary = summarize_quality(
         Path(args.input_path),
+        thresholds=thresholds,
         allow_full_slm_dominant_escalation=bool(args.allow_slm_dominant_full_escalation),
     )
     if args.output_path:

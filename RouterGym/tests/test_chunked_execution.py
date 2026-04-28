@@ -375,6 +375,182 @@ def test_execute_chunk_marks_generation_invalid_rows_as_failures(monkeypatch: An
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_quality_abort_passes_when_rows_are_valid(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=4)
+    tmp_path = _temp_dir()
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "Reset the VPN session and sign in again.",
+            "reasoning": "Valid structured answer.",
+            "resolution_steps": ["Disconnect VPN", "Reconnect with SSO"],
+            "model_name": kwargs["base_model_name"],
+            "generation_valid": True,
+            "placeholder_answer": False,
+            "has_real_final_answer": True,
+            "has_resolution_steps": True,
+            "raw_response_saved": True,
+            "raw_model_response_text": "{\"final_answer\":\"ok\"}",
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=2,
+        ticket_start=0,
+        ticket_limit=4,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+        enable_quality_abort=True,
+    )
+
+    assert result["status"] == "completed"
+    assert result["quality_gate"]["enabled"] is True
+    manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+    assert manifest["run_status"] == "completed"
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_quality_abort_fails_and_writes_report(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=2)
+    tmp_path = _temp_dir()
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "No valid answer produced",
+            "reasoning": "Generation invalid: placeholder",
+            "resolution_steps": [],
+            "model_name": kwargs["base_model_name"],
+            "generation_valid": False,
+            "generation_invalid_reason": "placeholder output",
+            "placeholder_answer": True,
+            "has_real_final_answer": False,
+            "has_resolution_steps": False,
+            "raw_response_saved": True,
+            "raw_model_response_text": "bad raw output",
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=1,
+        ticket_start=0,
+        ticket_limit=2,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+        enable_quality_abort=True,
+    )
+
+    assert result["status"] == "failed_quality_gate"
+    report_json = Path(result["quality_gate_failure_report_json"])
+    report_md = Path(result["quality_gate_failure_report_md"])
+    manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+    assert manifest["run_status"] == "failed_quality_gate"
+    assert report_json.exists()
+    assert report_md.exists()
+    report_payload = json.loads(report_json.read_text(encoding="utf-8"))
+    assert report_payload["passes_quality_gate"] is False
+    assert "placeholder_answer_rate" in report_md.read_text(encoding="utf-8")
+
+    with pytest.raises(ValueError, match="failed the quality gate"):
+        chunked_execution.run_config_chunked(
+            config=_sample_config(),
+            output_root=tmp_path,
+            chunk_size=1,
+            ticket_start=0,
+            ticket_limit=2,
+            backend_name="openai_compatible",
+            resume=True,
+            dry_run=False,
+            enable_quality_abort=True,
+        )
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_runtime_manifest_includes_git_sha_and_model_ids(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=2)
+    tmp_path = _temp_dir()
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "topic_group": "Access",
+            "final_answer": "Reset the VPN session.",
+            "reasoning": "Valid structured answer.",
+            "resolution_steps": ["Disconnect", "Reconnect"],
+            "model_name": kwargs["base_model_name"],
+            "generation_valid": True,
+            "placeholder_answer": False,
+            "has_real_final_answer": True,
+            "has_resolution_steps": True,
+            "raw_response_saved": True,
+            "raw_model_response_text": "{\"final_answer\":\"ok\"}",
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call)
+
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=1,
+        ticket_start=0,
+        ticket_limit=2,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+        enable_quality_abort=True,
+        command_line_args=["--config-id", "example"],
+    )
+
+    runtime_manifest = json.loads(Path(result["runtime_manifest_path"]).read_text(encoding="utf-8"))
+    assert runtime_manifest["git"]["commit_sha"]
+    assert runtime_manifest["model_ids"]["slm1"] == "mistralai/Mistral-7B-Instruct-v0.3"
+    assert runtime_manifest["model_ids"]["llm1"] == "mistralai/Mistral-Small-24B-Instruct-2501"
+    assert runtime_manifest["quality_gate"]["enabled"] is True
+    assert runtime_manifest["command_line_args"] == ["--config-id", "example"]
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_chunked_execution_persists_and_passes_max_output_tokens(monkeypatch: Any) -> None:
     _patch_dataset(monkeypatch, size=4)
     tmp_path = _temp_dir()

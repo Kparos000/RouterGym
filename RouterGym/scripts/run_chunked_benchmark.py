@@ -31,6 +31,12 @@ from RouterGym.experiments.chunked_execution import (
     resolve_selected_configs,
     run_benchmark_matrix_chunked,
 )
+from RouterGym.scripts.check_generation_quality_gate import (
+    EMPTY_STEPS_THRESHOLD,
+    GENERATION_VALID_THRESHOLD,
+    PLACEHOLDER_THRESHOLD,
+    RAW_RESPONSE_THRESHOLD,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +81,46 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["hf_inference", "openai_compatible", "vllm_local"],
         default=None,
         help="Optional backend override for this run.",
+    )
+    parser.add_argument(
+        "--enable-quality-abort",
+        action="store_true",
+        help="Run automatic generation quality checks during execution and abort a config on failure.",
+    )
+    parser.add_argument(
+        "--quality-check-after-chunks",
+        type=int,
+        default=None,
+        help="When quality abort is enabled, run the quality gate after this many completed chunks.",
+    )
+    parser.add_argument(
+        "--placeholder-answer-max-rate",
+        type=float,
+        default=PLACEHOLDER_THRESHOLD,
+        help=f"Quality gate threshold for placeholder answers (default {PLACEHOLDER_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--empty-steps-max-rate",
+        type=float,
+        default=EMPTY_STEPS_THRESHOLD,
+        help=f"Quality gate threshold for empty resolution_steps (default {EMPTY_STEPS_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--min-raw-response-saved-rate",
+        type=float,
+        default=RAW_RESPONSE_THRESHOLD,
+        help=f"Quality gate minimum for raw_response_saved rate (default {RAW_RESPONSE_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--min-generation-valid-rate",
+        type=float,
+        default=GENERATION_VALID_THRESHOLD,
+        help=f"Quality gate minimum for generation_valid rate (default {GENERATION_VALID_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--allow-slm-dominant-full-escalation",
+        action="store_true",
+        help="Allow slm_dominant escalation_rate == 1.0 without failing the quality gate.",
     )
     parser.add_argument(
         "--parallel-workers",
@@ -152,6 +198,13 @@ def _single_config_command(
     backend_name: Optional[str],
     resume: bool,
     max_output_tokens: Optional[int],
+    enable_quality_abort: bool,
+    quality_check_after_chunks: Optional[int],
+    placeholder_answer_max_rate: float,
+    empty_steps_max_rate: float,
+    min_raw_response_saved_rate: float,
+    min_generation_valid_rate: float,
+    allow_slm_dominant_full_escalation: bool,
 ) -> List[str]:
     command = [
         sys.executable,
@@ -172,6 +225,16 @@ def _single_config_command(
         command.extend(["--max-output-tokens", str(max_output_tokens)])
     if backend_name:
         command.extend(["--backend", backend_name])
+    if enable_quality_abort:
+        command.append("--enable-quality-abort")
+    if quality_check_after_chunks is not None:
+        command.extend(["--quality-check-after-chunks", str(quality_check_after_chunks)])
+    command.extend(["--placeholder-answer-max-rate", str(placeholder_answer_max_rate)])
+    command.extend(["--empty-steps-max-rate", str(empty_steps_max_rate)])
+    command.extend(["--min-raw-response-saved-rate", str(min_raw_response_saved_rate)])
+    command.extend(["--min-generation-valid-rate", str(min_generation_valid_rate)])
+    if allow_slm_dominant_full_escalation:
+        command.append("--allow-slm-dominant-full-escalation")
     if not resume:
         command.append("--no-resume")
     return command
@@ -191,6 +254,13 @@ def _run_parallel_selection(
     parallel_workers: int,
     gpu_ids: Sequence[str],
     max_output_tokens: Optional[int],
+    enable_quality_abort: bool,
+    quality_check_after_chunks: Optional[int],
+    placeholder_answer_max_rate: float,
+    empty_steps_max_rate: float,
+    min_raw_response_saved_rate: float,
+    min_generation_valid_rate: float,
+    allow_slm_dominant_full_escalation: bool,
 ) -> List[Dict[str, Any]]:
     resolved_backend = str(resolve_backend_details(backend_name)["backend_name"])
     effective_workers = _resolve_parallel_workers(parallel_workers, gpu_ids)
@@ -263,6 +333,13 @@ def _run_parallel_selection(
                     backend_name=backend_name,
                     resume=resume,
                     max_output_tokens=max_output_tokens,
+                    enable_quality_abort=enable_quality_abort,
+                    quality_check_after_chunks=quality_check_after_chunks,
+                    placeholder_answer_max_rate=placeholder_answer_max_rate,
+                    empty_steps_max_rate=empty_steps_max_rate,
+                    min_raw_response_saved_rate=min_raw_response_saved_rate,
+                    min_generation_valid_rate=min_generation_valid_rate,
+                    allow_slm_dominant_full_escalation=allow_slm_dominant_full_escalation,
                 ),
                 cwd=str(Path.cwd()),
                 env=env,
@@ -304,7 +381,7 @@ def _run_parallel_selection(
     return sorted(results, key=lambda item: str(item["config_identifier"]))
 
 
-def main() -> None:
+def main() -> int:
     args = build_parser().parse_args()
     effective_limit = args.preflight_size if args.preflight_size is not None else args.limit
     backend_name = str(resolve_backend_details(args.backend)["backend_name"])
@@ -332,6 +409,13 @@ def main() -> None:
             parallel_workers=args.parallel_workers,
             gpu_ids=gpu_ids,
             max_output_tokens=args.max_output_tokens,
+            enable_quality_abort=args.enable_quality_abort,
+            quality_check_after_chunks=args.quality_check_after_chunks,
+            placeholder_answer_max_rate=args.placeholder_answer_max_rate,
+            empty_steps_max_rate=args.empty_steps_max_rate,
+            min_raw_response_saved_rate=args.min_raw_response_saved_rate,
+            min_generation_valid_rate=args.min_generation_valid_rate,
+            allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
         )
     else:
         payload = run_benchmark_matrix_chunked(
@@ -345,10 +429,23 @@ def main() -> None:
             resume=not args.no_resume,
             dry_run=args.dry_run,
             max_output_tokens=args.max_output_tokens,
+            enable_quality_abort=args.enable_quality_abort,
+            quality_check_after_chunks=args.quality_check_after_chunks,
+            placeholder_answer_max_rate=args.placeholder_answer_max_rate,
+            empty_steps_max_rate=args.empty_steps_max_rate,
+            min_raw_response_saved_rate=args.min_raw_response_saved_rate,
+            min_generation_valid_rate=args.min_generation_valid_rate,
+            allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
+            command_line_args=sys.argv[1:],
         )
 
     print(json.dumps(payload, indent=2, ensure_ascii=False))
+    if isinstance(payload, list):
+        statuses = {str(item.get("status", "")) for item in payload if isinstance(item, dict)}
+        if statuses - {"completed", "dry_run"}:
+            return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
