@@ -128,3 +128,28 @@ def test_quality_gate_catches_missing_raw_response() -> None:
     assert summary["passes_quality_gate"] is False
     failures = summary["configs"][0]["failures"]
     assert any("raw_response_saved_rate" in failure for failure in failures)
+
+
+def test_quality_gate_fails_on_exception_style_row() -> None:
+    tmp_dir = _temp_dir()
+    result_path = tmp_dir / "llm_only__base_llm1__mem_rag_bm25__results_merged.jsonl"
+    _write_rows(
+        result_path,
+        [
+            {
+                "config_identifier": "llm_only__base_llm1__mem_rag_bm25",
+                "success": False,
+                "error": {
+                    "error_type": "RuntimeError",
+                    "message": "generation failed before answer",
+                },
+            }
+        ],
+    )
+
+    summary = quality_gate.summarize_quality(result_path)
+    assert summary["passes_quality_gate"] is False
+    failures = summary["configs"][0]["failures"]
+    assert any("empty_resolution_steps_rate" in failure for failure in failures)
+    assert any("raw_response_saved_rate" in failure for failure in failures)
+    assert any("generation_valid_rate" in failure for failure in failures)

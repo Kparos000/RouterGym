@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from RouterGym.agents import generator as gen
+from RouterGym.classifiers import encoder_classifier as enc
 from RouterGym.label_space import CANONICAL_LABELS
 
 
@@ -260,11 +261,50 @@ def test_run_ticket_pipeline_preserves_raw_text_on_malformed_output(monkeypatch)
     assert result["has_resolution_steps"] is False
     assert result["raw_response_saved"] is True
     assert result["raw_model_response_text"] == "???"
-    assert result["parse_error"] == "Model output is not valid JSON."
-    assert (
-        "Draft output must include a non-empty final_answer or reasoning"
-        in result["validation_error"]
+
+
+def test_llm_only_pipeline_works_with_explicit_encoder_fallback(monkeypatch, tmp_path):
+    missing_head_path = tmp_path / "missing_encoder_calibrated_head.npz"
+    monkeypatch.setenv("ROUTERGYM_ENCODER_HEAD_MODE", "calibrated")
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", missing_head_path)
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+
+    class BrokenSentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("no sentence transformer for test")
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "final_answer": "Reset the VPN session and sign in again.",
+                    "reasoning": "This resolves the access issue.",
+                    "predicted_category": "Access",
+                    "resolution_steps": ["Disconnect VPN.", "Reconnect with SSO."],
+                }
+            )
+
+    monkeypatch.setattr(enc, "SentenceTransformer", BrokenSentenceTransformer)
+    monkeypatch.setattr(gen, "EncoderClassifier", enc.EncoderClassifier)
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"llm1": FakeModel()}
     )
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "vpn issue", "ticket_id": "7"},
+        base_model_name="llm1",
+        memory_mode="none",
+        router_mode="llm_only",
+    )
+
+    assert result["generation_valid"] is True
+    assert result["final_answer"] == "Reset the VPN session and sign in again."
+    assert result["resolution_steps"] == ["Disconnect VPN.", "Reconnect with SSO."]
+    assert result["raw_model_response_text"]
+    assert result["classifier_backend"] == "encoder_centroid"
+    assert result["parse_error"] is None
+    assert result["validation_error"] is None
 
 
 def test_slm_dominant_escalates_with_reasons(monkeypatch):

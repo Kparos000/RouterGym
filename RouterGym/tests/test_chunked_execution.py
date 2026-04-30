@@ -53,6 +53,21 @@ def _sample_config() -> Dict[str, str]:
     }
 
 
+@pytest.fixture(autouse=True)
+def _stub_dependency_validation(monkeypatch: Any) -> None:
+    monkeypatch.setattr(
+        chunked_execution,
+        "validate_benchmark_dependencies",
+        lambda: {
+            "encoder_head_mode": "calibrated",
+            "allow_encoder_fallback": False,
+            "classifier_backend": "encoder_calibrated",
+            "calibrated_head_path": "RouterGym/classifiers/encoder_calibrated_head.npz",
+            "calibrated_head_exists": True,
+        },
+    )
+
+
 def _write_fake_chunk_outputs(
     *,
     output_root: Path,
@@ -286,6 +301,41 @@ def test_manifest_creation_and_update(monkeypatch: Any) -> None:
         entry["config_identifier"] == result["config_identifier"]
         for entry in backend_payload["configs"]
     )
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_missing_calibrated_head_fails_before_chunk_processing(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=4)
+    tmp_path = _temp_dir()
+    execute_calls = {"count": 0}
+
+    def fail_dependency_check() -> Dict[str, Any]:
+        raise RuntimeError(
+            "Missing calibrated encoder head. Run python -m "
+            "RouterGym.scripts.train_encoder_calibrated_head or enable explicit fallback."
+        )
+
+    def unexpected_execute_chunk(**kwargs: Any) -> Dict[str, Any]:
+        del kwargs
+        execute_calls["count"] += 1
+        raise AssertionError("execute_chunk should not run when dependency validation fails")
+
+    monkeypatch.setattr(chunked_execution, "validate_benchmark_dependencies", fail_dependency_check)
+    monkeypatch.setattr(chunked_execution, "execute_chunk", unexpected_execute_chunk)
+
+    with pytest.raises(RuntimeError, match="Missing calibrated encoder head"):
+        chunked_execution.run_config_chunked(
+            config=_sample_config(),
+            output_root=tmp_path,
+            chunk_size=2,
+            ticket_start=0,
+            ticket_limit=4,
+            backend_name="openai_compatible",
+            resume=True,
+            dry_run=False,
+        )
+
+    assert execute_calls["count"] == 0
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

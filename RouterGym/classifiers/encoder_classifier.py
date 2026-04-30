@@ -38,6 +38,35 @@ _PROTOTYPES: Dict[str, str] = {
 }
 
 CALIBRATED_HEAD_PATH = HEAD_PATH
+DEFAULT_ENCODER_HEAD_MODE = "calibrated"
+ALLOWED_ENCODER_HEAD_MODES = {"calibrated", "centroid", "auto"}
+MISSING_CALIBRATED_HEAD_MESSAGE = (
+    "Missing calibrated encoder head. Run python -m "
+    "RouterGym.scripts.train_encoder_calibrated_head or enable explicit fallback."
+)
+
+
+def resolve_encoder_head_mode(head_mode: Optional[str] = None) -> str:
+    """Resolve the configured encoder head mode from explicit input or env."""
+
+    raw_value = (
+        str(head_mode).strip()
+        if head_mode is not None
+        else str(os.getenv("ROUTERGYM_ENCODER_HEAD_MODE", DEFAULT_ENCODER_HEAD_MODE)).strip()
+    )
+    resolved = raw_value.lower() or DEFAULT_ENCODER_HEAD_MODE
+    if resolved not in ALLOWED_ENCODER_HEAD_MODES:
+        raise ValueError(
+            "ROUTERGYM_ENCODER_HEAD_MODE must be one of "
+            f"{sorted(ALLOWED_ENCODER_HEAD_MODES)}; got {raw_value!r}."
+        )
+    return resolved
+
+
+def encoder_fallback_enabled() -> bool:
+    """Return whether explicit encoder fallback is enabled via env."""
+
+    return os.getenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "") == "1"
 
 
 def _normalize(vector: List[float]) -> List[float]:
@@ -267,8 +296,8 @@ class EncoderClassifier(ClassifierProtocol):
     def _resolve_head_mode(self) -> None:
         """Select active head based on config and file availability."""
         self._head_mode_active = "centroid"
-        allow_fallback = os.getenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "") == "1"
-        mode = (self._head_mode_config or "centroid").lower()
+        allow_fallback = encoder_fallback_enabled()
+        mode = resolve_encoder_head_mode(self._head_mode_config)
         if mode == "centroid":
             return
         if mode in {"calibrated", "auto"}:
@@ -406,4 +435,38 @@ class EncoderClassifier(ClassifierProtocol):
         return max(probabilities, key=probabilities.__getitem__)
 
 
-__all__ = ["EncoderClassifier"]
+def ensure_encoder_classifier_ready(
+    *,
+    head_mode: Optional[str] = None,
+    use_lexical_prior: bool = True,
+    labels: Optional[Iterable[str]] = None,
+    model_name: str = "intfloat/e5-small-v2",
+    embedding_dimension: int = 16,
+) -> EncoderClassifier:
+    """Instantiate the encoder classifier with the resolved head mode."""
+
+    resolved_head_mode = resolve_encoder_head_mode(head_mode)
+    try:
+        return EncoderClassifier(
+            labels=labels,
+            model_name=model_name,
+            embedding_dimension=embedding_dimension,
+            use_lexical_prior=use_lexical_prior,
+            head_mode=resolved_head_mode,
+        )
+    except RuntimeError as exc:
+        if resolved_head_mode == "calibrated" and not encoder_fallback_enabled():
+            raise RuntimeError(MISSING_CALIBRATED_HEAD_MESSAGE) from exc
+        raise
+
+
+__all__ = [
+    "ALLOWED_ENCODER_HEAD_MODES",
+    "CALIBRATED_HEAD_PATH",
+    "DEFAULT_ENCODER_HEAD_MODE",
+    "EncoderClassifier",
+    "MISSING_CALIBRATED_HEAD_MESSAGE",
+    "encoder_fallback_enabled",
+    "ensure_encoder_classifier_ready",
+    "resolve_encoder_head_mode",
+]

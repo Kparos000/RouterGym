@@ -38,6 +38,9 @@ from RouterGym.scripts.check_generation_quality_gate import (
     RAW_RESPONSE_THRESHOLD,
 )
 
+ENCODER_HEAD_MODE_CHOICES = ("auto", "calibrated", "centroid")
+DEFAULT_ENCODER_HEAD_MODE = "calibrated"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Chunked/resumable production benchmark runner.")
@@ -83,6 +86,21 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["hf_inference", "openai_compatible", "vllm_local"],
         default=None,
         help="Optional backend override for this run.",
+    )
+    parser.add_argument(
+        "--encoder-head-mode",
+        type=str,
+        choices=sorted(ENCODER_HEAD_MODE_CHOICES),
+        default=None,
+        help=(
+            "Encoder classifier head mode for generation runs "
+            f"(default {DEFAULT_ENCODER_HEAD_MODE})."
+        ),
+    )
+    parser.add_argument(
+        "--allow-encoder-fallback",
+        action="store_true",
+        help="Explicitly allow fallback from calibrated encoder head to centroid mode.",
     )
     parser.add_argument(
         "--enable-quality-abort",
@@ -203,6 +221,8 @@ def _single_config_command(
     backend_name: Optional[str],
     resume: bool,
     max_output_tokens: Optional[int],
+    encoder_head_mode: Optional[str],
+    allow_encoder_fallback: bool,
     enable_quality_abort: bool,
     quality_check_after_chunks: Optional[int],
     placeholder_answer_max_rate: float,
@@ -230,6 +250,10 @@ def _single_config_command(
         command.extend(["--max-output-tokens", str(max_output_tokens)])
     if backend_name:
         command.extend(["--backend", backend_name])
+    if encoder_head_mode:
+        command.extend(["--encoder-head-mode", encoder_head_mode])
+    if allow_encoder_fallback:
+        command.append("--allow-encoder-fallback")
     if enable_quality_abort:
         command.append("--enable-quality-abort")
     if quality_check_after_chunks is not None:
@@ -259,6 +283,8 @@ def _run_parallel_selection(
     parallel_workers: int,
     gpu_ids: Sequence[str],
     max_output_tokens: Optional[int],
+    encoder_head_mode: Optional[str],
+    allow_encoder_fallback: bool,
     enable_quality_abort: bool,
     quality_check_after_chunks: Optional[int],
     placeholder_answer_max_rate: float,
@@ -342,6 +368,8 @@ def _run_parallel_selection(
                     backend_name=backend_name,
                     resume=resume,
                     max_output_tokens=max_output_tokens,
+                    encoder_head_mode=encoder_head_mode,
+                    allow_encoder_fallback=allow_encoder_fallback,
                     enable_quality_abort=enable_quality_abort,
                     quality_check_after_chunks=quality_check_after_chunks,
                     placeholder_answer_max_rate=placeholder_answer_max_rate,
@@ -394,6 +422,16 @@ def _run_parallel_selection(
 
 def main() -> int:
     args = build_parser().parse_args()
+    from RouterGym.classifiers.encoder_classifier import resolve_encoder_head_mode
+
+    if args.encoder_head_mode is not None:
+        os.environ["ROUTERGYM_ENCODER_HEAD_MODE"] = resolve_encoder_head_mode(
+            args.encoder_head_mode
+        )
+    elif not os.getenv("ROUTERGYM_ENCODER_HEAD_MODE"):
+        os.environ["ROUTERGYM_ENCODER_HEAD_MODE"] = DEFAULT_ENCODER_HEAD_MODE
+    if args.allow_encoder_fallback:
+        os.environ["ROUTERGYM_ALLOW_ENCODER_FALLBACK"] = "1"
     effective_limit = args.preflight_size if args.preflight_size is not None else args.limit
     backend_name = str(resolve_backend_details(args.backend)["backend_name"])
     gpu_ids = _parse_gpu_ids(args.gpu_ids)
@@ -420,6 +458,8 @@ def main() -> int:
             parallel_workers=args.parallel_workers,
             gpu_ids=gpu_ids,
             max_output_tokens=args.max_output_tokens,
+            encoder_head_mode=args.encoder_head_mode,
+            allow_encoder_fallback=args.allow_encoder_fallback,
             enable_quality_abort=args.enable_quality_abort,
             quality_check_after_chunks=args.quality_check_after_chunks,
             placeholder_answer_max_rate=args.placeholder_answer_max_rate,

@@ -31,6 +31,7 @@ log = get_logger(__name__)
 # runtime use so importing this module does not pull the full classifier/memory/
 # model stack into collection-time code paths.
 EncoderClassifier: Any = None
+resolve_encoder_head_mode: Any = None
 get_memory_class: Any = None
 load_models: Any = None
 get_repair_model: Any = None
@@ -687,11 +688,20 @@ def run_ticket_pipeline(
     if load_models_fn is None:
         from RouterGym.engines.model_registry import load_models as load_models_fn
 
+    resolve_encoder_head_mode_fn: Any = resolve_encoder_head_mode
+    if resolve_encoder_head_mode_fn is None:
+        from RouterGym.classifiers.encoder_classifier import (
+            resolve_encoder_head_mode as resolve_encoder_head_mode_fn,
+        )
+
     get_memory_class_fn: Any = get_memory_class
     if get_memory_class_fn is None:
         from RouterGym.memory import get_memory_class as get_memory_class_fn
 
-    classifier = encoder_classifier_cls(head_mode="calibrated", use_lexical_prior=True)
+    classifier = encoder_classifier_cls(
+        head_mode=resolve_encoder_head_mode_fn(),
+        use_lexical_prior=True,
+    )
     classify_start = time.perf_counter()
     probabilities = classifier.predict_proba(text)
     classify_latency = (time.perf_counter() - classify_start) * 1000.0

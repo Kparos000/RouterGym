@@ -219,6 +219,23 @@ def test_auto_mode_allows_fallback_when_env_set(monkeypatch: Any, tmp_path: Path
     monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
 
 
+def test_calibrated_mode_allows_explicit_fallback_when_env_set(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    labels = ["Access", "Administrative rights"]
+    monkeypatch.setenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", "1")
+    monkeypatch.setattr(enc, "CALIBRATED_HEAD_PATH", tmp_path / "missing.npz")
+    monkeypatch.setattr(enc.EncoderClassifier, "_maybe_load_centroids", lambda self: None)
+    classifier = enc.ensure_encoder_classifier_ready(
+        head_mode="calibrated",
+        labels=labels,
+        use_lexical_prior=False,
+        embedding_dimension=2,
+    )
+    assert classifier._backend_name == "encoder_centroid"
+    monkeypatch.delenv("ROUTERGYM_ALLOW_ENCODER_FALLBACK", raising=False)
+
+
 def test_auto_mode_uses_calibrated_when_present(monkeypatch: Any, tmp_path: Path) -> None:
     labels = ["Access", "Administrative rights"]
     head_path = tmp_path / "encoder_calibrated_head.npz"

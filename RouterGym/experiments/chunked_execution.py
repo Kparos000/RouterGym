@@ -55,6 +55,8 @@ RELEVANT_ENV_VAR_NAMES = [
     "ROUTERGYM_OPENAI_API_KEY",
     "ROUTERGYM_VLLM_BASE_URL",
     "ROUTERGYM_VLLM_API_KEY",
+    "ROUTERGYM_ENCODER_HEAD_MODE",
+    "ROUTERGYM_ALLOW_ENCODER_FALLBACK",
     "ROUTERGYM_WORKER_SLOT",
     "ROUTERGYM_ASSIGNED_GPU_ID",
     "CUDA_VISIBLE_DEVICES",
@@ -423,6 +425,47 @@ def _package_version(distribution_name: str) -> Optional[str]:
         return None
 
 
+def _resolved_encoder_head_mode() -> str:
+    from RouterGym.classifiers.encoder_classifier import resolve_encoder_head_mode
+
+    return resolve_encoder_head_mode()
+
+
+def _encoder_fallback_enabled() -> bool:
+    from RouterGym.classifiers.encoder_classifier import encoder_fallback_enabled
+
+    return encoder_fallback_enabled()
+
+
+def validate_benchmark_dependencies() -> Dict[str, Any]:
+    """Fail fast on missing classifier dependencies before chunk execution begins."""
+
+    from RouterGym.classifiers.encoder_classifier import (
+        CALIBRATED_HEAD_PATH,
+        MISSING_CALIBRATED_HEAD_MESSAGE,
+        ensure_encoder_classifier_ready,
+    )
+
+    resolved_head_mode = _resolved_encoder_head_mode()
+    try:
+        classifier = ensure_encoder_classifier_ready(
+            head_mode=resolved_head_mode,
+            use_lexical_prior=True,
+        )
+    except RuntimeError as exc:
+        if resolved_head_mode == "calibrated" and not _encoder_fallback_enabled():
+            raise RuntimeError(MISSING_CALIBRATED_HEAD_MESSAGE) from exc
+        raise RuntimeError(f"Encoder classifier preflight failed: {exc}") from exc
+
+    return {
+        "encoder_head_mode": resolved_head_mode,
+        "allow_encoder_fallback": _encoder_fallback_enabled(),
+        "classifier_backend": str(getattr(classifier, "backend_name", "")),
+        "calibrated_head_path": str(CALIBRATED_HEAD_PATH),
+        "calibrated_head_exists": bool(CALIBRATED_HEAD_PATH.exists()),
+    }
+
+
 def _torch_runtime_details() -> Dict[str, Any]:
     details: Dict[str, Any] = {
         "torch_version": _package_version("torch"),
@@ -508,6 +551,8 @@ def _build_runtime_manifest(
     head_path = Path("RouterGym/classifiers/encoder_calibrated_head.npz")
     torch_details = _torch_runtime_details()
     env_names_present = [name for name in RELEVANT_ENV_VAR_NAMES if os.getenv(name)]
+    encoder_head_mode = _resolved_encoder_head_mode()
+    allow_encoder_fallback = _encoder_fallback_enabled()
 
     return {
         "generated_at": _utc_now(),
@@ -562,6 +607,10 @@ def _build_runtime_manifest(
             "path": str(head_path),
             "exists": head_path.exists(),
             "sha256": _sha256_file(head_path),
+        },
+        "encoder_classifier": {
+            "head_mode": encoder_head_mode,
+            "allow_fallback": allow_encoder_fallback,
         },
         "quality_gate": dict(quality_gate_settings),
     }
@@ -666,6 +715,8 @@ def initialize_manifest(
             "max_output_tokens": (
                 int(max_output_tokens) if max_output_tokens is not None else None
             ),
+            "encoder_head_mode": _resolved_encoder_head_mode(),
+            "allow_encoder_fallback": _encoder_fallback_enabled(),
         },
         "quality_gate": dict(quality_gate_settings or {}),
         "created_at": _utc_now(),
@@ -747,6 +798,23 @@ def ensure_manifest(
     elif existing_max_output_tokens != requested_max_output_tokens:
         raise ValueError(
             "Existing manifest max_output_tokens does not match requested max_output_tokens."
+        )
+    requested_encoder_head_mode = _resolved_encoder_head_mode()
+    existing_encoder_head_mode = generation_settings.get("encoder_head_mode")
+    if existing_encoder_head_mode is None and "encoder_head_mode" not in generation_settings:
+        generation_settings["encoder_head_mode"] = requested_encoder_head_mode
+    elif existing_encoder_head_mode != requested_encoder_head_mode:
+        raise ValueError(
+            "Existing manifest encoder_head_mode does not match requested encoder_head_mode."
+        )
+    requested_allow_fallback = _encoder_fallback_enabled()
+    existing_allow_fallback = generation_settings.get("allow_encoder_fallback")
+    if existing_allow_fallback is None and "allow_encoder_fallback" not in generation_settings:
+        generation_settings["allow_encoder_fallback"] = requested_allow_fallback
+    elif bool(existing_allow_fallback) != bool(requested_allow_fallback):
+        raise ValueError(
+            "Existing manifest allow_encoder_fallback does not match requested "
+            "allow_encoder_fallback."
         )
     output_files = existing.setdefault("output_files", {})
     config_dir = get_config_output_dir(
@@ -1285,6 +1353,9 @@ def run_config_chunked(
     backend_details = resolve_backend_details(backend_name)
     backend_name_resolved = str(backend_details["backend_name"])
     config_identifier = build_config_identifier(config)
+    dependency_details: Optional[Dict[str, Any]] = None
+    if not dry_run:
+        dependency_details = validate_benchmark_dependencies()
 
     ticket_df = load_ticket_dataset(limit=ticket_limit, start=ticket_start)
     total_tickets_expected = len(ticket_df)
@@ -1343,6 +1414,7 @@ def run_config_chunked(
             "config_identifier": config_identifier,
             "chunk_size": chunk_size,
             "max_output_tokens": max_output_tokens,
+            "dependency_details": dependency_details,
             "total_tickets_expected": total_tickets_expected,
             "manifest_path": str(manifest_path),
             "first_chunk_path": (
