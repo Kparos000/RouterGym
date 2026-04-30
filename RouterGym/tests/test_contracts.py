@@ -54,7 +54,8 @@ def _build_agent_output_payload() -> dict:
     return {
         "ticket_id": "123",
         "original_query": "laptop is broken",
-        "rewritten_query": "laptop is broken",
+        "ticket_request": "User reports a broken laptop.",
+        "rewritten_query": "User reports a broken laptop.",
         "topic_group": "Hardware",
         "model_name": "slm1",
         "router_mode": "slm_dominant",
@@ -72,7 +73,7 @@ def _build_agent_output_payload() -> dict:
         "memory_mode": "none",
         "kb_policy_ids": [],
         "kb_categories": [],
-        "resolution_steps": [],
+        "resolution_steps": ["Check power supply", "Schedule hardware replacement"],
         "final_answer": "Test answer",
         "reasoning": "dummy",
         "escalation_flags": {

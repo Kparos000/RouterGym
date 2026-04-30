@@ -41,6 +41,10 @@ CLASS_LABELS = CANONICAL_LABELS
 LABELS_LIST_TEXT = ", ".join(CLASS_LABELS)
 PLACEHOLDER_FINAL_ANSWER = "No valid answer produced"
 GENERATION_INVALID_REASON = "Generation invalid"
+MAX_TICKET_REQUEST_WORDS = 40
+MAX_FINAL_ANSWER_WORDS = 150
+MAX_REASONING_WORDS = 80
+MAX_RESOLUTION_STEP_WORDS = 25
 
 
 @dataclass(frozen=True)
@@ -83,7 +87,7 @@ def resolve_max_output_tokens(override: Optional[int] = None) -> int:
         if resolved <= 0:
             raise ValueError("ROUTERGYM_MAX_OUTPUT_TOKENS must be > 0")
         return resolved
-    return 256
+    return 1024
 
 
 def get_confidence_bucket(conf: float) -> str:
@@ -178,12 +182,74 @@ def _compact_text(text: Any) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()
 
 
+def _truncate_words(text: Any, max_words: int) -> str:
+    compact = _compact_text(text)
+    if not compact or max_words <= 0:
+        return compact
+    words = compact.split()
+    if len(words) <= max_words:
+        return compact
+    return " ".join(words[:max_words]).rstrip(" ,;:")
+
+
+def _looks_json_like(text: str) -> bool:
+    stripped = str(text or "").lstrip()
+    return stripped.startswith("{") or ('"' in stripped and ":" in stripped)
+
+
+def _derive_ticket_request(value: Any, fallback_text: str = "") -> str:
+    source = _compact_text(value) or _compact_text(fallback_text)
+    if not source:
+        return ""
+    first_sentence = re.split(r"(?<=[.!?])\s+", source, maxsplit=1)[0]
+    candidate = first_sentence or source
+    return _truncate_words(candidate, MAX_TICKET_REQUEST_WORDS)
+
+
 def _normalize_resolution_steps(value: Any) -> List[str]:
     if isinstance(value, list):
         return [_compact_text(step) for step in value if _compact_text(step)]
     if isinstance(value, str):
         return [step for step in (_compact_text(line) for line in value.splitlines()) if step]
     return []
+
+
+def _extract_json_string_field(text: str, *field_names: str) -> str:
+    for field_name in field_names:
+        pattern = rf'"{re.escape(field_name)}"\s*:\s*"((?:\\.|[^"\\])*)"'
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+        if not match:
+            continue
+        try:
+            return _compact_text(json.loads(f'"{match.group(1)}"'))
+        except Exception:
+            return _compact_text(match.group(1))
+    return ""
+
+
+def _extract_json_array_field(text: str, field_name: str) -> List[str]:
+    pattern = rf'"{re.escape(field_name)}"\s*:\s*\[(.*?)\]'
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return []
+    inner = match.group(1)
+    try:
+        parsed = json.loads(f"[{inner}]")
+    except Exception:
+        parsed = re.findall(r'"((?:\\.|[^"\\])*)"', inner)
+    return _normalize_resolution_steps(parsed)
+
+
+def _extract_json_object_field(text: str, field_name: str) -> Dict[str, Any]:
+    pattern = rf'"{re.escape(field_name)}"\s*:\s*(\{{.*?\}})'
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return {}
+    try:
+        parsed = json.loads(match.group(1))
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _extract_resolution_steps_from_text(text: str) -> List[str]:
@@ -200,40 +266,70 @@ def _extract_resolution_steps_from_text(text: str) -> List[str]:
     return steps
 
 
+def _extract_answer_paragraph(text: str) -> str:
+    stripped = str(text or "").strip()
+    if not stripped or _looks_json_like(stripped):
+        return ""
+    prose_lines: List[str] = []
+    for raw_line in stripped.splitlines():
+        line = raw_line.strip()
+        if not line:
+            if prose_lines:
+                break
+            continue
+        if re.match(r"^(?:[-*•]|\d+[\).\:-]?)\s+", line):
+            break
+        if ":" in line:
+            key, value = line.split(":", 1)
+            key_normalized = _compact_text(key).lower()
+            if key_normalized in {
+                "ticket_request",
+                "rewritten_query",
+                "original_query",
+                "final_answer",
+                "answer",
+                "reasoning",
+                "predicted_category",
+                "category",
+                "resolution_steps",
+            }:
+                if key_normalized in {"final_answer", "answer"} and _compact_text(value):
+                    return _compact_text(value)
+                continue
+        prose_lines.append(line)
+    return _compact_text(" ".join(prose_lines))
+
+
+def _normalize_escalation_flags(
+    value: Any, *, default_needs_llm_escalation: bool = False
+) -> Dict[str, Any]:
+    flags = value if isinstance(value, dict) else {}
+    reasons = flags.get("reasons", [])
+    if reasons is None:
+        reasons = []
+    if not isinstance(reasons, list):
+        reasons = [str(reasons)]
+    return {
+        "needs_human": bool(flags.get("needs_human", False)),
+        "needs_llm_escalation": bool(
+            flags.get("needs_llm_escalation", default_needs_llm_escalation)
+        ),
+        "policy_gap": bool(flags.get("policy_gap", False)),
+        "reasons": [_compact_text(reason) for reason in reasons if _compact_text(reason)],
+    }
+
+
+def _is_placeholder_answer(text: Any) -> bool:
+    return _compact_text(text) == PLACEHOLDER_FINAL_ANSWER
+
+
 def _normalize_draft_output(
     raw_output: str,
     parsed_output: Dict[str, Any],
     classifier_label: str,
+    ticket_text: str,
 ) -> Tuple[Dict[str, Any], str]:
     parser_mode = "json" if parsed_output else "natural_language"
-    if parsed_output:
-        resolution_steps = _normalize_resolution_steps(parsed_output.get("resolution_steps", []))
-        final_answer = _compact_text(parsed_output.get("final_answer", ""))
-        reasoning = _compact_text(parsed_output.get("reasoning", ""))
-        rewritten_query = _compact_text(parsed_output.get("rewritten_query", ""))
-        predicted = _normalize_category(
-            str(
-                parsed_output.get("predicted_category")
-                or parsed_output.get("category")
-                or classifier_label
-            ),
-            context=f"{final_answer} {reasoning}",
-        )
-        escalation_flags = parsed_output.get("escalation_flags", {})
-        if not isinstance(escalation_flags, dict):
-            escalation_flags = {}
-        return (
-            {
-                "final_answer": final_answer,
-                "reasoning": reasoning,
-                "predicted_category": predicted or classifier_label,
-                "resolution_steps": resolution_steps,
-                "rewritten_query": rewritten_query,
-                "escalation_flags": escalation_flags,
-            },
-            parser_mode,
-        )
-
     stripped = str(raw_output or "").strip()
     lines = [line.strip() for line in stripped.splitlines() if line.strip()]
     labeled_values: Dict[str, str] = {}
@@ -244,39 +340,78 @@ def _normalize_draft_output(
         key_normalized = _compact_text(key).lower()
         labeled_values[key_normalized] = _compact_text(value)
 
-    resolution_steps = _extract_resolution_steps_from_text(stripped)
-    final_answer = (
-        labeled_values.get("final_answer")
+    source = dict(parsed_output or {})
+    ticket_request = _derive_ticket_request(
+        source.get("ticket_request")
+        or source.get("rewritten_query")
+        or source.get("original_query")
+        or labeled_values.get("ticket_request")
+        or labeled_values.get("rewritten_query")
+        or labeled_values.get("original_query")
+        or _extract_json_string_field(
+            stripped, "ticket_request", "rewritten_query", "original_query"
+        ),
+        fallback_text=ticket_text,
+    )
+    resolution_steps = (
+        _normalize_resolution_steps(source.get("resolution_steps", []))
+        or _normalize_resolution_steps(labeled_values.get("resolution_steps", ""))
+        or _extract_json_array_field(stripped, "resolution_steps")
+        or _extract_resolution_steps_from_text(stripped)
+    )
+    resolution_steps = [
+        _truncate_words(step, MAX_RESOLUTION_STEP_WORDS)
+        for step in resolution_steps
+        if _compact_text(step)
+    ]
+    final_answer = _compact_text(
+        source.get("final_answer")
+        or labeled_values.get("final_answer")
         or labeled_values.get("answer")
-        or _compact_text(stripped)
+        or _extract_json_string_field(stripped, "final_answer", "answer")
+        or _extract_answer_paragraph(stripped)
     )
     if final_answer and not re.search(r"[A-Za-z0-9]", final_answer):
         final_answer = ""
-    reasoning = labeled_values.get("reasoning", "")
-    if not reasoning and final_answer:
+    final_answer = _truncate_words(final_answer, MAX_FINAL_ANSWER_WORDS)
+    reasoning = _truncate_words(
+        source.get("reasoning")
+        or labeled_values.get("reasoning")
+        or _extract_json_string_field(stripped, "reasoning"),
+        MAX_REASONING_WORDS,
+    )
+    if not reasoning and final_answer and not _looks_json_like(stripped):
         reasoning = "Normalized from non-JSON model output."
 
     predicted = _normalize_category(
-        labeled_values.get("predicted_category")
+        source.get("predicted_category")
+        or source.get("category")
+        or labeled_values.get("predicted_category")
         or labeled_values.get("category")
+        or _extract_json_string_field(stripped, "predicted_category", "category")
         or classifier_label,
-        context=final_answer,
+        context=f"{ticket_request} {final_answer} {reasoning}",
     )
-    rewritten_query = labeled_values.get("rewritten_query", "")
+    escalation_flags = _normalize_escalation_flags(
+        source.get("escalation_flags") or _extract_json_object_field(stripped, "escalation_flags")
+    )
     return (
         {
+            "ticket_request": ticket_request,
             "final_answer": final_answer,
             "reasoning": reasoning,
             "predicted_category": predicted or classifier_label,
             "resolution_steps": resolution_steps,
-            "rewritten_query": rewritten_query,
-            "escalation_flags": {},
+            "rewritten_query": ticket_request,
+            "escalation_flags": escalation_flags,
         },
         parser_mode,
     )
 
 
-def _parse_draft_output(raw_output: str, classifier_label: str) -> DraftParseResult:
+def _parse_draft_output(
+    raw_output: str, classifier_label: str, ticket_text: str
+) -> DraftParseResult:
     raw_text = str(raw_output or "")
     contract = JSONContract()
     ok_json, parsed_json = contract.validate(raw_text)
@@ -289,9 +424,15 @@ def _parse_draft_output(raw_output: str, classifier_label: str) -> DraftParseRes
             parsed_output = fragment
     parse_error = None if ok_json or parsed_output else "Model output is not valid JSON."
     normalized_output, parser_mode = _normalize_draft_output(
-        raw_text, parsed_output, classifier_label
+        raw_text, parsed_output, classifier_label, ticket_text
     )
     draft_ok, draft_errors = DraftOutputSchema().validate(normalized_output)
+    if not raw_text.strip():
+        draft_errors.append("raw_model_response_text is empty")
+        draft_ok = False
+    if _is_placeholder_answer(normalized_output.get("final_answer", "")):
+        draft_errors.append("final_answer is a placeholder")
+        draft_ok = False
     validation_error = "; ".join(draft_errors) if draft_errors else None
     return DraftParseResult(
         raw_model_response_text=raw_text,
@@ -321,12 +462,18 @@ def normalize_output(output: Any) -> Dict[str, str]:
     if not parsed and not isinstance(output, dict):
         parsed = {}
     raw_pred = parsed.get("predicted_category") or parsed.get("category") or ""
+    ticket_request = _derive_ticket_request(
+        parsed.get("ticket_request")
+        or parsed.get("rewritten_query")
+        or parsed.get("original_query")
+    )
     final_answer = str(parsed.get("final_answer", "")).strip()
     reasoning = str(parsed.get("reasoning", "")).strip()
     predicted = _normalize_category(str(raw_pred), context=f"{final_answer} {reasoning}")
     if not predicted:
         predicted = "unknown"
     return {
+        "ticket_request": ticket_request,
         "final_answer": final_answer,
         "reasoning": reasoning,
         "predicted_category": predicted,
@@ -336,6 +483,7 @@ def normalize_output(output: Any) -> Dict[str, str]:
 def _ensure_minimum_fields(data: Dict[str, str]) -> Dict[str, str]:
     """Guarantee required fields are present and non-empty."""
     return {
+        "ticket_request": data.get("ticket_request") or "",
         "final_answer": data.get("final_answer") or "No valid answer produced",
         "reasoning": data.get("reasoning") or "",
         "predicted_category": data.get("predicted_category") or "unknown",
@@ -349,7 +497,7 @@ def build_prompt(
     confidence_bucket: str = "",
     memory_mode: str = "none",
 ) -> str:
-    """Construct a prompt with KB references and schema guidance for AgentOutput."""
+    """Construct a prompt for the minimal model-generated agent payload."""
     prompt_parts = [f"Ticket:\n{ticket_text.strip()}" if ticket_text else "Ticket: (missing)"]
     if classifier_label:
         prompt_parts.append(
@@ -363,14 +511,26 @@ def build_prompt(
         prompt_parts.append("No KB context provided; rely on ticket details and best practices.")
     prompt_parts.append(f"Memory mode: {memory_mode}")
     prompt_parts.append(
-        "Respond with STRICT JSON for AgentOutput fields: ticket_id, original_query, rewritten_query, "
-        "topic_group, model_name, router_mode, classifier_label, classifier_confidence, "
-        "classifier_confidence_bucket, memory_mode, kb_policy_ids (list), kb_categories (list), "
-        "final_answer, resolution_steps (list of strings), reasoning, escalation_flags "
-        "{needs_human, needs_llm_escalation, policy_gap}, metrics {latency_ms, total_input_tokens, "
-        "total_output_tokens, total_cost_usd}."
+        "Return STRICT JSON only with EXACTLY these keys and no others: "
+        "ticket_request, final_answer, reasoning, predicted_category, resolution_steps, escalation_flags."
     )
-    prompt_parts.append("Return JSON only without extra text.")
+    prompt_parts.append(
+        "ticket_request: one clean one-sentence restatement of the support request, under 40 words, with no diagnosis or benchmark metadata."
+    )
+    prompt_parts.append("final_answer: under 150 words.")
+    prompt_parts.append("reasoning: under 80 words.")
+    prompt_parts.append("resolution_steps: 2 to 5 short actionable steps, each under 25 words.")
+    prompt_parts.append("escalation_flags.reasons must be an array, even if empty.")
+    prompt_parts.append(
+        "Do NOT return benchmark metadata or extra keys such as ticket_id, original_query, rewritten_query, "
+        "topic_group, model_name, router_mode, classifier_label, classifier_confidence, "
+        "classifier_confidence_bucket, memory_mode, kb_policy_ids, kb_categories, metrics, token counts, "
+        "costs, latency, raw_model_response_text, generation_valid, success, or error."
+    )
+    prompt_parts.append("Return JSON only. No markdown fences. No prose before or after the JSON.")
+    prompt_parts.append(
+        '{"ticket_request":"...","final_answer":"...","reasoning":"...","predicted_category":"...","resolution_steps":["...","..."],"escalation_flags":{"needs_human":false,"needs_llm_escalation":false,"policy_gap":false,"reasons":[]}}'
+    )
     return "\n\n".join([p for p in prompt_parts if p])
 
 
@@ -626,11 +786,8 @@ class ResponseGenerator:
             else "No KB context provided; rely only on the ticket and best practices."
         )
         schema_hint = (
-            "Output STRICT JSON with fields: ticket_id, original_query, rewritten_query, topic_group, model_name, "
-            "router_mode, classifier_label, classifier_confidence, classifier_confidence_bucket, memory_mode, "
-            "kb_policy_ids (list), kb_categories (list), final_answer, resolution_steps (list of strings), "
-            "reasoning, escalation_flags {needs_human, needs_llm_escalation, policy_gap}, metrics "
-            "{latency_ms, total_input_tokens, total_output_tokens, total_cost_usd}."
+            "Return STRICT JSON only with exactly these keys: ticket_request, final_answer, reasoning, "
+            "predicted_category, resolution_steps, escalation_flags. Do not return benchmark metadata or extra keys."
         )
         parts = [
             base_text,
@@ -638,7 +795,8 @@ class ResponseGenerator:
             "\n\n".join(kb_section) if kb_section else "",
             kb_intro,
             schema_hint,
-            "### Respond with JSON only.",
+            "ticket_request under 40 words; final_answer under 150 words; reasoning under 80 words; "
+            "resolution_steps must contain 2 to 5 short actionable steps; no markdown fences.",
         ]
         return "\n\n".join([p for p in parts if p])
 
@@ -759,15 +917,16 @@ def run_ticket_pipeline(
             raw_model_response_text="",
             parsed_output_before_validation={},
             normalized_output={
+                "ticket_request": _derive_ticket_request(text),
                 "final_answer": "",
                 "reasoning": "",
                 "predicted_category": classifier_label,
                 "resolution_steps": [],
-                "rewritten_query": "",
+                "rewritten_query": _derive_ticket_request(text),
                 "escalation_flags": {},
             },
             parse_error="Model returned an empty response.",
-            validation_error="Draft output must include a non-empty final_answer or reasoning",
+            validation_error="Draft output must include ticket_request, a non-empty final_answer, and at least one resolution step",
             generation_valid=False,
             parser_mode="empty",
         )
@@ -779,7 +938,7 @@ def run_ticket_pipeline(
                 max_new_tokens=resolved_max_output_tokens,
             )
             telemetry_records.append(telemetry)
-            last_result = _parse_draft_output(raw_output, classifier_label)
+            last_result = _parse_draft_output(raw_output, classifier_label, text)
             if last_result.generation_valid:
                 break
         return last_result, telemetry_records
@@ -838,6 +997,10 @@ def run_ticket_pipeline(
 
     total_latency_ms = (time.perf_counter() - t_start) * 1000.0
 
+    ticket_request = _derive_ticket_request(
+        parsed_output.get("ticket_request") or parsed_output.get("rewritten_query") or text,
+        fallback_text=text,
+    )
     resolution_steps = parsed_output.get("resolution_steps", [])
     if not isinstance(resolution_steps, list):
         resolution_steps = []
@@ -875,7 +1038,8 @@ def run_ticket_pipeline(
     payload: Dict[str, Any] = {
         "ticket_id": ticket_id,
         "original_query": text,
-        "rewritten_query": parsed_output.get("rewritten_query") or text,
+        "ticket_request": ticket_request,
+        "rewritten_query": ticket_request,
         "topic_group": classifier_label,
         "model_name": chosen_model_name,
         "router_mode": router_mode,
@@ -972,9 +1136,10 @@ def run_ticket_pipeline(
         )
         payload["validation_error"] = merged_validation_error
         payload["generation_invalid_reason"] = merged_validation_error or GENERATION_INVALID_REASON
-        payload["placeholder_answer"] = True
-        payload["has_real_final_answer"] = False
         payload["final_answer"] = payload.get("final_answer") or PLACEHOLDER_FINAL_ANSWER
+        payload["placeholder_answer"] = _is_placeholder_answer(payload.get("final_answer"))
+        payload["has_real_final_answer"] = not bool(payload["placeholder_answer"])
+        payload["has_resolution_steps"] = False
         payload["reasoning"] = (
             payload.get("reasoning")
             or f"{GENERATION_INVALID_REASON}: {payload['generation_invalid_reason']}"

@@ -54,6 +54,7 @@ class FakeModel:
         del prompt, kwargs
         return json.dumps(
             {
+                "ticket_request": "User cannot connect to VPN after a password reset.",
                 "final_answer": "Reset the VPN session and sign in again.",
                 "reasoning": "The ticket is an access issue and the KB-guided answer is complete.",
                 "predicted_category": "Access",
@@ -111,6 +112,7 @@ def run_validation(*, ticket_start: int = 0) -> Dict[str, Any]:
         gen.load_models = original_load_models
 
     required_fields = [
+        "ticket_request",
         "final_answer",
         "resolution_steps",
         "raw_model_response_text",
@@ -131,6 +133,7 @@ def run_validation(*, ticket_start: int = 0) -> Dict[str, Any]:
         "encoder_calibrated_head_exists": bool(CALIBRATED_HEAD_PATH.exists()),
         "required_fields_present": True,
         "generation_valid": bool(result["generation_valid"]),
+        "ticket_request_preview": str(result["ticket_request"])[:120],
         "final_answer_preview": str(result["final_answer"])[:200],
         "resolution_steps_count": len(result["resolution_steps"])
         if isinstance(result["resolution_steps"], list)

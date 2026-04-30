@@ -30,7 +30,14 @@ def validate_agent_output(payload: Mapping[str, Any]) -> Dict[str, Any]:
         data["ticket_id"] = str(data["ticket_id"])
     else:
         data["ticket_id"] = ""
-    data.setdefault("rewritten_query", data.get("original_query", ""))
+    data.setdefault(
+        "ticket_request",
+        data.get("rewritten_query", data.get("original_query", "")),
+    )
+    data.setdefault(
+        "rewritten_query",
+        data.get("ticket_request", data.get("original_query", "")),
+    )
     data.setdefault("topic_group", data.get("category", data.get("classifier_label", "")))
     data.setdefault("model_name", data.get("model_used", ""))
     data.setdefault("router_mode", data.get("router_name", ""))

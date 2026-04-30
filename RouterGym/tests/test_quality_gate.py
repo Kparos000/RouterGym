@@ -130,6 +130,31 @@ def test_quality_gate_catches_missing_raw_response() -> None:
     assert any("raw_response_saved_rate" in failure for failure in failures)
 
 
+def test_quality_gate_catches_empty_steps_even_with_answer() -> None:
+    tmp_dir = _temp_dir()
+    result_path = tmp_dir / "slm_only__base_slm1__mem_rag_bm25__results_merged.jsonl"
+    _write_rows(
+        result_path,
+        [
+            {
+                "config_identifier": "slm_only__base_slm1__mem_rag_bm25",
+                "final_answer": "Reset the VPN session and try again.",
+                "resolution_steps": [],
+                "raw_model_response_text": '{"final_answer":"ok"}',
+                "raw_response_saved": True,
+                "generation_valid": True,
+                "placeholder_answer": False,
+                "escalated": False,
+            }
+        ],
+    )
+
+    summary = quality_gate.summarize_quality(result_path)
+    assert summary["passes_quality_gate"] is False
+    failures = summary["configs"][0]["failures"]
+    assert any("empty_resolution_steps_rate" in failure for failure in failures)
+
+
 def test_quality_gate_fails_on_exception_style_row() -> None:
     tmp_dir = _temp_dir()
     result_path = tmp_dir / "llm_only__base_llm1__mem_rag_bm25__results_merged.jsonl"

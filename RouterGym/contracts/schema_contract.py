@@ -62,23 +62,23 @@ class DraftOutputSchema:
         if not isinstance(json_obj, dict):
             return False, ["Draft output is not a JSON object"]
 
+        ticket_request = json_obj.get("ticket_request", "")
         final_answer = json_obj.get("final_answer", "")
         reasoning = json_obj.get("reasoning", "")
+        steps = json_obj.get("resolution_steps", [])
 
-        if final_answer is not None and not isinstance(final_answer, str):
-            errors.append("final_answer must be a string when provided")
+        if not isinstance(ticket_request, str) or not ticket_request.strip():
+            errors.append("ticket_request must be a non-empty string")
+
+        if not isinstance(final_answer, str) or not final_answer.strip():
+            errors.append("final_answer must be a non-empty string")
         if reasoning is not None and not isinstance(reasoning, str):
             errors.append("reasoning must be a string when provided")
 
-        has_answer = isinstance(final_answer, str) and bool(final_answer.strip())
-        has_reasoning = isinstance(reasoning, str) and bool(reasoning.strip())
-        if not has_answer and not has_reasoning:
-            errors.append("Draft output must include a non-empty final_answer or reasoning")
-
-        if "resolution_steps" in json_obj:
-            steps = json_obj["resolution_steps"]
-            if not isinstance(steps, list) or not all(isinstance(step, str) for step in steps):
-                errors.append("resolution_steps must be a list of strings when provided")
+        if not isinstance(steps, list) or not all(isinstance(step, str) for step in steps):
+            errors.append("resolution_steps must be a list of strings")
+        elif not any(step.strip() for step in steps):
+            errors.append("resolution_steps must include at least one non-empty step")
 
         if "predicted_category" in json_obj and json_obj.get("predicted_category"):
             try:
@@ -101,6 +101,7 @@ class AgentOutputSchema:
     """
 
     required_string_fields = {
+        "ticket_request",
         "original_query",
         "rewritten_query",
         "topic_group",
@@ -194,6 +195,8 @@ class AgentOutputSchema:
             steps = json_obj["resolution_steps"]
             if not isinstance(steps, list) or not all(isinstance(s, str) for s in steps):
                 errors.append("resolution_steps must be a list of strings")
+            elif not any(s.strip() for s in steps):
+                errors.append("resolution_steps must include at least one non-empty step")
 
         # escalation flags
         if "escalation_flags" not in json_obj:
