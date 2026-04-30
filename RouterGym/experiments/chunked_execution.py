@@ -28,6 +28,7 @@ import importlib.metadata
 from pathlib import Path
 import sys
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
+from urllib import request
 
 from RouterGym.benchmark_spec import (
     BENCHMARK_SPEC_VERSION,
@@ -35,7 +36,12 @@ from RouterGym.benchmark_spec import (
     PRODUCTION_CHUNK_SIZE,
     build_final_benchmark_matrix,
 )
-from RouterGym.engines.model_registry import LLM_MODELS, SLM_MODELS, get_model_backend
+from RouterGym.engines.model_registry import (
+    LLM_MODELS,
+    SLM_MODELS,
+    _get_openai_compatible_api_key,
+    get_model_backend,
+)
 from RouterGym.scripts.check_generation_quality_gate import (
     EMPTY_STEPS_THRESHOLD,
     GENERATION_VALID_THRESHOLD,
@@ -65,6 +71,11 @@ RELEVANT_ENV_VAR_NAMES = [
     "HF_TOKEN",
     "HUGGINGFACE_HUB_TOKEN",
 ]
+
+OPENAI_BACKEND_SMOKE_ERROR = (
+    "OpenAI-compatible backend is not reachable or returned no usable completion. "
+    "Start the gateway/model server before running benchmark."
+)
 
 
 def load_ticket_dataset(*, limit: Optional[int], start: int):
@@ -184,6 +195,100 @@ def resolve_backend_details(backend_override: Optional[str] = None) -> Dict[str,
             os.getenv("ROUTERGYM_OPENAI_API_KEY") or os.getenv("ROUTERGYM_VLLM_API_KEY")
         )
     return details
+
+
+def _config_model_keys(config: Mapping[str, str]) -> List[str]:
+    keys: List[str] = []
+    for raw_key in (config.get("base_model", ""), config.get("escalation_model", "")):
+        key = str(raw_key or "").strip()
+        if not key or key in keys:
+            continue
+        if key in SLM_MODELS or key in LLM_MODELS:
+            keys.append(key)
+    return keys
+
+
+def _fetch_openai_gateway_models(base_url: str, api_key: str) -> Dict[str, Any]:
+    from RouterGym.engines.openai_compatible import normalize_openai_compatible_base_url
+
+    endpoint = f"{normalize_openai_compatible_base_url(base_url)}/models"
+    headers: Dict[str, str] = {}
+    if str(api_key or "").strip():
+        headers["Authorization"] = f"Bearer {api_key}"
+    req = request.Request(endpoint, headers=headers, method="GET")
+    with request.urlopen(req, timeout=30) as response:
+        raw = response.read().decode("utf-8")
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Gateway /v1/models response was not a JSON object.")
+    return parsed
+
+
+def validate_openai_backend_smoke(
+    *,
+    backend_details: Mapping[str, Any],
+    configs: Sequence[Mapping[str, str]],
+) -> Dict[str, Any]:
+    """Fail fast when the OpenAI-compatible gateway or selected model routes are unusable."""
+
+    if str(backend_details.get("backend_name", "")).strip() != "openai_compatible":
+        return {
+            "status": "skipped",
+            "reason": "backend_not_openai_compatible",
+            "model_keys": [],
+        }
+
+    from RouterGym.scripts.smoke_openai_compatible_model import run_smoke_test
+
+    model_keys: List[str] = []
+    for config in configs:
+        for model_key in _config_model_keys(config):
+            if model_key not in model_keys:
+                model_keys.append(model_key)
+
+    base_url = str(backend_details.get("openai_base_url", "") or "")
+    api_key = _get_openai_compatible_api_key()
+    try:
+        gateway_models = _fetch_openai_gateway_models(base_url, api_key)
+        gateway_index = {
+            str(item.get("id")): item
+            for item in gateway_models.get("data", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        smoke_results: List[Dict[str, Any]] = []
+        for model_key in model_keys:
+            if gateway_index and model_key not in gateway_index:
+                raise RuntimeError(f"Model key {model_key!r} is missing from /v1/models.")
+            smoke = run_smoke_test(
+                model_key=model_key,
+                base_url=base_url,
+                api_key=api_key,
+                dry_run=False,
+            )
+            smoke_results.append(smoke)
+            output_preview = str(smoke.get("output_preview", "") or "").strip()
+            backend_error = smoke.get("backend_error")
+            if (
+                smoke.get("status") != "success"
+                or not output_preview
+                or backend_error is not None
+                or "LLM unavailable" in output_preview
+            ):
+                raise RuntimeError(
+                    f"Smoke test failed for model {model_key!r}: "
+                    f"status={smoke.get('status')!r}, backend_error={backend_error!r}, "
+                    f"output_preview={output_preview[:160]!r}"
+                )
+    except Exception as exc:
+        raise RuntimeError(f"{OPENAI_BACKEND_SMOKE_ERROR} Cause: {exc}") from exc
+
+    return {
+        "status": "success",
+        "base_url": base_url,
+        "model_keys": model_keys,
+        "gateway_model_ids": sorted(gateway_index.keys()),
+        "smoke_results": smoke_results,
+    }
 
 
 def build_parallel_config_plan(
@@ -1346,6 +1451,7 @@ def run_config_chunked(
     min_raw_response_saved_rate: float = RAW_RESPONSE_THRESHOLD,
     min_generation_valid_rate: float = GENERATION_VALID_THRESHOLD,
     allow_slm_dominant_full_escalation: bool = False,
+    skip_backend_smoke: bool = False,
     command_line_args: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
     """Run one frozen config in deterministic chunks with manifest-based resume."""
@@ -1354,7 +1460,13 @@ def run_config_chunked(
     backend_name_resolved = str(backend_details["backend_name"])
     config_identifier = build_config_identifier(config)
     dependency_details: Optional[Dict[str, Any]] = None
+    backend_smoke_details: Optional[Dict[str, Any]] = None
     if not dry_run:
+        if not skip_backend_smoke:
+            backend_smoke_details = validate_openai_backend_smoke(
+                backend_details=backend_details,
+                configs=[config],
+            )
         dependency_details = validate_benchmark_dependencies()
 
     ticket_df = load_ticket_dataset(limit=ticket_limit, start=ticket_start)
@@ -1415,6 +1527,7 @@ def run_config_chunked(
             "chunk_size": chunk_size,
             "max_output_tokens": max_output_tokens,
             "dependency_details": dependency_details,
+            "backend_smoke_details": backend_smoke_details,
             "total_tickets_expected": total_tickets_expected,
             "manifest_path": str(manifest_path),
             "first_chunk_path": (
@@ -1649,6 +1762,7 @@ def run_config_chunked(
         "final_status_payload": dict(final_status),
         "resume_behavior_summary": resume_summary,
         "quality_gate": dict(quality_gate_settings),
+        "backend_smoke_details": backend_smoke_details,
     }
 
 
@@ -1707,11 +1821,19 @@ def run_benchmark_matrix_chunked(
     min_raw_response_saved_rate: float = RAW_RESPONSE_THRESHOLD,
     min_generation_valid_rate: float = GENERATION_VALID_THRESHOLD,
     allow_slm_dominant_full_escalation: bool = False,
+    skip_backend_smoke: bool = False,
     command_line_args: Optional[Sequence[str]] = None,
 ) -> List[Dict[str, Any]]:
     """Run one or many frozen configs through the chunked execution wrapper."""
 
     selected = resolve_selected_configs(config_id=config_id, config_ids=config_ids)
+    backend_smoke_ran = False
+    if not dry_run and not skip_backend_smoke:
+        validate_openai_backend_smoke(
+            backend_details=resolve_backend_details(backend_name),
+            configs=[config for _, config in selected],
+        )
+        backend_smoke_ran = True
 
     results: List[Dict[str, Any]] = []
     for selected_id, config in selected:
@@ -1732,6 +1854,7 @@ def run_benchmark_matrix_chunked(
             min_raw_response_saved_rate=min_raw_response_saved_rate,
             min_generation_valid_rate=min_generation_valid_rate,
             allow_slm_dominant_full_escalation=allow_slm_dominant_full_escalation,
+            skip_backend_smoke=skip_backend_smoke or backend_smoke_ran,
             command_line_args=command_line_args,
         )
         result.setdefault("config_identifier", selected_id)

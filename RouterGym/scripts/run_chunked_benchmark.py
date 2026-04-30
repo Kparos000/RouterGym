@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from RouterGym.benchmark_spec import PRODUCTION_CHUNK_SIZE
 from RouterGym.experiments.chunked_execution import (
     DEFAULT_OUTPUT_ROOT,
+    OPENAI_BACKEND_SMOKE_ERROR,
     backend_status_summary_path,
     build_parallel_config_plan,
     config_progress_log_path,
@@ -29,6 +30,7 @@ from RouterGym.experiments.chunked_execution import (
     merge_completed_chunks,
     resolve_backend_details,
     resolve_selected_configs,
+    validate_openai_backend_smoke,
     run_benchmark_matrix_chunked,
 )
 from RouterGym.scripts.check_generation_quality_gate import (
@@ -169,6 +171,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ignore completed chunk entries and rerun all chunks.",
     )
+    parser.add_argument(
+        "--skip-backend-smoke",
+        action="store_true",
+        help="Skip the OpenAI-compatible gateway smoke check before starting tickets.",
+    )
     return parser
 
 
@@ -230,6 +237,7 @@ def _single_config_command(
     min_raw_response_saved_rate: float,
     min_generation_valid_rate: float,
     allow_slm_dominant_full_escalation: bool,
+    skip_backend_smoke: bool,
 ) -> List[str]:
     command = [
         sys.executable,
@@ -264,6 +272,8 @@ def _single_config_command(
     command.extend(["--min-generation-valid-rate", str(min_generation_valid_rate)])
     if allow_slm_dominant_full_escalation:
         command.append("--allow-slm-dominant-full-escalation")
+    if skip_backend_smoke:
+        command.append("--skip-backend-smoke")
     if not resume:
         command.append("--no-resume")
     return command
@@ -292,6 +302,7 @@ def _run_parallel_selection(
     min_raw_response_saved_rate: float,
     min_generation_valid_rate: float,
     allow_slm_dominant_full_escalation: bool,
+    skip_backend_smoke: bool,
 ) -> List[Dict[str, Any]]:
     resolved_backend = str(resolve_backend_details(backend_name)["backend_name"])
     effective_workers = _resolve_parallel_workers(parallel_workers, gpu_ids)
@@ -377,6 +388,7 @@ def _run_parallel_selection(
                     min_raw_response_saved_rate=min_raw_response_saved_rate,
                     min_generation_valid_rate=min_generation_valid_rate,
                     allow_slm_dominant_full_escalation=allow_slm_dominant_full_escalation,
+                    skip_backend_smoke=skip_backend_smoke,
                 ),
                 cwd=str(Path.cwd()),
                 env=env,
@@ -436,59 +448,86 @@ def main() -> int:
     backend_name = str(resolve_backend_details(args.backend)["backend_name"])
     gpu_ids = _parse_gpu_ids(args.gpu_ids)
     should_parallelize = bool(gpu_ids) or args.parallel_workers > 1
+    parent_backend_smoke_ran = False
 
-    if args.merge_only:
-        payload = _merge_selection(
-            output_root=args.output_root,
-            config_id=args.config_id,
-            config_ids=args.config_ids,
-            backend_name=backend_name,
-        )
-    elif should_parallelize:
-        payload = _run_parallel_selection(
-            output_root=args.output_root,
-            config_id=args.config_id,
-            config_ids=args.config_ids,
-            chunk_size=args.chunk_size,
-            ticket_start=args.start,
-            ticket_limit=effective_limit,
-            backend_name=args.backend,
-            resume=not args.no_resume,
-            dry_run=args.dry_run,
-            parallel_workers=args.parallel_workers,
-            gpu_ids=gpu_ids,
-            max_output_tokens=args.max_output_tokens,
-            encoder_head_mode=args.encoder_head_mode,
-            allow_encoder_fallback=args.allow_encoder_fallback,
-            enable_quality_abort=args.enable_quality_abort,
-            quality_check_after_chunks=args.quality_check_after_chunks,
-            placeholder_answer_max_rate=args.placeholder_answer_max_rate,
-            empty_steps_max_rate=args.empty_steps_max_rate,
-            min_raw_response_saved_rate=args.min_raw_response_saved_rate,
-            min_generation_valid_rate=args.min_generation_valid_rate,
-            allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
-        )
-    else:
-        payload = run_benchmark_matrix_chunked(
-            output_root=args.output_root,
-            config_id=args.config_id,
-            config_ids=args.config_ids,
-            chunk_size=args.chunk_size,
-            ticket_start=args.start,
-            ticket_limit=effective_limit,
-            backend_name=args.backend,
-            resume=not args.no_resume,
-            dry_run=args.dry_run,
-            max_output_tokens=args.max_output_tokens,
-            enable_quality_abort=args.enable_quality_abort,
-            quality_check_after_chunks=args.quality_check_after_chunks,
-            placeholder_answer_max_rate=args.placeholder_answer_max_rate,
-            empty_steps_max_rate=args.empty_steps_max_rate,
-            min_raw_response_saved_rate=args.min_raw_response_saved_rate,
-            min_generation_valid_rate=args.min_generation_valid_rate,
-            allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
-            command_line_args=sys.argv[1:],
-        )
+    try:
+        if (
+            backend_name == "openai_compatible"
+            and not args.skip_backend_smoke
+            and not args.dry_run
+            and not args.merge_only
+        ):
+            validate_openai_backend_smoke(
+                backend_details=resolve_backend_details(args.backend),
+                configs=[
+                    config
+                    for _, config in resolve_selected_configs(
+                        config_id=args.config_id,
+                        config_ids=args.config_ids,
+                    )
+                ],
+            )
+            parent_backend_smoke_ran = True
+
+        if args.merge_only:
+            payload = _merge_selection(
+                output_root=args.output_root,
+                config_id=args.config_id,
+                config_ids=args.config_ids,
+                backend_name=backend_name,
+            )
+        elif should_parallelize:
+            payload = _run_parallel_selection(
+                output_root=args.output_root,
+                config_id=args.config_id,
+                config_ids=args.config_ids,
+                chunk_size=args.chunk_size,
+                ticket_start=args.start,
+                ticket_limit=effective_limit,
+                backend_name=args.backend,
+                resume=not args.no_resume,
+                dry_run=args.dry_run,
+                parallel_workers=args.parallel_workers,
+                gpu_ids=gpu_ids,
+                max_output_tokens=args.max_output_tokens,
+                encoder_head_mode=args.encoder_head_mode,
+                allow_encoder_fallback=args.allow_encoder_fallback,
+                enable_quality_abort=args.enable_quality_abort,
+                quality_check_after_chunks=args.quality_check_after_chunks,
+                placeholder_answer_max_rate=args.placeholder_answer_max_rate,
+                empty_steps_max_rate=args.empty_steps_max_rate,
+                min_raw_response_saved_rate=args.min_raw_response_saved_rate,
+                min_generation_valid_rate=args.min_generation_valid_rate,
+                allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
+                skip_backend_smoke=args.skip_backend_smoke or parent_backend_smoke_ran,
+            )
+        else:
+            payload = run_benchmark_matrix_chunked(
+                output_root=args.output_root,
+                config_id=args.config_id,
+                config_ids=args.config_ids,
+                chunk_size=args.chunk_size,
+                ticket_start=args.start,
+                ticket_limit=effective_limit,
+                backend_name=args.backend,
+                resume=not args.no_resume,
+                dry_run=args.dry_run,
+                max_output_tokens=args.max_output_tokens,
+                enable_quality_abort=args.enable_quality_abort,
+                quality_check_after_chunks=args.quality_check_after_chunks,
+                placeholder_answer_max_rate=args.placeholder_answer_max_rate,
+                empty_steps_max_rate=args.empty_steps_max_rate,
+                min_raw_response_saved_rate=args.min_raw_response_saved_rate,
+                min_generation_valid_rate=args.min_generation_valid_rate,
+                allow_slm_dominant_full_escalation=args.allow_slm_dominant_full_escalation,
+                skip_backend_smoke=args.skip_backend_smoke or parent_backend_smoke_ran,
+                command_line_args=sys.argv[1:],
+            )
+    except RuntimeError as exc:
+        if str(exc).startswith(OPENAI_BACKEND_SMOKE_ERROR):
+            print(str(exc), file=sys.stderr)
+            return 1
+        raise
 
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     if isinstance(payload, list):

@@ -66,6 +66,17 @@ def _stub_dependency_validation(monkeypatch: Any) -> None:
             "calibrated_head_exists": True,
         },
     )
+    monkeypatch.setattr(
+        chunked_execution,
+        "validate_openai_backend_smoke",
+        lambda **kwargs: {
+            "status": "success",
+            "base_url": "http://127.0.0.1:9000/v1",
+            "model_keys": ["slm1", "llm1"],
+            "gateway_model_ids": ["slm1", "llm1"],
+            "smoke_results": [],
+        },
+    )
 
 
 def _write_fake_chunk_outputs(
@@ -336,6 +347,94 @@ def test_missing_calibrated_head_fails_before_chunk_processing(monkeypatch: Any)
         )
 
     assert execute_calls["count"] == 0
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_backend_smoke_failure_aborts_before_chunk_processing(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=2)
+    tmp_path = _temp_dir()
+
+    monkeypatch.setattr(
+        chunked_execution,
+        "validate_openai_backend_smoke",
+        lambda **kwargs: (_ for _ in ()).throw(
+            RuntimeError(chunked_execution.OPENAI_BACKEND_SMOKE_ERROR)
+        ),
+    )
+
+    def forbidden_execute_chunk(**kwargs: Any) -> Dict[str, Any]:
+        del kwargs
+        raise AssertionError("execute_chunk should not run when backend smoke fails")
+
+    monkeypatch.setattr(chunked_execution, "execute_chunk", forbidden_execute_chunk)
+
+    with pytest.raises(RuntimeError, match="OpenAI-compatible backend is not reachable"):
+        chunked_execution.run_config_chunked(
+            config=_sample_config(),
+            output_root=tmp_path,
+            chunk_size=1,
+            ticket_start=0,
+            ticket_limit=2,
+            backend_name="openai_compatible",
+            resume=True,
+            dry_run=False,
+        )
+
+
+def test_skip_backend_smoke_allows_processing(monkeypatch: Any) -> None:
+    _patch_dataset(monkeypatch, size=2)
+    tmp_path = _temp_dir()
+
+    monkeypatch.setattr(
+        chunked_execution,
+        "validate_openai_backend_smoke",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("backend smoke should be skipped")),
+    )
+
+    def fake_run_ticket_pipeline_call(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ticket = kwargs["ticket"]
+        return {
+            "ticket_id": ticket["ticket_id"],
+            "ticket_request": "User needs VPN access restored.",
+            "topic_group": "Access",
+            "final_answer": "Reset the VPN session and sign in again.",
+            "reasoning": "Valid structured answer.",
+            "resolution_steps": ["Disconnect VPN", "Reconnect with SSO"],
+            "model_name": kwargs["base_model_name"],
+            "generation_valid": True,
+            "placeholder_answer": False,
+            "has_real_final_answer": True,
+            "has_resolution_steps": True,
+            "raw_response_saved": True,
+            "raw_model_response_text": '{"final_answer":"ok"}',
+            "metrics": {
+                "latency_ms": 1.0,
+                "total_input_tokens": 10,
+                "total_output_tokens": 5,
+                "total_tokens": 15,
+                "total_cost_usd": 0.001,
+            },
+            "total_tokens": 15,
+            "total_cost_usd": 0.001,
+        }
+
+    monkeypatch.setattr(
+        chunked_execution, "run_ticket_pipeline_call", fake_run_ticket_pipeline_call
+    )
+
+    result = chunked_execution.run_config_chunked(
+        config=_sample_config(),
+        output_root=tmp_path,
+        chunk_size=1,
+        ticket_start=0,
+        ticket_limit=2,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=False,
+        skip_backend_smoke=True,
+    )
+
+    assert result["status"] == "completed"
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
