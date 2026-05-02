@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import os
 import traceback
 from typing import Any, Dict, Optional
 from urllib import request
 
 
 DEFAULT_OPENAI_COMPATIBLE_BASE_URL = "http://localhost:8000/v1"
+OPENAI_MODEL_OVERRIDE_ENV_VAR = "ROUTERGYM_OPENAI_MODEL_OVERRIDE"
+_LOGGED_MODEL_OVERRIDES: set[str] = set()
 
 
 def normalize_openai_compatible_base_url(base_url: str) -> str:
@@ -19,6 +22,27 @@ def normalize_openai_compatible_base_url(base_url: str) -> str:
     if normalized.endswith("/v1"):
         return normalized
     return f"{normalized}/v1"
+
+
+def get_openai_compatible_model_override() -> str | None:
+    """Return optional local OpenAI-compatible outbound model override.
+
+    This is strictly opt-in. When unset, RouterGym keeps using the logical
+    model keys such as slm1, slm2, llm1, and llm2.
+    """
+
+    value = os.getenv(OPENAI_MODEL_OVERRIDE_ENV_VAR, "").strip()
+    return value or None
+
+
+def _log_openai_compatible_model_override(model_name: str) -> None:
+    if model_name in _LOGGED_MODEL_OVERRIDES:
+        return
+    _LOGGED_MODEL_OVERRIDES.add(model_name)
+    print(
+        f"Using OpenAI-compatible model override for outbound requests: {model_name}",
+        flush=True,
+    )
 
 
 class OpenAICompatibleEngine:
@@ -48,6 +72,13 @@ class OpenAICompatibleEngine:
         self.last_usage: Optional[Dict[str, int]] = None
         self.last_endpoint_path = ""
         self.last_error: Optional[Dict[str, str]] = None
+
+    def _resolve_request_model_name(self) -> str:
+        override = get_openai_compatible_model_override()
+        if override:
+            _log_openai_compatible_model_override(override)
+            return override
+        return self.request_model_name
 
     def _extract_content(self, payload: Dict[str, Any]) -> Optional[str]:
         choices = payload.get("choices", [])
@@ -151,7 +182,7 @@ class OpenAICompatibleEngine:
         self.last_error = None
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
-            "model": self.request_model_name,
+            "model": self._resolve_request_model_name(),
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_new_tokens,
             "temperature": temperature,
@@ -207,6 +238,8 @@ class OpenAICompatibleEngine:
 
 __all__ = [
     "DEFAULT_OPENAI_COMPATIBLE_BASE_URL",
+    "OPENAI_MODEL_OVERRIDE_ENV_VAR",
     "OpenAICompatibleEngine",
+    "get_openai_compatible_model_override",
     "normalize_openai_compatible_base_url",
 ]

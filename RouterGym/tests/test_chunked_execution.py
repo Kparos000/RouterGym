@@ -17,6 +17,25 @@ from RouterGym.experiments import chunked_execution
 _REAL_VALIDATE_OPENAI_BACKEND_SMOKE = chunked_execution.validate_openai_backend_smoke
 
 
+def test_openai_compatible_model_override_env_contract(monkeypatch: Any) -> None:
+    from RouterGym.engines.openai_compatible import get_openai_compatible_model_override
+
+    monkeypatch.delenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", raising=False)
+    assert get_openai_compatible_model_override() is None
+
+    monkeypatch.setenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", "")
+    assert get_openai_compatible_model_override() is None
+
+    monkeypatch.setenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", "google/gemma-4-e4b")
+    assert get_openai_compatible_model_override() == "google/gemma-4-e4b"
+
+
+def test_chunked_execution_imports_openai_compatible_model_override() -> None:
+    from RouterGym.engines.openai_compatible import get_openai_compatible_model_override
+
+    assert callable(get_openai_compatible_model_override)
+
+
 def _temp_dir() -> Path:
     root = Path.cwd() / ".tmp_chunked_testdirs"
     root.mkdir(parents=True, exist_ok=True)
