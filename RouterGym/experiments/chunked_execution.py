@@ -59,6 +59,7 @@ RELEVANT_ENV_VAR_NAMES = [
     "ROUTERGYM_MODEL_BACKEND",
     "ROUTERGYM_OPENAI_BASE_URL",
     "ROUTERGYM_OPENAI_API_KEY",
+    "ROUTERGYM_OPENAI_MODEL_OVERRIDE",
     "ROUTERGYM_VLLM_BASE_URL",
     "ROUTERGYM_VLLM_API_KEY",
     "ROUTERGYM_ENCODER_HEAD_MODE",
@@ -186,6 +187,8 @@ def resolve_backend_details(backend_override: Optional[str] = None) -> Dict[str,
         backend_name = "hf_inference"
     details: Dict[str, Any] = {"backend_name": backend_name}
     if backend_name == "openai_compatible":
+        from RouterGym.engines.openai_compatible import get_openai_compatible_model_override
+
         details["openai_base_url"] = (
             os.getenv("ROUTERGYM_OPENAI_BASE_URL")
             or os.getenv("ROUTERGYM_VLLM_BASE_URL")
@@ -194,6 +197,9 @@ def resolve_backend_details(backend_override: Optional[str] = None) -> Dict[str,
         details["openai_api_key_present"] = bool(
             os.getenv("ROUTERGYM_OPENAI_API_KEY") or os.getenv("ROUTERGYM_VLLM_API_KEY")
         )
+        override_model = get_openai_compatible_model_override()
+        if override_model:
+            details["openai_model_override"] = override_model
     return details
 
 
@@ -239,6 +245,7 @@ def validate_openai_backend_smoke(
         }
 
     from RouterGym.scripts.smoke_openai_compatible_model import run_smoke_test
+    from RouterGym.engines.openai_compatible import get_openai_compatible_model_override
 
     model_keys: List[str] = []
     for config in configs:
@@ -248,6 +255,7 @@ def validate_openai_backend_smoke(
 
     base_url = str(backend_details.get("openai_base_url", "") or "")
     api_key = _get_openai_compatible_api_key()
+    override_model = get_openai_compatible_model_override()
     try:
         gateway_models = _fetch_openai_gateway_models(base_url, api_key)
         gateway_index = {
@@ -255,9 +263,11 @@ def validate_openai_backend_smoke(
             for item in gateway_models.get("data", [])
             if isinstance(item, dict) and item.get("id")
         }
+        if override_model and override_model not in gateway_index:
+            raise RuntimeError(f"Override model {override_model!r} is missing from /v1/models.")
         smoke_results: List[Dict[str, Any]] = []
         for model_key in model_keys:
-            if gateway_index and model_key not in gateway_index:
+            if not override_model and gateway_index and model_key not in gateway_index:
                 raise RuntimeError(f"Model key {model_key!r} is missing from /v1/models.")
             smoke = run_smoke_test(
                 model_key=model_key,
@@ -286,6 +296,7 @@ def validate_openai_backend_smoke(
         "status": "success",
         "base_url": base_url,
         "model_keys": model_keys,
+        "openai_model_override": override_model,
         "gateway_model_ids": sorted(gateway_index.keys()),
         "smoke_results": smoke_results,
     }

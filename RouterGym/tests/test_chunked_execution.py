@@ -14,6 +14,8 @@ import pytest
 
 from RouterGym.experiments import chunked_execution
 
+_REAL_VALIDATE_OPENAI_BACKEND_SMOKE = chunked_execution.validate_openai_backend_smoke
+
 
 def _temp_dir() -> Path:
     root = Path.cwd() / ".tmp_chunked_testdirs"
@@ -379,6 +381,110 @@ def test_backend_smoke_failure_aborts_before_chunk_processing(monkeypatch: Any) 
             resume=True,
             dry_run=False,
         )
+
+
+def test_openai_backend_smoke_fails_when_no_override_and_logical_key_missing(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.delenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", raising=False)
+    monkeypatch.setattr(
+        chunked_execution,
+        "_fetch_openai_gateway_models",
+        lambda base_url, api_key: {"data": [{"id": "google/gemma-4-e4b"}]},
+    )
+
+    with pytest.raises(RuntimeError, match="Model key 'llm1' is missing from /v1/models"):
+        _REAL_VALIDATE_OPENAI_BACKEND_SMOKE(
+            backend_details={
+                "backend_name": "openai_compatible",
+                "openai_base_url": "http://127.0.0.1:1234/v1",
+            },
+            configs=[
+                {
+                    "router_mode": "llm_only",
+                    "base_model": "llm1",
+                    "escalation_model": "",
+                    "memory_mode": "rag_bm25",
+                }
+            ],
+        )
+
+
+def test_openai_backend_smoke_passes_when_override_model_exists(
+    monkeypatch: Any,
+) -> None:
+    smoke_calls: List[Dict[str, Any]] = []
+
+    def fake_smoke(**kwargs: Any) -> Dict[str, Any]:
+        smoke_calls.append(dict(kwargs))
+        return {
+            "status": "success",
+            "request_model_name": "google/gemma-4-e4b",
+            "output_preview": '{"final_answer":"ok"}',
+            "backend_error": None,
+        }
+
+    from RouterGym.scripts import smoke_openai_compatible_model
+
+    monkeypatch.setenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", "google/gemma-4-e4b")
+    monkeypatch.setattr(
+        chunked_execution,
+        "_fetch_openai_gateway_models",
+        lambda base_url, api_key: {"data": [{"id": "google/gemma-4-e4b"}]},
+    )
+    monkeypatch.setattr(smoke_openai_compatible_model, "run_smoke_test", fake_smoke)
+
+    result = _REAL_VALIDATE_OPENAI_BACKEND_SMOKE(
+        backend_details={
+            "backend_name": "openai_compatible",
+            "openai_base_url": "http://127.0.0.1:1234/v1",
+        },
+        configs=[
+            {
+                "router_mode": "llm_only",
+                "base_model": "llm1",
+                "escalation_model": "",
+                "memory_mode": "rag_bm25",
+            }
+        ],
+    )
+
+    assert result["status"] == "success"
+    assert result["model_keys"] == ["llm1"]
+    assert result["openai_model_override"] == "google/gemma-4-e4b"
+    assert smoke_calls[0]["model_key"] == "llm1"
+
+
+def test_openai_override_keeps_benchmark_config_metadata(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.setenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", "google/gemma-4-e4b")
+    _patch_dataset(monkeypatch, size=10)
+    tmp_path = _temp_dir()
+    config = {
+        "router_mode": "llm_only",
+        "base_model": "llm1",
+        "escalation_model": "",
+        "memory_mode": "rag_bm25",
+    }
+
+    result = chunked_execution.run_config_chunked(
+        config=config,
+        output_root=tmp_path,
+        chunk_size=10,
+        ticket_start=0,
+        ticket_limit=10,
+        backend_name="openai_compatible",
+        resume=True,
+        dry_run=True,
+    )
+
+    manifest = json.loads(Path(result["manifest_path"]).read_text(encoding="utf-8"))
+    assert result["config_identifier"] == "llm_only__base_llm1__mem_rag_bm25"
+    assert manifest["config_identifier"] == "llm_only__base_llm1__mem_rag_bm25"
+    assert manifest["config"]["base_model"] == "llm1"
+    assert manifest["backend_details"]["openai_model_override"] == "google/gemma-4-e4b"
+    shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 def test_skip_backend_smoke_allows_processing(monkeypatch: Any) -> None:
