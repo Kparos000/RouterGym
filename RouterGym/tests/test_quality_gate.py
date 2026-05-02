@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from RouterGym.scripts import check_generation_quality_gate as quality_gate
+from RouterGym.scripts.summarize_benchmark_results import summarize_benchmark_results
 
 
 def _temp_dir() -> Path:
@@ -178,3 +179,68 @@ def test_quality_gate_fails_on_exception_style_row() -> None:
     assert any("empty_resolution_steps_rate" in failure for failure in failures)
     assert any("raw_response_saved_rate" in failure for failure in failures)
     assert any("generation_valid_rate" in failure for failure in failures)
+
+
+def test_result_summary_script_summarizes_tiny_fixture() -> None:
+    tmp_dir = _temp_dir()
+    result_path = (
+        tmp_dir
+        / "openai_compatible"
+        / "slm_only__base_slm1__mem_rag_bm25"
+        / "merged"
+        / "slm_only__base_slm1__mem_rag_bm25__results_merged.jsonl"
+    )
+    _write_rows(
+        result_path,
+        [
+            {
+                "ticket_id": "1",
+                "success": True,
+                "gold_label": "Access",
+                "predicted_category": "Access",
+                "final_answer": "Reset the VPN session.",
+                "resolution_steps": ["Disconnect", "Reconnect"],
+                "raw_response_saved": True,
+                "generation_valid": True,
+                "parse_error": None,
+                "metrics": {
+                    "latency_ms": 10.0,
+                    "total_input_tokens": 20,
+                    "total_output_tokens": 5,
+                    "total_tokens": 25,
+                    "total_cost_usd": 0.01,
+                },
+            },
+            {
+                "ticket_id": "2",
+                "success": True,
+                "gold_label": "Hardware",
+                "predicted_category": "Access",
+                "final_answer": "Check the laptop.",
+                "resolution_steps": [],
+                "raw_response_saved": True,
+                "generation_valid": False,
+                "parse_error": "Model output is not valid JSON.",
+                "metrics": {
+                    "latency_ms": 30.0,
+                    "total_input_tokens": 40,
+                    "total_output_tokens": 15,
+                    "total_tokens": 55,
+                    "total_cost_usd": 0.03,
+                },
+            },
+        ],
+    )
+
+    summary = summarize_benchmark_results(tmp_dir)
+    config = summary["configs"]["slm_only__base_slm1__mem_rag_bm25"]
+    assert config["row_count"] == 2
+    assert config["success_rate"] == 1.0
+    assert config["generation_valid_rate"] == 0.5
+    assert config["raw_response_saved_rate"] == 1.0
+    assert config["empty_resolution_steps_rate"] == 0.5
+    assert config["parse_error_rate"] == 0.5
+    assert config["gold_label_distribution"] == {"Access": 1, "Hardware": 1}
+    assert config["predicted_category_distribution"] == {"Access": 2}
+    assert config["average_latency_ms"] == 20.0
+    assert len(config["sample_bad_rows"]) == 1

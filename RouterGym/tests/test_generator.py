@@ -124,6 +124,10 @@ def test_run_ticket_pipeline(monkeypatch):
     assert result["ticket_request"] == "User reports a hardware issue with a simple test ticket."
     assert result["rewritten_query"] == result["ticket_request"]
     assert result["topic_group"] in CANONICAL_LABELS
+    assert result["predicted_category"] == result["classifier_label"]
+    assert result["classifier_predicted_category"] == result["classifier_label"]
+    assert result["prediction_source"] == "encoder_calibrated"
+    assert result["generated_predicted_category"] is None
     assert result["classifier_label"] == result["classification"]["label"]
     assert isinstance(result["classifier_confidence_bucket"], str)
     assert result["classifier_backend"] == "encoder_calibrated"
@@ -153,6 +157,70 @@ def test_run_ticket_pipeline(monkeypatch):
     assert isinstance(result["metrics"], dict)
     for key in ("latency_ms", "total_input_tokens", "total_output_tokens", "total_cost_usd"):
         assert key in result["metrics"]
+
+
+def test_predicted_category_uses_classifier_when_model_category_missing(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "ticket_request": "User cannot access VPN.",
+                    "final_answer": "Reset the VPN session and sign in again.",
+                    "reasoning": "This resolves the access problem.",
+                    "resolution_steps": ["Disconnect VPN.", "Reconnect with SSO."],
+                }
+            )
+
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"llm1": FakeModel()}
+    )
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "vpn issue"},
+        base_model_name="llm1",
+        memory_mode="none",
+        router_mode="llm_only",
+    )
+
+    assert result["generation_valid"] is True
+    assert result["predicted_category"] == "Access"
+    assert result["classifier_predicted_category"] == "Access"
+    assert result["prediction_source"] == "encoder_calibrated"
+    assert result["generated_predicted_category"] is None
+
+
+def test_generated_predicted_category_is_preserved_separately(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return json.dumps(
+                {
+                    "ticket_request": "User cannot access VPN.",
+                    "final_answer": "Reset the VPN session and sign in again.",
+                    "reasoning": "This resolves the access problem.",
+                    "predicted_category": "Purchase",
+                    "resolution_steps": ["Disconnect VPN.", "Reconnect with SSO."],
+                }
+            )
+
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"llm1": FakeModel()}
+    )
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "vpn issue"},
+        base_model_name="llm1",
+        memory_mode="none",
+        router_mode="llm_only",
+    )
+
+    assert result["generation_valid"] is True
+    assert result["predicted_category"] == "Access"
+    assert result["classifier_predicted_category"] == "Access"
+    assert result["generated_predicted_category"] == "Purchase"
 
 
 def test_run_ticket_pipeline_with_kb(monkeypatch):
@@ -398,6 +466,30 @@ def test_generation_invalid_when_resolution_steps_empty(monkeypatch):
     )
 
     assert result["generation_valid"] is False
+    assert result["has_resolution_steps"] is False
+
+
+def test_generation_invalid_when_raw_response_missing(monkeypatch):
+    monkeypatch.setattr(gen, "EncoderClassifier", DummyEncoderClassifier)
+
+    class FakeModel:
+        def __call__(self, prompt: str, **kwargs):
+            return ""
+
+    monkeypatch.setattr(
+        gen, "load_models", lambda sanity=True, slm_subset=None: {"llm1": FakeModel()}
+    )
+
+    result = gen.run_ticket_pipeline(
+        ticket={"text": "vpn issue"},
+        base_model_name="llm1",
+        memory_mode="none",
+        router_mode="llm_only",
+    )
+
+    assert result["generation_valid"] is False
+    assert result["raw_response_saved"] is False
+    assert result["has_real_final_answer"] is False
     assert result["has_resolution_steps"] is False
 
 

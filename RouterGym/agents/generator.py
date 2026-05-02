@@ -515,6 +515,10 @@ def build_prompt(
         "ticket_request, final_answer, reasoning, predicted_category, resolution_steps, escalation_flags."
     )
     prompt_parts.append(
+        "The entire response must be one JSON object. Start with { and end with }. "
+        "Do not include explanations, markdown, comments, or text outside the JSON object."
+    )
+    prompt_parts.append(
         "ticket_request: one clean one-sentence restatement of the support request, under 40 words, with no diagnosis or benchmark metadata."
     )
     prompt_parts.append("final_answer: under 150 words.")
@@ -1035,12 +1039,24 @@ def run_ticket_pipeline(
     if escalation_draft is not None:
         generation_debug["escalation_stage"] = escalation_draft.as_dict()
 
+    raw_generated_predicted_category = chosen_draft.parsed_output_before_validation.get(
+        "predicted_category"
+    ) or chosen_draft.parsed_output_before_validation.get("category")
+    generated_predicted_category = (
+        _normalize_category(str(raw_generated_predicted_category))
+        if raw_generated_predicted_category
+        else None
+    )
     payload: Dict[str, Any] = {
         "ticket_id": ticket_id,
         "original_query": text,
         "ticket_request": ticket_request,
         "rewritten_query": ticket_request,
         "topic_group": classifier_label,
+        "predicted_category": classifier_label,
+        "classifier_predicted_category": classifier_label,
+        "prediction_source": classifier.backend_name,
+        "generated_predicted_category": generated_predicted_category,
         "model_name": chosen_model_name,
         "router_mode": router_mode,
         "base_model_name": base_model_name,

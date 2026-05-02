@@ -16,7 +16,10 @@ from RouterGym.engines.model_registry import (
     _get_openai_compatible_api_key,
     _get_openai_compatible_base_url,
 )
-from RouterGym.engines.openai_compatible import OpenAICompatibleEngine
+from RouterGym.engines.openai_compatible import (
+    OpenAICompatibleEngine,
+    get_openai_compatible_model_override,
+)
 
 
 DEFAULT_PROMPT = (
@@ -57,12 +60,13 @@ def run_smoke_test(
     entry = ALL_MODELS[model_key]
     resolved_base_url = base_url or _get_openai_compatible_base_url()
     resolved_api_key = api_key or _get_openai_compatible_api_key()
+    request_model_name = get_openai_compatible_model_override() or model_key
     max_new_tokens = DEFAULT_SMOKE_MAX_NEW_TOKENS
     payload: Dict[str, Any] = {
         "status": "dry_run" if dry_run else "pending",
         "model_key": model_key,
         "model_id": entry.hf_id,
-        "request_model_name": model_key,
+        "request_model_name": request_model_name,
         "backend_used": "openai_compatible",
         "base_url": resolved_base_url,
         "max_new_tokens": max_new_tokens,
@@ -76,6 +80,7 @@ def run_smoke_test(
     engine = OpenAICompatibleEngine(
         entry.hf_id,
         model_key=model_key,
+        request_model_name=request_model_name,
         kind=entry.kind,
         base_url=resolved_base_url,
         api_key=resolved_api_key,

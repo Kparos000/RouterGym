@@ -46,6 +46,15 @@ def test_load_models_openai_backend_uses_openai_for_all_model_keys(monkeypatch: 
     assert models["llm1"].backend_used == "openai_compatible"
 
 
+def test_load_models_openai_backend_without_override_preserves_model_key(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.delenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", raising=False)
+    monkeypatch.setenv("ROUTERGYM_MODEL_BACKEND", "openai_compatible")
+    models = model_registry.load_models(sanity=False)
+    assert models["llm1"].request_model_name == "llm1"
+
+
 def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> None:
     captured: dict[str, Any] = {}
 
@@ -96,6 +105,73 @@ def test_openai_compatible_engine_request_path_and_usage(monkeypatch: Any) -> No
     assert captured["body"]["model"] == "llm1"
     assert engine.last_endpoint_path == "openai_chat_completions"
     assert engine.last_usage == {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
+
+
+def test_openai_compatible_engine_uses_model_override_for_outbound_request(
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
+
+    def fake_urlopen(req: Any, timeout: int = 0) -> FakeResponse:
+        del timeout
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        return FakeResponse()
+
+    from RouterGym.engines import openai_compatible as openai_module
+
+    monkeypatch.setattr(openai_module.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("ROUTERGYM_OPENAI_MODEL_OVERRIDE", "google/gemma-4-e4b")
+    engine = OpenAICompatibleEngine(
+        "mistralai/Mistral-Small-24B-Instruct-2501",
+        model_key="llm1",
+        base_url="http://localhost:8000",
+        api_key="test-key",
+        max_retries=0,
+    )
+    assert engine.request_model_name == "llm1"
+    assert engine.generate("hello") == "ok"
+    assert captured["body"]["model"] == "google/gemma-4-e4b"
+
+
+def test_openai_compatible_response_format_json_is_opt_in(monkeypatch: Any) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode("utf-8")
+
+    def fake_urlopen(req: Any, timeout: int = 0) -> FakeResponse:
+        del timeout
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        return FakeResponse()
+
+    from RouterGym.engines import openai_compatible as openai_module
+
+    monkeypatch.setattr(openai_module.request, "urlopen", fake_urlopen)
+    monkeypatch.delenv("ROUTERGYM_OPENAI_RESPONSE_FORMAT_JSON", raising=False)
+    engine = OpenAICompatibleEngine("model", model_key="llm1", max_retries=0)
+    engine.generate("hello")
+    assert "response_format" not in captured["body"]
+
+    monkeypatch.setenv("ROUTERGYM_OPENAI_RESPONSE_FORMAT_JSON", "1")
+    engine.generate("hello")
+    assert captured["body"]["response_format"] == {"type": "json_object"}
 
 
 def test_openai_compatible_engine_records_missing_content_error(monkeypatch: Any) -> None:

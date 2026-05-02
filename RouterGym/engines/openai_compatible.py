@@ -11,6 +11,7 @@ from urllib import request
 
 DEFAULT_OPENAI_COMPATIBLE_BASE_URL = "http://localhost:8000/v1"
 OPENAI_MODEL_OVERRIDE_ENV_VAR = "ROUTERGYM_OPENAI_MODEL_OVERRIDE"
+OPENAI_RESPONSE_FORMAT_JSON_ENV_VAR = "ROUTERGYM_OPENAI_RESPONSE_FORMAT_JSON"
 _LOGGED_MODEL_OVERRIDES: set[str] = set()
 
 
@@ -33,6 +34,17 @@ def get_openai_compatible_model_override() -> str | None:
 
     value = os.getenv(OPENAI_MODEL_OVERRIDE_ENV_VAR, "").strip()
     return value or None
+
+
+def openai_compatible_response_format_json_enabled() -> bool:
+    """Return whether to request JSON object responses from compatible backends."""
+
+    return os.getenv(OPENAI_RESPONSE_FORMAT_JSON_ENV_VAR, "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _log_openai_compatible_model_override(model_name: str) -> None:
@@ -187,6 +199,8 @@ class OpenAICompatibleEngine:
             "max_tokens": max_new_tokens,
             "temperature": temperature,
         }
+        if openai_compatible_response_format_json_enabled():
+            payload["response_format"] = {"type": "json_object"}
         body = json.dumps(payload).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
@@ -239,7 +253,9 @@ class OpenAICompatibleEngine:
 __all__ = [
     "DEFAULT_OPENAI_COMPATIBLE_BASE_URL",
     "OPENAI_MODEL_OVERRIDE_ENV_VAR",
+    "OPENAI_RESPONSE_FORMAT_JSON_ENV_VAR",
     "OpenAICompatibleEngine",
     "get_openai_compatible_model_override",
     "normalize_openai_compatible_base_url",
+    "openai_compatible_response_format_json_enabled",
 ]
