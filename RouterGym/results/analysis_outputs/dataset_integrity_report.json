@@ -1,0 +1,122 @@
+{
+  "dataset_path": "C:\\Users\\kparo\\AI projects\\RouterGym\\RouterGym\\results\\analysis_input\\RouterGym\\results\\final_47k_6config_export\\balanced_10k\\balanced_10k_all_configs.jsonl",
+  "dataset_size_bytes": 603165771,
+  "total_rows": 60000,
+  "analysis_config_count": 6,
+  "analysis_config_counts": {
+    "llm_only__base_llm1__mem_rag_bm25": 10000,
+    "llm_only__base_llm2__mem_rag_bm25": 10000,
+    "slm_dominant__base_slm1__esc_llm2__mem_rag_bm25": 10000,
+    "slm_dominant__base_slm2__esc_llm2__mem_rag_bm25": 10000,
+    "slm_only__base_slm1__mem_rag_bm25": 10000,
+    "slm_only__base_slm2__mem_rag_bm25": 10000
+  },
+  "checks": {
+    "total_rows_is_60000": true,
+    "exactly_6_analysis_configs": true,
+    "10000_rows_per_config": true,
+    "all_configs_have_ticket_0_to_9999_once": true,
+    "gold_label_available_all_rows": true,
+    "predicted_category_available_all_rows": true
+  },
+  "required_column_availability": {
+    "gold_label": {
+      "column_present_rows": 60000,
+      "available_rows": 60000,
+      "missing_or_empty_rows": 0,
+      "availability_rate": 1.0
+    },
+    "predicted_category": {
+      "column_present_rows": 60000,
+      "available_rows": 60000,
+      "missing_or_empty_rows": 0,
+      "availability_rate": 1.0
+    },
+    "success": {
+      "column_present_rows": 60000,
+      "available_rows": 60000,
+      "missing_or_empty_rows": 0,
+      "availability_rate": 1.0
+    },
+    "generation_valid": {
+      "column_present_rows": 60000,
+      "available_rows": 60000,
+      "missing_or_empty_rows": 0,
+      "availability_rate": 1.0
+    },
+    "raw_response_saved": {
+      "column_present_rows": 60000,
+      "available_rows": 60000,
+      "missing_or_empty_rows": 0,
+      "availability_rate": 1.0
+    }
+  },
+  "config_integrity": {
+    "llm_only__base_llm1__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    },
+    "llm_only__base_llm2__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    },
+    "slm_dominant__base_slm1__esc_llm2__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    },
+    "slm_dominant__base_slm2__esc_llm2__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    },
+    "slm_only__base_slm1__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    },
+    "slm_only__base_slm2__mem_rag_bm25": {
+      "rows": 10000,
+      "min_ticket_id": 0,
+      "max_ticket_id": 9999,
+      "unique_ticket_ids": 10000,
+      "duplicate_ticket_id_count": 0,
+      "duplicate_ticket_ids_sample": [],
+      "missing_ticket_id_count": 0,
+      "missing_ticket_ids_sample": [],
+      "expected_0_to_9999_coverage": true
+    }
+  }
+}

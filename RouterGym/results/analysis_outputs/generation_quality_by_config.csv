@@ -1,0 +1,7 @@
+analysis_config,rows,success_rate,generation_valid_rate,analysis_usable_rate,parse_error_rate,validation_error_rate,empty_resolution_steps_rate,llm_unavailable_rate,avg_resolution_steps,avg_final_answer_length
+llm_only__base_llm1__mem_rag_bm25,10000,0.9993,0.9993,0.9992,0.0001,0.0007,0.0007,0.0,4.484,259.1989
+llm_only__base_llm2__mem_rag_bm25,10000,0.9996,0.9996,0.9982,0.0014,0.0004,0.0004,0.0,4.668,201.1246
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,10000,1.0,1.0,0.9281,0.0719,0.0,0.0,0.0003,4.4081,240.1757
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,10000,1.0,1.0,0.9991,0.0009,0.0,0.0,0.0,3.7803,131.4728
+slm_only__base_slm1__mem_rag_bm25,10000,0.9997,0.9997,0.9214,0.0783,0.0003,0.0003,0.0003,4.3722,249.5222
+slm_only__base_slm2__mem_rag_bm25,10000,0.9956,0.9956,0.9953,0.0046,0.0044,0.0043,0.0,3.5934,116.8838

@@ -1,0 +1,49 @@
+analysis_config,gold_label,rows,escalation_rate
+llm_only__base_llm1__mem_rag_bm25,Access,1731,0.0
+llm_only__base_llm1__mem_rag_bm25,Administrative rights,310,0.0
+llm_only__base_llm1__mem_rag_bm25,HR Support,2300,0.0
+llm_only__base_llm1__mem_rag_bm25,Hardware,2112,0.0
+llm_only__base_llm1__mem_rag_bm25,Internal Project,539,0.0
+llm_only__base_llm1__mem_rag_bm25,Miscellaneous,1568,0.0
+llm_only__base_llm1__mem_rag_bm25,Purchase,706,0.0
+llm_only__base_llm1__mem_rag_bm25,Storage,734,0.0
+llm_only__base_llm2__mem_rag_bm25,Access,1731,0.0
+llm_only__base_llm2__mem_rag_bm25,Administrative rights,310,0.0
+llm_only__base_llm2__mem_rag_bm25,HR Support,2300,0.0
+llm_only__base_llm2__mem_rag_bm25,Hardware,2112,0.0
+llm_only__base_llm2__mem_rag_bm25,Internal Project,539,0.0
+llm_only__base_llm2__mem_rag_bm25,Miscellaneous,1568,0.0
+llm_only__base_llm2__mem_rag_bm25,Purchase,706,0.0
+llm_only__base_llm2__mem_rag_bm25,Storage,734,0.0
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Access,1731,0.10514153668399769
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Administrative rights,310,0.1967741935483871
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,HR Support,2300,0.12391304347826088
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Hardware,2112,0.16808712121212122
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Internal Project,539,0.13172541743970315
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Miscellaneous,1568,0.08545918367346939
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Purchase,706,0.026912181303116147
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,Storage,734,0.02997275204359673
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Access,1731,0.1779318313113807
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Administrative rights,310,0.24193548387096775
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,HR Support,2300,0.14869565217391303
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Hardware,2112,0.20359848484848486
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Internal Project,539,0.14656771799628943
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Miscellaneous,1568,0.11989795918367346
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Purchase,706,0.059490084985835696
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,Storage,734,0.09128065395095368
+slm_only__base_slm1__mem_rag_bm25,Access,1731,0.0
+slm_only__base_slm1__mem_rag_bm25,Administrative rights,310,0.0
+slm_only__base_slm1__mem_rag_bm25,HR Support,2300,0.0
+slm_only__base_slm1__mem_rag_bm25,Hardware,2112,0.0
+slm_only__base_slm1__mem_rag_bm25,Internal Project,539,0.0
+slm_only__base_slm1__mem_rag_bm25,Miscellaneous,1568,0.0
+slm_only__base_slm1__mem_rag_bm25,Purchase,706,0.0
+slm_only__base_slm1__mem_rag_bm25,Storage,734,0.0
+slm_only__base_slm2__mem_rag_bm25,Access,1731,0.0
+slm_only__base_slm2__mem_rag_bm25,Administrative rights,310,0.0
+slm_only__base_slm2__mem_rag_bm25,HR Support,2300,0.0
+slm_only__base_slm2__mem_rag_bm25,Hardware,2112,0.0
+slm_only__base_slm2__mem_rag_bm25,Internal Project,539,0.0
+slm_only__base_slm2__mem_rag_bm25,Miscellaneous,1568,0.0
+slm_only__base_slm2__mem_rag_bm25,Purchase,706,0.0
+slm_only__base_slm2__mem_rag_bm25,Storage,734,0.0

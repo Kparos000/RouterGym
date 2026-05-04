@@ -1,0 +1,7 @@
+analysis_config,rows,missing_predicted_category_rate,parse_error_rate,validation_error_rate,analysis_usable_rate
+llm_only__base_llm1__mem_rag_bm25,10000,0.0,0.0001,0.0007,0.9992
+llm_only__base_llm2__mem_rag_bm25,10000,0.0,0.0014,0.0004,0.9982
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,10000,0.0,0.0719,0.0,0.9281
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,10000,0.0,0.0009,0.0,0.9991
+slm_only__base_slm1__mem_rag_bm25,10000,0.0,0.0783,0.0003,0.9214
+slm_only__base_slm2__mem_rag_bm25,10000,0.0,0.0046,0.0044,0.9953

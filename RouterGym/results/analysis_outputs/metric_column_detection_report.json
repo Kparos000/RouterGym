@@ -1,0 +1,90 @@
+{
+  "gold labels": [
+    "classifier_label",
+    "gold_label",
+    "topic_group"
+  ],
+  "predicted categories": [
+    "classifier_predicted_category",
+    "generated_predicted_category",
+    "predicted_category",
+    "prediction_source"
+  ],
+  "classifier_predicted_category": [
+    "classifier_predicted_category"
+  ],
+  "generated_predicted_category": [
+    "generated_predicted_category"
+  ],
+  "prediction_source": [
+    "prediction_source"
+  ],
+  "success": [
+    "success"
+  ],
+  "generation_valid": [
+    "generation_valid"
+  ],
+  "raw_response_saved": [
+    "raw_response_saved"
+  ],
+  "parse_error": [
+    "parse_error"
+  ],
+  "validation_error": [
+    "validation_error"
+  ],
+  "final_answer": [
+    "final_answer",
+    "has_real_final_answer"
+  ],
+  "reasoning": [
+    "reasoning"
+  ],
+  "resolution_steps": [
+    "has_resolution_steps",
+    "resolution_steps"
+  ],
+  "escalation flags": [
+    "escalated",
+    "escalation_flags",
+    "escalation_model_name",
+    "escalation_reasons",
+    "raw_model_response_text_escalation"
+  ],
+  "router decisions": [
+    "router_confidence_score",
+    "router_decision_reason",
+    "router_mode",
+    "routing_policy_version"
+  ],
+  "token fields": [
+    "max_output_tokens",
+    "token_count_method_summary",
+    "total_input_tokens",
+    "total_output_tokens",
+    "total_tokens"
+  ],
+  "cost fields": [
+    "llm_cost_usd",
+    "slm_cost_usd",
+    "total_cost_usd"
+  ],
+  "latency fields": [],
+  "model telemetry fields": [
+    "model_call_telemetry"
+  ],
+  "memory/context fields": [
+    "context_mode",
+    "kb_categories",
+    "kb_policy_ids",
+    "memory_mode",
+    "retrieval_score"
+  ],
+  "raw model response fields": [
+    "raw_model_response_text",
+    "raw_model_response_text_base",
+    "raw_model_response_text_escalation",
+    "raw_response_saved"
+  ]
+}

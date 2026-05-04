@@ -1,0 +1,5 @@
+finding,value
+row_count_passed,True
+lowest_average_cost_config,slm_only__base_slm1__mem_rag_bm25
+highest_classification_accuracy_config,llm_only__base_llm1__mem_rag_bm25
+memory_mode_scope,rag_bm25

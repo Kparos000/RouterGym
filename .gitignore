@@ -79,8 +79,16 @@ RouterGym/results/production_runs/
 test_logs_runpod_final_47k/
 
 # Large final benchmark bundles/log exports
+*.tar
 *.tar.gz
 *.tar.gz.sha256
+
+# Large local dissertation benchmark artifacts
+RouterGym/results/archives/
+RouterGym/results/analysis_input/
+RouterGym/results/final_47k_6config/
+RouterGym/results/final_47k_6config_remainder_slm_dominant_slm1/
+RouterGym/results/analysis_outputs/balanced_60k_all_configs_flat.csv
 
 # Temporary local analysis outputs
 .tmp_local_logs/

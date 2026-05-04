@@ -1,0 +1,7 @@
+analysis_config,rows,escalation_rate,escalated_quality,non_escalated_quality
+llm_only__base_llm1__mem_rag_bm25,10000,0.0,,0.9663
+llm_only__base_llm2__mem_rag_bm25,10000,0.0,,0.9663
+slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,10000,0.1129,0.9663418954827281,0.966294668019389
+slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,10000,0.1531,0.9666884389288047,0.9662297791947101
+slm_only__base_slm1__mem_rag_bm25,10000,0.0,,0.9663
+slm_only__base_slm2__mem_rag_bm25,10000,0.0,,0.9663
