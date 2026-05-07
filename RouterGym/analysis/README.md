@@ -32,7 +32,15 @@ Run from the repository root:
 python RouterGym/analysis/audit_balanced_60k_schema.py
 python RouterGym/analysis/analyze_balanced_60k.py
 python RouterGym/analysis/plot_balanced_60k.py
+python RouterGym/analysis/build_gold_resolution_eval_subset.py
+python RouterGym/analysis/score_gold_resolution_outputs.py
+python RouterGym/analysis/plot_gold_resolution_quality.py
+python RouterGym/analysis/create_manual_audit_sample.py
+python RouterGym/analysis/create_manual_audit_sample.py --all-gold-matched
 ```
+
+Do not run `python RouterGym/analysis/aggregate_manual_audit.py` until the manual audit CSV has
+been filled by reviewers.
 
 ## Outputs
 
@@ -54,9 +62,28 @@ Key outputs include:
 - `latency_summary_by_config.csv`
 - `routing_escalation_summary.csv` when escalation fields are available
 - `plots/` containing dissertation-ready PNG figures
+- `gold_resolution_eval/` containing deterministic generated-resolution quality scoring
+- `manual_audit/` containing blinded human-audit CSVs, the reviewer Excel workbook, keys, and rubric
 
 `balanced_60k_all_configs_flat.csv` is generated for local inspection but is ignored by git because
 it is a large derived extract. Prefer committing compact summaries and plots.
+
+## Metric Interpretation
+
+The workflow separates four kinds of evidence:
+
+- Classifier-derived category accuracy: `predicted_category` / `classifier_predicted_category`
+  compared with `gold_label`. This evaluates the calibrated classifier, not generated answer
+  correctness.
+- Generated-category accuracy: `generated_predicted_category` compared with the gold category when
+  the model emitted a category.
+- Deterministic gold-resolution quality: generated `resolution_steps`, `final_answer`,
+  `escalation_flags`, and `kb_policy_ids` scored against `gold_eval_final.jsonl`.
+- Manual audit quality: blinded human review of generated answers using a 0-2 component rubric and
+  0-10 overall score.
+
+Generated-resolution correctness should be discussed through the gold-resolution scorer and manual
+audit, not through classifier-derived category accuracy.
 
 ## Recommended Dissertation Tables
 
@@ -64,6 +91,8 @@ it is a large derived extract. Prefer committing compact summaries and plots.
 - Classification metrics by configuration
 - Classification accuracy by ticket category
 - Generation quality and reliability by configuration
+- Gold-resolution quality by configuration
+- Manual-audit quality by configuration after review completion
 - Token and cost summary by configuration
 - Projected 47k cost by configuration
 - Cost savings versus LLM-only baseline
@@ -81,6 +110,23 @@ it is a large derived extract. Prefer committing compact summaries and plots.
 - Latency by configuration
 - Escalation rate by configuration
 - Router-family quality and cost comparisons
+- Gold resolution quality versus cost
+- Gold resolution quality versus latency
+- Manual quality versus cost and latency after review completion
 
 Memory-mode plots should only be generated when multiple memory modes are present in the input
 dataset. For the current balanced production-scale result, BM25 RAG is the only memory mode.
+
+## Manual Audit Workbook
+
+The full gold-matched manual audit workbook is:
+
+`RouterGym/results/analysis_outputs/manual_audit/manual_audit_full_blinded.xlsx`
+
+It is the primary reviewer artifact. The `Review` sheet is blinded and contains only anonymous
+system labels such as `System A` through `System F`; real configuration names are kept only in
+`manual_audit_full_key.csv`. Reviewers should not open the key until scoring is complete.
+
+The workbook provides dropdowns for the six 0-2 component score columns, the 0-10
+`overall_manual_quality` column, and `reviewer_id`. The CSV version is preserved for compatibility,
+but reviewers should use the Excel workbook when possible.

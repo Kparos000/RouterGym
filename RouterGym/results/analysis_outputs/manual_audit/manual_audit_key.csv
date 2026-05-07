@@ -1,0 +1,181 @@
+audit_id,anonymous_system_id,analysis_config,router_family,base_model,escalation_model,memory_mode,ticket_id,gold_label,parse_error_present,validation_error_present,generation_valid,escalated,total_cost_usd,latency_ms
+AUDIT-0001,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,5435,Internal Project,False,False,True,False,0.00639,4175.054003950208
+AUDIT-0002,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,2530,Hardware,False,False,True,False,0.0007161,1018.7873700633645
+AUDIT-0003,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,5797,HR Support,False,False,True,False,0.0038520000000000004,2640.288391849026
+AUDIT-0004,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3487,Purchase,False,False,True,False,0.0006545,2963.242497993633
+AUDIT-0005,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,6826,Administrative rights,False,False,True,False,0.000658,1420.5578879918903
+AUDIT-0006,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,5071,Access,False,False,True,True,0.004419800000000001,3012.0292210485786
+AUDIT-0007,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6195,Storage,False,False,True,False,0.00642,4409.095289884135
+AUDIT-0008,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,3155,Access,False,False,True,False,0.0030960000000000002,3990.9907181281596
+AUDIT-0009,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,3487,Purchase,True,False,True,False,0.0006165,3714.843710884452
+AUDIT-0010,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,3889,HR Support,False,False,True,False,0.000626,1814.625471131876
+AUDIT-0011,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,8923,Purchase,False,False,True,False,0.0005995,1525.4613610450178
+AUDIT-0012,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2530,Hardware,False,False,True,False,0.003261,4916.895902017131
+AUDIT-0013,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,5030,HR Support,False,False,True,False,0.0066,4087.6724689733237
+AUDIT-0014,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4005,Purchase,False,False,True,False,0.00279,2242.243051994592
+AUDIT-0015,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,7503,Hardware,False,False,True,False,0.0007049,1234.3599828891456
+AUDIT-0016,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,7239,Hardware,False,False,True,False,0.000637,2025.7291018497199
+AUDIT-0017,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,5207,HR Support,False,False,True,False,0.006246,3763.397998875007
+AUDIT-0018,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,3380,Storage,False,False,True,False,0.0006706,1308.4831819869578
+AUDIT-0019,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,3380,Storage,False,False,True,False,0.000587,3283.127199858427
+AUDIT-0020,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,6184,Administrative rights,False,False,True,False,0.0006363,929.8381230328232
+AUDIT-0021,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,3889,HR Support,False,False,True,False,0.002865,1903.8196578621864
+AUDIT-0022,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,8005,Hardware,False,False,True,False,0.0006985000000000001,1974.0103781223297
+AUDIT-0023,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,789,Internal Project,False,False,True,False,0.0006295,3604.170792037621
+AUDIT-0024,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,5887,HR Support,False,False,True,False,0.000727,2664.180252002552
+AUDIT-0025,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,9596,Miscellaneous,False,False,True,False,0.0006335000000000001,1577.8752430342138
+AUDIT-0026,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,7528,HR Support,False,False,True,False,0.0006230000000000001,1767.8711789194494
+AUDIT-0027,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4977,Internal Project,False,False,True,False,0.0030930000000000003,2502.8610911685973
+AUDIT-0028,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,2740,Miscellaneous,True,False,True,False,0.0007179999999999999,3741.937789134681
+AUDIT-0029,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,6459,Access,False,False,True,False,0.0028020000000000002,2036.9497269857675
+AUDIT-0030,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,7278,Hardware,False,False,True,False,0.0006363,1356.5259668976068
+AUDIT-0031,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6138,Administrative rights,False,False,True,False,0.006216000000000001,4332.137960009277
+AUDIT-0032,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,3765,Administrative rights,False,False,True,False,0.007116000000000001,4943.059754092246
+AUDIT-0033,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,3611,Hardware,True,False,True,False,0.0006915000000000001,1837.6540399622172
+AUDIT-0034,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,2740,Miscellaneous,False,False,True,True,0.0041919999999999995,4041.749371215701
+AUDIT-0035,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,4556,Internal Project,False,False,True,False,0.0072180000000000005,4216.930333059281
+AUDIT-0036,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,4390,Administrative rights,False,False,True,False,0.000604,1396.6016538906842
+AUDIT-0037,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,2703,Hardware,False,False,True,False,0.006762000000000001,4442.445890977979
+AUDIT-0038,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2848,Purchase,False,False,True,False,0.0029490000000000002,4244.137366069481
+AUDIT-0039,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,731,Miscellaneous,False,False,True,False,0.0006853,1042.2902090940624
+AUDIT-0040,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,2250,Access,False,False,True,False,0.0006881,2914.8160179611295
+AUDIT-0041,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4181,Access,False,False,True,False,0.0028290000000000004,2056.5666831098497
+AUDIT-0042,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,538,Storage,False,False,True,False,0.0029100000000000003,4154.229162959382
+AUDIT-0043,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,5071,Access,False,False,True,False,0.0007465,1864.841977832839
+AUDIT-0044,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,5207,HR Support,True,False,True,False,0.0006274999999999999,1791.1889690440148
+AUDIT-0045,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6459,Access,False,False,True,False,0.006240000000000001,4609.661411028355
+AUDIT-0046,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,5912,Purchase,False,False,True,False,0.002865,2208.90343002975
+AUDIT-0047,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4390,Administrative rights,False,False,True,False,0.003009,2185.029450105503
+AUDIT-0048,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,6543,Access,False,False,True,False,0.0006145,2275.161091936752
+AUDIT-0049,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,9149,Internal Project,False,False,True,False,0.0006315,1586.2283408641815
+AUDIT-0050,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,5181,Miscellaneous,False,False,True,False,0.0006815,2308.7190319783986
+AUDIT-0051,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,5435,Internal Project,False,False,True,False,0.000659,2059.259884059429
+AUDIT-0052,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,194,Storage,False,False,True,False,0.002805,4187.621243065223
+AUDIT-0053,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2250,Access,False,False,True,False,0.003078,4155.670297099277
+AUDIT-0054,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,6184,Administrative rights,False,False,True,False,0.0006090000000000001,1758.5353078320622
+AUDIT-0055,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5030,HR Support,False,False,True,False,0.0007133,1204.475442878902
+AUDIT-0056,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,3611,Hardware,False,False,True,False,0.0032310000000000004,2200.634394073859
+AUDIT-0057,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,7196,Access,False,False,True,False,0.0006601,1149.1824521217495
+AUDIT-0058,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,9885,Storage,False,False,True,False,0.0006258,1020.0729889329523
+AUDIT-0059,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,4073,Miscellaneous,True,False,True,False,0.0007605,2607.680876040831
+AUDIT-0060,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4556,Internal Project,False,False,True,False,0.0033480000000000003,2136.664482066408
+AUDIT-0061,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,9542,Purchase,False,False,True,False,0.0006832,1246.0719009395689
+AUDIT-0062,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,8674,Miscellaneous,True,False,True,False,0.0006410000000000001,1917.1306190546602
+AUDIT-0063,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,5797,HR Support,False,False,True,True,0.0047347000000000005,3191.6748909279704
+AUDIT-0064,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,525,Hardware,False,False,True,True,0.004337000000000001,3624.816677067429
+AUDIT-0065,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,6543,Access,False,False,True,False,0.002727,2136.7859279271215
+AUDIT-0066,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,525,Hardware,False,False,True,True,0.0044552,3114.6965250372887
+AUDIT-0067,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,6826,Administrative rights,False,False,True,False,0.002895,2088.068762095645
+AUDIT-0068,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,2250,Access,False,False,True,False,0.006624,4418.86119893752
+AUDIT-0069,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4954,Miscellaneous,False,False,True,False,0.003255,2457.211760105565
+AUDIT-0070,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5071,Access,False,False,True,False,0.0008078,1062.9736110568047
+AUDIT-0071,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,17,Purchase,False,False,True,False,0.0007553000000000001,1259.76955704391
+AUDIT-0072,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,2064,HR Support,False,False,True,False,0.000636,3441.767774987966
+AUDIT-0073,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,3611,Hardware,True,False,True,False,0.0006915000000000001,3924.9418938998133
+AUDIT-0074,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,5887,HR Support,False,False,True,False,0.0007007,1046.1531050968915
+AUDIT-0075,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,9596,Miscellaneous,False,False,True,False,0.0007126,1299.4891910348088
+AUDIT-0076,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,3154,Miscellaneous,False,False,True,False,0.0006385,2164.059642003849
+AUDIT-0077,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6184,Administrative rights,False,False,True,False,0.006366,4429.929754929617
+AUDIT-0078,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,7478,Access,False,False,True,False,0.000644,1346.4863400440663
+AUDIT-0079,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,6847,Hardware,False,False,True,True,0.0038425,3810.971030034125
+AUDIT-0080,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,6459,Access,False,False,True,False,0.0005855,1631.302755093202
+AUDIT-0081,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,5630,Storage,False,False,True,False,0.006036,3743.09997796081
+AUDIT-0082,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2064,HR Support,False,False,True,False,0.0031079999999999997,4658.258654875681
+AUDIT-0083,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,2620,Internal Project,False,False,True,False,0.006696,5350.111304083839
+AUDIT-0084,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,7137,Miscellaneous,False,False,True,False,0.0006713,1101.8055819440633
+AUDIT-0085,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,4977,Internal Project,False,False,True,False,0.0064800000000000005,4193.250685930252
+AUDIT-0086,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,194,Storage,False,False,True,False,0.006276,6718.239794950932
+AUDIT-0087,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,194,Storage,False,False,True,False,0.000582,3448.292088927701
+AUDIT-0088,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,8674,Miscellaneous,True,False,True,False,0.0006410000000000001,1868.6567840632051
+AUDIT-0089,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,9976,Access,False,False,True,False,0.002367,1911.9215810205787
+AUDIT-0090,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,17,Purchase,False,False,True,False,0.0077339999999999996,8277.231425978243
+AUDIT-0091,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,7278,Hardware,False,False,True,False,0.0006363,1126.7471800092608
+AUDIT-0092,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,6138,Administrative rights,False,False,True,False,0.0006055,1678.4685940947384
+AUDIT-0093,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,3036,HR Support,False,False,True,True,0.0041303,3072.349629132077
+AUDIT-0094,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,2088,Internal Project,False,False,True,False,0.006828000000000001,6307.262177113444
+AUDIT-0095,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2144,Hardware,False,False,True,False,0.0030299999999999997,4001.821558922529
+AUDIT-0096,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,8705,Hardware,False,False,True,True,0.0036090000000000002,3000.7599249947816
+AUDIT-0097,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,8705,Hardware,False,False,True,False,0.003003,2103.142559994012
+AUDIT-0098,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,3487,Purchase,False,False,True,False,0.0006545,1164.909872924909
+AUDIT-0099,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,6184,Administrative rights,False,False,True,True,0.0035313000000000002,2780.017114011571
+AUDIT-0100,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,7167,Purchase,False,False,True,False,0.006678,5101.740098092705
+AUDIT-0101,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,4556,Internal Project,False,False,True,True,0.004047,4349.084016866982
+AUDIT-0102,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,9394,Purchase,False,False,True,False,0.0006608,1252.1552629768848
+AUDIT-0103,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,6195,Storage,False,False,True,False,0.000658,1057.7541999518871
+AUDIT-0104,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,7971,Hardware,False,False,True,False,0.0007147,1064.7298921830952
+AUDIT-0105,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,4977,Internal Project,False,False,True,False,0.0006733999999999999,1056.6009709145874
+AUDIT-0106,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,7196,Access,False,False,True,False,0.0006601,1205.1493721082807
+AUDIT-0107,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,6826,Administrative rights,False,False,True,False,0.0005939999999999999,1449.055585078895
+AUDIT-0108,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,3380,Storage,False,False,True,False,0.0028620000000000004,4276.953898835927
+AUDIT-0109,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,6057,Administrative rights,False,False,True,False,0.0006748,1121.9363899435848
+AUDIT-0110,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5630,Storage,False,False,True,False,0.0006439999999999999,1051.4237829484046
+AUDIT-0111,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3155,Access,False,False,True,False,0.0006992999999999999,3085.1223058998585
+AUDIT-0112,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,3380,Storage,False,False,True,False,0.000587,1462.449864950031
+AUDIT-0113,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3154,Miscellaneous,False,False,True,False,0.0006475000000000001,2900.215543806553
+AUDIT-0114,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5191,Internal Project,False,False,True,False,0.0007336,1466.3508718367666
+AUDIT-0115,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,2288,Hardware,False,False,True,True,0.0041513999999999995,3418.0355488788337
+AUDIT-0116,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,6138,Administrative rights,False,False,True,False,0.0006055,1672.6293968968093
+AUDIT-0117,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,7137,Miscellaneous,False,False,True,False,0.0006585,2064.7919229231775
+AUDIT-0118,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,5630,Storage,False,False,True,False,0.002844,2077.662986004725
+AUDIT-0119,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,9394,Purchase,False,False,True,False,0.000629,1915.178993018344
+AUDIT-0120,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,7167,Purchase,False,False,True,False,0.0006525,2065.1233980897814
+AUDIT-0121,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,9976,Access,False,False,True,False,0.0005035,1569.6990140713751
+AUDIT-0122,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,2088,Internal Project,False,False,True,False,0.0031769999999999997,4189.106298843399
+AUDIT-0123,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3036,HR Support,False,False,True,False,0.0007763,3133.887422969565
+AUDIT-0124,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,6138,Administrative rights,False,False,True,False,0.0006636,1250.159105984494
+AUDIT-0125,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,5181,Miscellaneous,False,False,True,False,0.006564,4188.76043590717
+AUDIT-0126,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,4390,Administrative rights,False,False,True,False,0.0006916,3235.1287531200796
+AUDIT-0127,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,8558,Miscellaneous,False,False,True,False,0.000641,2267.6879160571843
+AUDIT-0128,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,8607,Storage,False,False,True,False,0.006582,4672.735888976604
+AUDIT-0129,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,4407,Purchase,False,False,True,False,0.000647,2203.7386291194707
+AUDIT-0130,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,7971,Hardware,False,False,True,False,0.0007147,1075.6335069891065
+AUDIT-0131,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,6195,Storage,True,False,True,False,0.000693,2496.062124148011
+AUDIT-0132,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5435,Internal Project,False,False,True,False,0.0006734,1096.893364097923
+AUDIT-0133,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3380,Storage,False,False,True,False,0.0006706,3910.134038189426
+AUDIT-0134,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,7971,Hardware,False,False,True,False,0.006828000000000001,4179.919617017731
+AUDIT-0135,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,4390,Administrative rights,False,False,True,False,0.000604,1406.7382339853793
+AUDIT-0136,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6847,Hardware,False,False,True,False,0.006840000000000001,4297.850049100816
+AUDIT-0137,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,2064,HR Support,False,False,True,False,0.000636,1805.5508669931442
+AUDIT-0138,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,6721,Access,False,False,True,False,0.0069359999999999995,5499.435914913192
+AUDIT-0139,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,8005,Hardware,False,False,True,False,0.0006985000000000001,1984.0127329807729
+AUDIT-0140,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,9149,Internal Project,False,False,True,False,0.0006804000000000001,1274.1037621162832
+AUDIT-0141,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,820,Purchase,False,False,True,False,0.0006587,1208.7146639823914
+AUDIT-0142,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,5912,Purchase,False,False,True,False,0.0006230000000000001,1996.0412390064448
+AUDIT-0143,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,6195,Storage,False,False,True,False,0.000658,1084.3682130798697
+AUDIT-0144,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,4556,Internal Project,False,False,True,True,0.0041117,2752.8105420060456
+AUDIT-0145,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,4073,Miscellaneous,False,False,True,False,0.003333,2346.250575967133
+AUDIT-0146,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,7503,Hardware,False,False,True,False,0.0006435,1749.2365329526365
+AUDIT-0147,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,2620,Internal Project,False,False,True,False,0.0006255000000000001,3452.822469174862
+AUDIT-0148,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,9596,Miscellaneous,False,False,True,False,0.0007126,1276.0000561829656
+AUDIT-0149,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,5435,Internal Project,False,False,True,False,0.0006734,1392.2899370081723
+AUDIT-0150,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,3487,Purchase,True,False,True,False,0.0006165,1811.5920131094754
+AUDIT-0151,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,8705,Hardware,False,False,True,False,0.0006684999999999999,1011.4494347944856
+AUDIT-0152,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,3765,Administrative rights,False,False,True,False,0.0032040000000000003,2255.6333020329475
+AUDIT-0153,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,6721,Access,False,False,True,False,0.0006846,1066.550119081512
+AUDIT-0154,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,3155,Access,False,False,True,False,0.006798,4695.93219505623
+AUDIT-0155,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,4977,Internal Project,False,False,True,False,0.000649,1898.8825271371752
+AUDIT-0156,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,8674,Miscellaneous,False,False,True,False,0.006312,4183.515114942566
+AUDIT-0157,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,4556,Internal Project,False,False,True,False,0.0007637,3146.675496129319
+AUDIT-0158,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,9002,HR Support,False,False,True,False,0.0066300000000000005,4632.085305871442
+AUDIT-0159,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,7239,Hardware,False,False,True,False,0.0029370000000000004,2303.491445025429
+AUDIT-0160,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,5207,HR Support,True,False,True,False,0.0006274999999999999,1773.9377091638744
+AUDIT-0161,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,4954,Miscellaneous,True,False,True,False,0.000673,1810.9822508413345
+AUDIT-0162,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5797,HR Support,False,False,True,False,0.0008826999999999999,1245.7937160506845
+AUDIT-0163,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,194,Storage,False,False,True,False,0.000582,1655.1861111074686
+AUDIT-0164,System B,llm_only__base_llm2__mem_rag_bm25,llm_only,llm2,,rag_bm25,7137,Miscellaneous,False,False,True,False,0.0030629999999999998,2486.0183699056506
+AUDIT-0165,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,9976,Access,False,False,True,False,0.0005035,1570.5213600303978
+AUDIT-0166,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,8607,Storage,False,False,True,False,0.0006986,1330.700728110969
+AUDIT-0167,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,4073,Miscellaneous,False,False,True,False,0.006996,3998.7339118961245
+AUDIT-0168,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,7278,Hardware,False,False,True,False,0.0006145,2089.626922039315
+AUDIT-0169,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,5887,HR Support,False,False,True,False,0.000727,2703.0728310346603
+AUDIT-0170,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,9002,HR Support,False,False,True,False,0.0006866999999999999,1162.006544182077
+AUDIT-0171,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,9542,Purchase,False,False,True,False,0.0006832,1242.0273581519723
+AUDIT-0172,System A,slm_only__base_slm1__mem_rag_bm25,slm_only,slm1,,rag_bm25,5181,Miscellaneous,False,False,True,False,0.0006815,2215.189039008692
+AUDIT-0173,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,9885,Storage,False,False,True,False,0.0006258,1092.3822149634361
+AUDIT-0174,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,5887,HR Support,False,False,True,False,0.0007007,1055.612845113501
+AUDIT-0175,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,2064,HR Support,False,False,True,False,0.006618,6475.114917149767
+AUDIT-0176,System F,slm_only__base_slm2__mem_rag_bm25,slm_only,slm2,,rag_bm25,3889,HR Support,False,False,True,False,0.0006496,2824.1742150858045
+AUDIT-0177,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,8923,Purchase,False,False,True,False,0.00609,3781.0902080964297
+AUDIT-0178,System C,slm_dominant__base_slm1__esc_llm2__mem_rag_bm25,slm_dominant,slm1,llm2,rag_bm25,2250,Access,False,False,True,False,0.0006425,1786.1442412249744
+AUDIT-0179,System E,slm_dominant__base_slm2__esc_llm2__mem_rag_bm25,slm_dominant,slm2,llm2,rag_bm25,2740,Miscellaneous,False,False,True,True,0.0042285,3067.6107110921293
+AUDIT-0180,System D,llm_only__base_llm1__mem_rag_bm25,llm_only,llm1,,rag_bm25,4390,Administrative rights,False,False,True,False,0.006425999999999999,4191.711476072669
