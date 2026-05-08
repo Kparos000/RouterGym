@@ -231,6 +231,35 @@ def save_quality_escalated(escalation: pd.DataFrame | None) -> bool:
     return True
 
 
+def save_parse_validation_stacked(generation: pd.DataFrame | None) -> bool:
+    if generation is None:
+        return False
+    needed = {"analysis_config", "parse_error_rate", "validation_error_rate"}
+    if not needed.issubset(generation.columns):
+        print("Skipping parse_validation_failure_rate_by_config.png: required columns unavailable")
+        return False
+    plot_df = generation[["analysis_config", "parse_error_rate", "validation_error_rate"]].dropna()
+    if plot_df.empty:
+        print("Skipping parse_validation_failure_rate_by_config.png: no data")
+        return False
+    fig, ax = plt.subplots(figsize=(11, 6))
+    ax.bar(plot_df["analysis_config"], plot_df["parse_error_rate"], label="Parse error")
+    ax.bar(
+        plot_df["analysis_config"],
+        plot_df["validation_error_rate"],
+        bottom=plot_df["parse_error_rate"],
+        label="Validation error",
+    )
+    ax.set_title("Parse and Validation Failure Rate by Config")
+    ax.set_ylabel("Failure rate")
+    ax.tick_params(axis="x", rotation=35)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(PLOT_DIR / "parse_validation_failure_rate_by_config.png", dpi=200)
+    plt.close(fig)
+    return True
+
+
 def main() -> None:
     PLOT_DIR.mkdir(parents=True, exist_ok=True)
     generated: list[str] = []
@@ -501,6 +530,8 @@ def main() -> None:
         if save_bar(df, x_col, y_col, filename, title, ylabel):
             generated.append(filename)
 
+    if save_parse_validation_stacked(generation):
+        generated.append("parse_validation_failure_rate_by_config.png")
     if save_per_category_accuracy(category):
         generated.append("per_category_accuracy_by_config.png")
     generated.extend(save_confusion_matrices(confusion))

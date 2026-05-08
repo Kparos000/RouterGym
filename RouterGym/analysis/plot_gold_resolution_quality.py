@@ -106,6 +106,38 @@ def scatter_plot(
     save_all(fig, name)
 
 
+def generated_category_vs_gold_quality(df: pd.DataFrame) -> bool:
+    needed = {"generated_category_accuracy", "mean_overall_gold_quality_score", "label"}
+    if not needed.issubset(df.columns):
+        print("Skipping generated_category_accuracy_vs_gold_quality: required columns unavailable")
+        return False
+    plot_df = df[list(needed)].dropna()
+    if plot_df.empty:
+        print("Skipping generated_category_accuracy_vs_gold_quality: no data")
+        return False
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for idx, (_, row) in enumerate(plot_df.iterrows()):
+        ax.scatter(
+            row["generated_category_accuracy"],
+            row["mean_overall_gold_quality_score"],
+            color=PALETTE[idx % len(PALETTE)],
+            s=80,
+        )
+        ax.annotate(
+            str(row["label"]),
+            (row["generated_category_accuracy"], row["mean_overall_gold_quality_score"]),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=9,
+        )
+    ax.set_title("Generated Category Accuracy vs Gold Resolution Quality")
+    ax.set_xlabel("Generated category accuracy")
+    ax.set_ylabel("Mean gold quality score")
+    ax.grid(alpha=0.25)
+    save_all(fig, "generated_category_accuracy_vs_gold_quality")
+    return True
+
+
 def main() -> None:
     PLOT_DIR.mkdir(parents=True, exist_ok=True)
     df = read_quality()
@@ -165,6 +197,8 @@ def main() -> None:
             "Accuracy",
         )
         generated.append("generated_category_accuracy_by_config.png")
+        if generated_category_vs_gold_quality(df):
+            generated.append("generated_category_accuracy_vs_gold_quality.png")
 
     print(f"Generated {len(generated)} gold-resolution plots in {PLOT_DIR}")
     for item in generated:
