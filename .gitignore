@@ -8,6 +8,7 @@ project_structure.txt
 
 # Python / tool caches
 __pycache__/
+RouterGym.egg-info/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
@@ -89,6 +90,8 @@ RouterGym/results/analysis_input/
 RouterGym/results/final_47k_6config/
 RouterGym/results/final_47k_6config_remainder_slm_dominant_slm1/
 RouterGym/results/analysis_outputs/balanced_60k_all_configs_flat.csv
+RouterGym/results/analysis_outputs/balanced_*_all_configs*.jsonl
+RouterGym/results/analysis_outputs/*raw*.jsonl
 
 # Temporary local analysis outputs
 .tmp_local_logs/

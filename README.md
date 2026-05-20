@@ -315,6 +315,42 @@ pytest
 
 The project configuration is in `pyproject.toml`.
 
+## Streamlit Results Demo
+
+The repository includes a lightweight Streamlit explorer for presenting the dissertation results.
+It is static/results-based: it reads committed CSV summaries, plots, gold-evaluation outputs, and a
+small curated ticket sample. It does not run live model inference and does not require GPUs,
+Hugging Face tokens, OpenAI keys, vLLM, FAISS, sentence-transformers, or model downloads.
+
+Create or refresh the deployable ticket sample:
+
+```bash
+python RouterGym/analysis/build_streamlit_ticket_sample.py
+```
+
+Run locally:
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Streamlit Community Cloud deployment notes:
+
+- entrypoint: `streamlit_app.py`
+- branch: `main`
+- Python: `3.11` recommended
+- dependencies: root-level `requirements.txt`
+
+The generated sample is written to:
+
+```text
+RouterGym/results/analysis_outputs/streamlit_ticket_sample.csv
+```
+
+Keep this sample small enough for GitHub and Streamlit deployment. The full
+`balanced_60k_all_configs_flat.csv` remains local and ignored.
+
 ## Inference and Infrastructure Notes
 
 The repository includes scripts for large-scale and local inference engineering, including:
