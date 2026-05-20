@@ -99,7 +99,7 @@ st.set_page_config(
 )
 
 
-def inject_global_css() -> None:
+def inject_global_css_legacy() -> None:
     st.markdown(
         f"""
 <style>
@@ -769,6 +769,460 @@ def inject_global_css() -> None:
     )
 
 
+def is_dark_mode() -> bool:
+    return bool(st.session_state.get("dark_mode", False))
+
+
+def theme_values(dark_mode: bool | None = None) -> dict[str, str]:
+    dark = is_dark_mode() if dark_mode is None else dark_mode
+    if dark:
+        return {
+            "bg": "#08111f",
+            "bg_soft": "#111c2e",
+            "panel": "rgba(18, 29, 47, 0.78)",
+            "panel_strong": "rgba(24, 38, 59, 0.94)",
+            "text": "#f5f7fb",
+            "muted": "#aab7ca",
+            "border": "rgba(203, 213, 225, 0.18)",
+            "shadow": "0 24px 64px rgba(0, 0, 0, 0.34)",
+            "accent": EMLYON_RED,
+            "accent_soft": "rgba(213, 0, 31, 0.20)",
+            "danger": "#ff6b7f",
+            "success": "#4ed8b8",
+            "warning": "#f6c76b",
+            "nav_active": EMLYON_RED,
+            "nav_inactive": "#e8edf7",
+            "plot_bg": "rgba(18, 29, 47, 0.74)",
+            "llm": "#8fb3ff",
+            "slm": "#4ed8b8",
+            "slm_dom": "#ff667a",
+        }
+    return {
+        "bg": "#f9fbff",
+        "bg_soft": "#eef4fb",
+        "panel": "rgba(255, 255, 255, 0.72)",
+        "panel_strong": "rgba(255, 255, 255, 0.88)",
+        "text": DARK_NAVY,
+        "muted": MUTED,
+        "border": "rgba(36, 48, 65, 0.12)",
+        "shadow": "0 18px 48px rgba(23, 32, 51, 0.09)",
+        "accent": EMLYON_RED,
+        "accent_soft": "rgba(213, 0, 31, 0.08)",
+        "danger": EMLYON_RED,
+        "success": TEAL,
+        "warning": "#d18a18",
+        "nav_active": DARK_NAVY,
+        "nav_inactive": CHARCOAL,
+        "plot_bg": "rgba(255, 255, 255, 0.74)",
+        "llm": DARK_NAVY,
+        "slm": TEAL,
+        "slm_dom": EMLYON_RED,
+    }
+
+
+def inject_global_css(dark_mode: bool | None = None) -> None:
+    theme = theme_values(dark_mode)
+    st.markdown(
+        f"""
+<style>
+    :root {{
+        --bg: {theme["bg"]};
+        --bg-soft: {theme["bg_soft"]};
+        --panel: {theme["panel"]};
+        --panel-strong: {theme["panel_strong"]};
+        --text: {theme["text"]};
+        --muted: {theme["muted"]};
+        --border: {theme["border"]};
+        --shadow: {theme["shadow"]};
+        --accent: {theme["accent"]};
+        --accent-soft: {theme["accent_soft"]};
+        --danger: {theme["danger"]};
+        --success: {theme["success"]};
+        --warning: {theme["warning"]};
+        --nav-active: {theme["nav_active"]};
+        --nav-inactive: {theme["nav_inactive"]};
+        --plot-bg: {theme["plot_bg"]};
+    }}
+
+    #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stSidebar"] {{
+        display: none !important;
+        visibility: hidden !important;
+    }}
+
+    .stApp {{
+        background:
+            radial-gradient(circle at 8% 8%, rgba(213, 0, 31, 0.10), transparent 26rem),
+            radial-gradient(circle at 86% 4%, rgba(70, 130, 230, 0.16), transparent 28rem),
+            linear-gradient(135deg, var(--bg) 0%, var(--bg-soft) 44%, var(--bg) 100%) !important;
+        color: var(--text) !important;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+
+    .block-container {{
+        max-width: 1380px;
+        padding: 1.35rem 2rem 3.5rem;
+    }}
+
+    h1, h2, h3, h4,
+    .rg-brand-title strong,
+    .rg-hero h1,
+    .rg-hero h2,
+    .rg-section-header h2,
+    .rg-metric-value,
+    .rg-chart-title h3,
+    .rg-answer-head h3,
+    .rg-pipeline-card strong,
+    .rg-storage-card strong,
+    .rg-check-item strong {{
+        color: var(--text) !important;
+        letter-spacing: 0;
+    }}
+
+    p, li, label, span, div {{
+        letter-spacing: 0;
+    }}
+
+    .rg-topbar,
+    .rg-hero,
+    .rg-hero-panel,
+    .rg-metric-card,
+    .rg-insight-card,
+    .rg-filter-shell,
+    .rg-table-shell,
+    .rg-answer-card,
+    .rg-pipeline-card,
+    .rg-storage-card,
+    .rg-check-item,
+    [data-testid="stVerticalBlockBorderWrapper"] {{
+        border: 1px solid var(--border) !important;
+        background: var(--panel) !important;
+        box-shadow: var(--shadow) !important;
+        backdrop-filter: blur(18px);
+    }}
+
+    .rg-topbar {{
+        position: sticky;
+        top: 0.75rem;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.8rem;
+        padding: 0.78rem 0.9rem;
+        border-radius: 24px;
+    }}
+
+    .rg-brand,
+    .rg-top-badges,
+    .rg-answer-head {{
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }}
+
+    .rg-brand-logo,
+    .rg-hero-logo {{
+        background: rgba(255, 255, 255, 0.86) !important;
+        border: 1px solid var(--border) !important;
+        object-fit: contain;
+    }}
+
+    .rg-brand-logo {{
+        width: 112px;
+        height: 42px;
+        border-radius: 14px;
+        padding: 0.35rem 0.55rem;
+    }}
+
+    .rg-brand-title {{
+        display: flex;
+        flex-direction: column;
+        gap: 0.08rem;
+        min-width: 0;
+    }}
+
+    .rg-brand-title span,
+    .rg-hero p,
+    .rg-hero-stat span,
+    .rg-section-header p,
+    .rg-metric-label,
+    .rg-metric-caption,
+    .rg-insight-card p,
+    .rg-chart-title p,
+    .rg-answer-subtitle,
+    .rg-pipeline-card span,
+    .rg-storage-card span,
+    .rg-check-item span {{
+        color: var(--muted) !important;
+    }}
+
+    .rg-badge {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        min-height: 1.85rem;
+        padding: 0.32rem 0.68rem;
+        border-radius: 999px;
+        border: 1px solid var(--border) !important;
+        color: var(--text) !important;
+        background: var(--panel-strong) !important;
+        font-size: 0.76rem;
+        font-weight: 760;
+        line-height: 1;
+        white-space: nowrap;
+    }}
+
+    .rg-badge-dark {{
+        color: #ffffff !important;
+        background: var(--nav-active) !important;
+    }}
+
+    .rg-badge-red {{
+        color: var(--danger) !important;
+        background: var(--accent-soft) !important;
+    }}
+
+    .rg-badge-green {{
+        color: var(--success) !important;
+    }}
+
+    .rg-badge-warning {{
+        color: var(--warning) !important;
+    }}
+
+    div[role="radiogroup"] {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        width: fit-content;
+        max-width: 100%;
+        margin: 0.15rem auto 1.3rem auto;
+        padding: 0.42rem;
+        border-radius: 999px;
+        border: 1px solid var(--border) !important;
+        background: var(--panel) !important;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+    }}
+
+    div[role="radiogroup"] label {{
+        min-height: 2.25rem;
+        margin: 0 !important;
+        padding: 0.22rem 0.72rem !important;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: var(--nav-inactive) !important;
+        font-size: 0.86rem;
+        font-weight: 760;
+        transition: all 140ms ease;
+    }}
+
+    div[role="radiogroup"] label *,
+    div[role="radiogroup"] label p,
+    div[role="radiogroup"] label span {{
+        color: var(--nav-inactive) !important;
+        -webkit-text-fill-color: var(--nav-inactive) !important;
+    }}
+
+    div[role="radiogroup"] label:hover {{
+        color: var(--text) !important;
+        background: var(--panel-strong) !important;
+        border-color: var(--border) !important;
+    }}
+
+    div[role="radiogroup"] label:hover *,
+    div[role="radiogroup"] label:hover p,
+    div[role="radiogroup"] label:hover span {{
+        color: var(--text) !important;
+        -webkit-text-fill-color: var(--text) !important;
+    }}
+
+    div[role="radiogroup"] label:has(input:checked) {{
+        color: #ffffff !important;
+        background: linear-gradient(135deg, var(--nav-active), #31445d) !important;
+        box-shadow: 0 12px 28px rgba(23, 32, 51, 0.28);
+    }}
+
+    div[role="radiogroup"] label:has(input:checked) *,
+    div[role="radiogroup"] label:has(input:checked) p,
+    div[role="radiogroup"] label:has(input:checked) span {{
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }}
+
+    div[role="radiogroup"] label > div:first-child {{
+        display: none;
+    }}
+
+    .rg-hero {{
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 2rem;
+        min-height: 410px;
+        margin: 0.25rem 0 1.6rem;
+        padding: 3rem;
+        border-radius: 34px;
+    }}
+
+    .rg-kicker,
+    .rg-metric-icon {{
+        color: var(--accent) !important;
+    }}
+
+    .rg-metric-icon {{
+        background: var(--accent-soft) !important;
+    }}
+
+    .rg-insight-card {{
+        border-left: 5px solid rgba(70,130,230,0.60) !important;
+    }}
+
+    .rg-insight-success {{
+        border-left-color: var(--success) !important;
+    }}
+
+    .rg-insight-warning {{
+        border-left-color: var(--warning) !important;
+    }}
+
+    .rg-insight-danger {{
+        border-left-color: var(--danger) !important;
+    }}
+
+    .rg-insight-purple {{
+        border-left-color: #9d8cff !important;
+    }}
+
+    div[data-testid="stPlotlyChart"] {{
+        margin-bottom: 1.05rem;
+        padding: 1rem;
+        border-radius: 24px;
+        border: 1px solid var(--border) !important;
+        background: var(--plot-bg) !important;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+    }}
+
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 0.45rem;
+        border-radius: 999px;
+        padding: 0.38rem;
+        background: var(--panel) !important;
+        border: 1px solid var(--border) !important;
+    }}
+
+    .stTabs [data-baseweb="tab"] {{
+        min-height: 2.35rem;
+        border-radius: 999px;
+        color: var(--muted) !important;
+        font-weight: 760;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        color: var(--text) !important;
+        background: var(--panel-strong) !important;
+        box-shadow: 0 8px 20px rgba(23,32,51,0.12);
+    }}
+
+    div[data-testid="stExpander"],
+    [data-testid="stDataFrame"] {{
+        border: 1px solid var(--border) !important;
+        background: var(--panel) !important;
+        color: var(--text) !important;
+    }}
+
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="input"] > div,
+    textarea {{
+        border-radius: 14px !important;
+        border-color: var(--border) !important;
+        background: var(--panel-strong) !important;
+        color: var(--text) !important;
+    }}
+
+    [data-baseweb="tag"] {{
+        background: var(--accent-soft) !important;
+        color: var(--text) !important;
+        border: 1px solid rgba(213, 0, 31, 0.24) !important;
+        border-radius: 999px !important;
+    }}
+
+    [data-baseweb="tag"] span {{
+        color: var(--text) !important;
+    }}
+
+    .rg-flow-track {{
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.7rem;
+        margin: 0.7rem 0 1.2rem;
+    }}
+
+    .rg-flow-stage {{
+        padding: 0.85rem;
+        min-height: 82px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+    }}
+
+    .rg-flow-stage-active {{
+        border-color: rgba(213, 0, 31, 0.42);
+        background: var(--accent-soft) !important;
+    }}
+
+    .rg-flow-stage span {{
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 820;
+        text-transform: uppercase;
+    }}
+
+    .rg-flow-stage strong {{
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--text);
+        line-height: 1.2;
+    }}
+
+    @media (max-width: 980px) {{
+        .block-container {{
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }}
+
+        .rg-topbar,
+        .rg-answer-head {{
+            align-items: flex-start;
+            flex-direction: column;
+        }}
+
+        .rg-hero,
+        .rg-flow-track {{
+            grid-template-columns: 1fr;
+        }}
+
+        .rg-hero {{
+            min-height: unset;
+            padding: 2rem;
+        }}
+
+        div[role="radiogroup"] {{
+            width: 100%;
+            border-radius: 24px;
+        }}
+    }}
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def escape(value: object) -> str:
     return html.escape(str(value), quote=True)
 
@@ -802,6 +1256,7 @@ def render_top_nav(current_page: str) -> str:
     if selected_page not in PAGES:
         selected_page = current_page
         st.session_state["rg_page"] = current_page
+    st.session_state.setdefault("dark_mode", False)
 
     logo_uri = image_data_uri(LOGO_PATH)
     logo_html = (
@@ -828,6 +1283,9 @@ def render_top_nav(current_page: str) -> str:
         """,
         unsafe_allow_html=True,
     )
+    _, settings_col = st.columns([0.82, 0.18])
+    with settings_col:
+        st.toggle("Dark mode", key="dark_mode")
 
     return st.radio(
         "Navigation",
@@ -1010,7 +1468,12 @@ def safe_read_csv(path: str | Path, *, warn: bool = False) -> pd.DataFrame:
 
 
 def config_color_map() -> dict[str, str]:
-    return ROUTER_COLORS.copy()
+    theme = theme_values()
+    return {
+        "LLM-only": theme["llm"],
+        "SLM-only": theme["slm"],
+        "SLM-dominant": theme["slm_dom"],
+    }
 
 
 def first_existing_column(df: pd.DataFrame, candidates: Iterable[str]) -> str | None:
@@ -1171,15 +1634,21 @@ def numeric_series(df: pd.DataFrame, column: str) -> pd.Series:
 
 
 def chart_layout(height: int) -> dict:
+    theme = theme_values()
+    dark = is_dark_mode()
     return {
         "height": height,
-        "template": "plotly_white",
+        "template": "plotly_dark" if dark else "plotly_white",
         "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(255,255,255,0.18)",
-        "font": {"family": "Inter, Arial, sans-serif", "color": CHARCOAL, "size": 13},
+        "plot_bgcolor": theme["plot_bg"],
+        "font": {"family": "Inter, Arial, sans-serif", "color": theme["text"], "size": 13},
         "margin": {"l": 12, "r": 26, "t": 18, "b": 36},
         "legend_title_text": "",
-        "hoverlabel": {"bgcolor": "white", "font_size": 12},
+        "hoverlabel": {
+            "bgcolor": theme["panel_strong"],
+            "font_color": theme["text"],
+            "font_size": 12,
+        },
     }
 
 
@@ -1218,7 +1687,10 @@ def make_horizontal_bar(
     fig.update_traces(marker_line_color="rgba(255,255,255,0.95)", marker_line_width=1.2)
     fig.update_layout(**chart_layout(height), bargap=0.28)
     fig.update_xaxes(
-        title=x_title, tickformat=tickformat, showgrid=True, gridcolor="rgba(23,32,51,0.08)"
+        title=x_title,
+        tickformat=tickformat,
+        showgrid=True,
+        gridcolor=theme_values()["border"],
     )
     fig.update_yaxes(title="", automargin=True)
     return fig
@@ -1284,10 +1756,16 @@ def make_scatter(
     )
     fig.update_layout(**chart_layout(height))
     fig.update_xaxes(
-        title=x_title, tickformat=x_tickformat, showgrid=True, gridcolor="rgba(23,32,51,0.08)"
+        title=x_title,
+        tickformat=x_tickformat,
+        showgrid=True,
+        gridcolor=theme_values()["border"],
     )
     fig.update_yaxes(
-        title=y_title, tickformat=y_tickformat, showgrid=True, gridcolor="rgba(23,32,51,0.08)"
+        title=y_title,
+        tickformat=y_tickformat,
+        showgrid=True,
+        gridcolor=theme_values()["border"],
     )
     return fig
 
@@ -1412,7 +1890,9 @@ def filtered_configs(
     return out.reset_index(drop=True)
 
 
-def family_filter_row(df: pd.DataFrame, *, key_prefix: str) -> pd.DataFrame:
+def family_filter_row(
+    df: pd.DataFrame, *, key_prefix: str
+) -> tuple[pd.DataFrame, list[str], list[str]]:
     with st.container(border=True):
         st.markdown("**Filter benchmark configurations**")
         col1, col2 = st.columns([1, 1.8])
@@ -1432,7 +1912,11 @@ def family_filter_row(df: pd.DataFrame, *, key_prefix: str) -> pd.DataFrame:
                 default=config_options,
                 key=f"{key_prefix}_configs",
             )
-    return filtered_configs(df, selected_routers, selected_configs)
+    return (
+        filtered_configs(df, selected_routers, selected_configs),
+        selected_routers,
+        selected_configs,
+    )
 
 
 def comparison_table(df: pd.DataFrame) -> pd.DataFrame:
@@ -1463,6 +1947,501 @@ def comparison_table(df: pd.DataFrame) -> pd.DataFrame:
             ),
         }
     )
+
+
+def metric_value(row: pd.Series | None, column: str) -> float | None:
+    if row is None or column not in row:
+        return None
+    value = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
+    if pd.isna(value) or not math.isfinite(float(value)):
+        return None
+    return float(value)
+
+
+def display_config(row: pd.Series | None, *, short: bool = True) -> str:
+    if row is None:
+        return "n/a"
+    if short and has_text(row.get("config_label")):
+        return str(row.get("config_label"))
+    if has_text(row.get("config_label_full")):
+        return str(row.get("config_label_full"))
+    if has_text(row.get("analysis_config")):
+        return config_label(row.get("analysis_config"), full=not short)
+    return "n/a"
+
+
+def best_row(df: pd.DataFrame, column: str, *, highest: bool) -> pd.Series | None:
+    if df.empty or column not in df.columns:
+        return None
+    values = pd.to_numeric(df[column], errors="coerce")
+    valid = df[values.notna()].copy()
+    if valid.empty:
+        return None
+    valid[column] = pd.to_numeric(valid[column], errors="coerce")
+    return valid.sort_values(column, ascending=not highest).iloc[0]
+
+
+def normalize_for_score(series: pd.Series) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce")
+    if values.notna().sum() == 0:
+        return pd.Series([0.0] * len(values), index=values.index)
+    filled = values.fillna(values.median())
+    span = filled.max() - filled.min()
+    if not math.isfinite(float(span)) or span == 0:
+        return pd.Series([0.0] * len(filled), index=filled.index)
+    return (filled - filled.min()) / span
+
+
+def add_operational_score(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["_operational_score"] = (
+        normalize_for_score(out.get("analysis_usable_rate", pd.Series(index=out.index)))
+        - normalize_for_score(out.get("parse_error_rate", pd.Series(index=out.index)))
+        - normalize_for_score(out.get("validation_error_rate", pd.Series(index=out.index)))
+        - normalize_for_score(out.get("avg_total_cost_usd", pd.Series(index=out.index)))
+        - normalize_for_score(out.get("mean_latency_ms", pd.Series(index=out.index)))
+    )
+    return out
+
+
+def summarize_selected_configs(
+    df: pd.DataFrame,
+    selected_configs: Sequence[str] | None = None,
+    quality_signal: str | None = None,
+) -> dict[str, pd.Series | None]:
+    subset = df.copy()
+    if selected_configs:
+        label_set = set(selected_configs)
+        subset = subset[
+            subset["config_label"].isin(label_set) | subset["analysis_config"].isin(label_set)
+        ]
+    quality_col = None
+    if quality_signal == "Gold quality":
+        quality_col = "mean_overall_gold_quality_score"
+    elif quality_signal == "Manual quality":
+        quality_col = "mean_overall_manual_quality"
+    scored = add_operational_score(subset) if not subset.empty else subset
+    return {
+        "cheapest": best_row(subset, "avg_total_cost_usd", highest=False),
+        "most_expensive": best_row(subset, "avg_total_cost_usd", highest=True),
+        "fastest": best_row(subset, "mean_latency_ms", highest=False),
+        "slowest": best_row(subset, "mean_latency_ms", highest=True),
+        "highest_usable": best_row(subset, "analysis_usable_rate", highest=True),
+        "highest_parse_error": best_row(subset, "parse_error_rate", highest=True),
+        "highest_validation_error": best_row(subset, "validation_error_rate", highest=True),
+        "best_operational": best_row(scored, "_operational_score", highest=True),
+        "highest_quality": best_row(subset, quality_col, highest=True) if quality_col else None,
+    }
+
+
+def classify_tradeoff(row: pd.Series) -> str:
+    usable = metric_value(row, "analysis_usable_rate")
+    parse = metric_value(row, "parse_error_rate")
+    validation = metric_value(row, "validation_error_rate")
+    cost = metric_value(row, "avg_total_cost_usd")
+    latency = metric_value(row, "mean_latency_ms")
+    quality = metric_value(row, "mean_overall_manual_quality") or metric_value(
+        row, "mean_overall_gold_quality_score"
+    )
+    escalation = metric_value(row, "escalation_rate")
+
+    if parse is not None and parse >= 0.03:
+        if cost is not None and cost < 0.001:
+            return "low cost / reliability risk"
+        return "quality-efficient but structurally risky"
+    if validation is not None and validation >= 0.01:
+        return "quality-efficient but structurally risky"
+    if usable is not None and usable >= 0.99 and cost is not None and cost < 0.002:
+        return "strong operational trade-off"
+    if quality is not None and quality >= 5 and cost is not None and cost >= 0.004:
+        return "high quality / high cost"
+    if latency is not None and latency < 1800 and quality is not None and quality < 4.5:
+        return "fast but lower quality"
+    if escalation is not None and escalation > 0.10 and usable is not None and usable >= 0.99:
+        return "escalation-heavy but stable"
+    return "balanced but context-dependent"
+
+
+def delta_text(left: float | None, right: float | None, unit: str) -> str:
+    if left is None or right is None:
+        return "n/a"
+    delta = right - left
+    pct = ""
+    if left:
+        pct = f" ({delta / left:+.1%})"
+    if unit == "currency":
+        return f"{format_currency(delta)}{pct}"
+    if unit == "ms":
+        return f"{delta:+,.0f} ms{pct}"
+    return f"{delta:+.{3 if unit == 'score' else 2}f}{pct}"
+
+
+def generate_configuration_interpretation(
+    df: pd.DataFrame,
+    selected_configs: Sequence[str],
+    selected_families: Sequence[str],
+) -> list[tuple[str, str, str]]:
+    summary = summarize_selected_configs(df, selected_configs)
+    cheapest = summary["cheapest"]
+    fastest = summary["fastest"]
+    best = summary["best_operational"]
+    parse_risk = summary["highest_parse_error"]
+    usable = summary["highest_usable"]
+
+    family_text = ", ".join(selected_families) if selected_families else "the selected families"
+    cards = [
+        (
+            "Selected comparison summary",
+            f"{len(df)} selected configuration(s) across {family_text}. The interpretation below is computed from the active filters and does not change benchmark values.",
+            "info",
+        )
+    ]
+
+    if cheapest is not None:
+        cards.append(
+            (
+                "Best selected cost option",
+                f"{display_config(cheapest)} is cheapest at {format_currency(cheapest.get('avg_total_cost_usd'))} per ticket and is classified as {classify_tradeoff(cheapest)}.",
+                "success",
+            )
+        )
+    if fastest is not None:
+        cards.append(
+            (
+                "Fastest selected option",
+                f"{display_config(fastest)} is fastest at {format_ms(fastest.get('mean_latency_ms'))}. Speed is a deployment advantage, not a correctness guarantee.",
+                "info",
+            )
+        )
+    if parse_risk is not None:
+        risk_variant = (
+            "warning" if (metric_value(parse_risk, "parse_error_rate") or 0.0) > 0.01 else "success"
+        )
+        cards.append(
+            (
+                "Reliability warning",
+                f"{display_config(parse_risk)} has the highest selected parse-error rate at {format_percent(parse_risk.get('parse_error_rate'))}; highest usable rate is {display_config(usable)} at {format_percent(usable.get('analysis_usable_rate')) if usable is not None else 'n/a'}.",
+                risk_variant,
+            )
+        )
+    if best is not None:
+        cards.append(
+            (
+                "Recommended interpretation",
+                f"Using the app-side heuristic usable rate minus normalized parse, validation, cost, and latency penalties, {display_config(best)} is the strongest operational choice among the selected systems. This is a UI heuristic for exploration, not a dissertation result.",
+                "purple",
+            )
+        )
+
+    selected_labels = set(df.get("config_label", pd.Series(dtype=str)).astype(str).tolist())
+    if selected_labels == {"SLM1", "SLM2"}:
+        cards.append(
+            (
+                "SLM-only comparison",
+                "With only SLM1 and SLM2 selected, read the result as a compact SLM-only trade-off: cost is low for both, while parse reliability and usable output decide whether either is operationally defensible.",
+                "info",
+            )
+        )
+    if {"LLM1", "SLM-dom SLM2→LLM2"}.issubset(selected_labels):
+        llm = df[df["config_label"] == "LLM1"].iloc[0]
+        slm_dom = df[df["config_label"] == "SLM-dom SLM2→LLM2"].iloc[0]
+        cards.append(
+            (
+                "LLM1 vs SLM-dominant",
+                f"Against LLM1, SLM-dom SLM2→LLM2 changes cost by {delta_text(metric_value(llm, 'avg_total_cost_usd'), metric_value(slm_dom, 'avg_total_cost_usd'), 'currency')} and latency by {delta_text(metric_value(llm, 'mean_latency_ms'), metric_value(slm_dom, 'mean_latency_ms'), 'ms')}; parse reliability remains the key deployment check.",
+                "success",
+            )
+        )
+    return cards[:5]
+
+
+def quality_ratio_row(df: pd.DataFrame, quality_col: str, denom_col: str) -> pd.Series | None:
+    if df.empty or quality_col not in df.columns or denom_col not in df.columns:
+        return None
+    values = pd.to_numeric(df[quality_col], errors="coerce")
+    denom = pd.to_numeric(df[denom_col], errors="coerce")
+    ratio = values / denom.replace(0, np.nan)
+    valid = df[ratio.notna()].copy()
+    if valid.empty:
+        return None
+    valid["_ratio"] = ratio[ratio.notna()]
+    return valid.sort_values("_ratio", ascending=False).iloc[0]
+
+
+def generate_frontier_interpretation(
+    df: pd.DataFrame,
+    selected_configs: Sequence[str],
+    selected_families: Sequence[str],
+    quality_signal: str,
+) -> list[tuple[str, str, str]]:
+    quality_col = (
+        "mean_overall_gold_quality_score"
+        if quality_signal == "Gold quality"
+        else "mean_overall_manual_quality"
+    )
+    quality_name = "gold quality" if quality_signal == "Gold quality" else "manual quality"
+    quality_context = (
+        "deterministic proxy scoring over gold-overlap tickets"
+        if quality_signal == "Gold quality"
+        else "blinded human audit judgement"
+    )
+    highest_quality = best_row(df, quality_col, highest=True)
+    lowest_cost = best_row(df, "avg_total_cost_usd", highest=False)
+    fastest = best_row(df, "mean_latency_ms", highest=False)
+    parse_risk = best_row(df, "parse_error_rate", highest=True)
+    validation_risk = best_row(df, "validation_error_rate", highest=True)
+    q_per_dollar = quality_ratio_row(df, quality_col, "avg_total_cost_usd")
+    q_per_latency = quality_ratio_row(df, quality_col, "mean_latency_ms")
+
+    cards: list[tuple[str, str, str]] = []
+    if highest_quality is not None:
+        cards.append(
+            (
+                "Quality quadrant",
+                f"Within {len(df)} selected system(s), {display_config(highest_quality)} has the highest {quality_name} ({format_number(highest_quality.get(quality_col), 3)}). {display_config(q_per_dollar)} gives the strongest quality-per-dollar signal. This uses {quality_context}.",
+                "success",
+            )
+        )
+    if fastest is not None:
+        cards.append(
+            (
+                "Latency quadrant",
+                f"{display_config(fastest)} is fastest at {format_ms(fastest.get('mean_latency_ms'))}. {display_config(q_per_latency)} has the strongest quality-per-latency signal; if quality is not competitive, speed should be treated as an operational advantage rather than a correctness guarantee.",
+                "info",
+            )
+        )
+    if parse_risk is not None:
+        risk = parse_risk
+        if validation_risk is not None and (
+            metric_value(validation_risk, "validation_error_rate") or 0.0
+        ) > (metric_value(parse_risk, "parse_error_rate") or 0.0):
+            risk = validation_risk
+        cards.append(
+            (
+                "Reliability gate",
+                f"{display_config(risk)} has the highest selected parse/validation risk ({format_percent(risk.get('parse_error_rate'))} parse, {format_percent(risk.get('validation_error_rate'))} validation). It may require output-contract hardening even if it is cheap or fast.",
+                "warning",
+            )
+        )
+    if lowest_cost is not None:
+        cards.append(
+            (
+                "Cost frontier",
+                f"{display_config(lowest_cost)} is the lowest-cost selected system at {format_currency(lowest_cost.get('avg_total_cost_usd'))}. It is not automatically preferable unless the selected {quality_name} and reliability metrics remain acceptable.",
+                "purple",
+            )
+        )
+    return cards[:4]
+
+
+def generate_gold_manual_interpretation(
+    df: pd.DataFrame,
+    selected_configs: Sequence[str],
+    quality_signal: str,
+) -> list[tuple[str, str, str]]:
+    cards: list[tuple[str, str, str]] = []
+    top_manual = best_row(df, "mean_overall_manual_quality", highest=True)
+    top_gold = best_row(df, "mean_overall_gold_quality_score", highest=True)
+    top_accuracy = best_row(df, "generated_category_accuracy", highest=True)
+    low_cost = best_row(df, "avg_total_cost_usd", highest=False)
+
+    if top_manual is not None:
+        cards.append(
+            (
+                "Top manual quality",
+                f"{display_config(top_manual)} leads the selected systems on blinded manual quality at {format_number(top_manual.get('mean_overall_manual_quality'), 2)}.",
+                "success",
+            )
+        )
+    if top_gold is not None:
+        cards.append(
+            (
+                "Top deterministic gold score",
+                f"{display_config(top_gold)} leads deterministic gold quality at {format_number(top_gold.get('mean_overall_gold_quality_score'), 3)}.",
+                "info",
+            )
+        )
+    if top_manual is not None and top_gold is not None:
+        same = top_manual.get("analysis_config") == top_gold.get("analysis_config")
+        cards.append(
+            (
+                "Manual vs deterministic agreement",
+                (
+                    f"Manual and deterministic scoring agree on {display_config(top_manual)} as the selected leader."
+                    if same
+                    else f"Manual and deterministic scoring diverge: manual favors {display_config(top_manual)}, while gold proxy favors {display_config(top_gold)}. This supports keeping the human audit layer."
+                ),
+                "success" if same else "warning",
+            )
+        )
+    if low_cost is not None and top_manual is not None:
+        cards.append(
+            (
+                "Low-cost acceptability",
+                f"{display_config(low_cost)} is the lowest-cost selected system at {format_currency(low_cost.get('avg_total_cost_usd'))}. Compare it with {display_config(top_manual)} before treating cost savings as human-acceptable answer quality.",
+                "purple",
+            )
+        )
+    if top_accuracy is not None and top_manual is not None:
+        cards.append(
+            (
+                "Why this matters",
+                f"{display_config(top_accuracy)} has the strongest generated category accuracy in the selected subset, while {display_config(top_manual)} leads manual answer quality. If these differ, the app is showing the classification/generation distinction directly.",
+                "warning",
+            )
+        )
+    return cards[:5]
+
+
+def generate_ticket_interpretation(
+    ticket_rows: pd.DataFrame,
+    selected_ticket_id: str,
+    selected_configs: Sequence[str],
+) -> list[tuple[str, str, str]]:
+    cheapest = best_row(ticket_rows, "cost_usd", highest=False)
+    fastest = best_row(ticket_rows, "latency_ms", highest=False)
+    score_col = (
+        "manual_quality_score"
+        if "manual_quality_score" in ticket_rows.columns
+        and pd.to_numeric(ticket_rows["manual_quality_score"], errors="coerce").notna().any()
+        else "deterministic_gold_score"
+    )
+    best_score = best_row(ticket_rows, score_col, highest=True)
+    parse_issues = (
+        ticket_rows[ticket_rows["parse_error"].map(has_text)]
+        if "parse_error" in ticket_rows
+        else pd.DataFrame()
+    )
+    validation_issues = (
+        ticket_rows[ticket_rows["validation_error"].map(has_text)]
+        if "validation_error" in ticket_rows
+        else pd.DataFrame()
+    )
+    categories = (
+        ticket_rows.get("generated_predicted_category", pd.Series(dtype=str))
+        .dropna()
+        .astype(str)
+        .replace("", np.nan)
+        .dropna()
+        .unique()
+        .tolist()
+    )
+    escalations = (
+        ticket_rows.get("escalated", pd.Series(dtype=str))
+        .map(bool_label)
+        .dropna()
+        .unique()
+        .tolist()
+        if "escalated" in ticket_rows
+        else []
+    )
+
+    cards = [
+        (
+            "Ticket-specific summary",
+            f"Ticket {selected_ticket_id} is shown for {len(ticket_rows)} selected system(s). The interpretation uses only available cost, latency, score, category, escalation, parse, and validation fields.",
+            "info",
+        )
+    ]
+    if cheapest is not None and fastest is not None:
+        cards.append(
+            (
+                "Cost and latency",
+                f"{display_config(cheapest)} is cheapest at {format_currency(cheapest.get('cost_usd'))}; {display_config(fastest)} is fastest at {format_ms(fastest.get('latency_ms'))}.",
+                "success",
+            )
+        )
+    if best_score is not None:
+        cards.append(
+            (
+                "Highest available score",
+                f"Based on available {score_col.replace('_', ' ')} fields, {display_config(best_score)} has the highest score ({format_number(best_score.get(score_col), 3)}). This does not claim correctness beyond the recorded score.",
+                "purple",
+            )
+        )
+    issue_names = sorted(
+        set(parse_issues.get("config_label", pd.Series(dtype=str)).tolist())
+        | set(validation_issues.get("config_label", pd.Series(dtype=str)).tolist())
+    )
+    cards.append(
+        (
+            "Structural reliability",
+            (
+                f"Based on parse/validation flags, structural issues appear for: {', '.join(issue_names)}."
+                if issue_names
+                else "Based on parse/validation flags, no selected system shows a structural issue for this ticket."
+            ),
+            "warning" if issue_names else "success",
+        )
+    )
+    cards.append(
+        (
+            "System disagreement",
+            f"Generated categories {'differ' if len(categories) > 1 else 'agree'} across selected systems ({', '.join(categories) if categories else 'n/a'}). Escalation flags {'differ' if len(escalations) > 1 else 'do not differ'} based on available metadata.",
+            "warning" if len(categories) > 1 or len(escalations) > 1 else "info",
+        )
+    )
+    return cards[:5]
+
+
+def generate_system_comparison(left: pd.Series, right: pd.Series) -> tuple[str, str, str]:
+    left_name = display_config(left)
+    right_name = display_config(right)
+    cost_delta = delta_text(
+        metric_value(left, "cost_usd"), metric_value(right, "cost_usd"), "currency"
+    )
+    latency_delta = delta_text(
+        metric_value(left, "latency_ms"), metric_value(right, "latency_ms"), "ms"
+    )
+    quality_col = (
+        "manual_quality_score"
+        if metric_value(left, "manual_quality_score") is not None
+        or metric_value(right, "manual_quality_score") is not None
+        else "deterministic_gold_score"
+    )
+    quality_delta = delta_text(
+        metric_value(left, quality_col), metric_value(right, quality_col), "score"
+    )
+    left_structural = has_text(left.get("parse_error")) or has_text(left.get("validation_error"))
+    right_structural = has_text(right.get("parse_error")) or has_text(right.get("validation_error"))
+    left_escalated = truthy(left.get("escalated"))
+    right_escalated = truthy(right.get("escalated"))
+
+    defensible = "both systems require score and flag review"
+    if left_structural and not right_structural:
+        defensible = f"{right_name} is more operationally defensible on structure for this ticket"
+    elif right_structural and not left_structural:
+        defensible = f"{left_name} is more operationally defensible on structure for this ticket"
+    elif (
+        metric_value(left, quality_col) is not None and metric_value(right, quality_col) is not None
+    ):
+        defensible = (
+            f"{right_name} has the stronger available quality score"
+            if (metric_value(right, quality_col) or 0) > (metric_value(left, quality_col) or 0)
+            else f"{left_name} has the stronger available quality score"
+        )
+
+    return (
+        "System comparison",
+        f"Compared with {left_name}, {right_name} changes cost by {cost_delta}, latency by {latency_delta}, and available quality by {quality_delta}. Parse/validation differs: {left_structural} vs {right_structural}. Escalation differs: {left_escalated} vs {right_escalated}. Based on available fields, {defensible}.",
+        "warning" if left_structural or right_structural else "success",
+    )
+
+
+def render_interpretation_cards(cards: Sequence[tuple[str, str, str]]) -> None:
+    if not cards:
+        render_insight_card(
+            "Interpretation unavailable",
+            "The selected subset does not contain enough numeric fields to compute an interpretation.",
+            "warning",
+        )
+        return
+    first_row = cards[:3]
+    for card_col, (title, body, variant) in zip(st.columns(len(first_row)), first_row):
+        with card_col:
+            render_insight_card(title, body, variant)
+    for title, body, variant in cards[3:]:
+        render_insight_card(title, body, variant)
 
 
 def page_executive_snapshot() -> None:
@@ -1579,7 +2558,7 @@ def page_configuration_comparator() -> None:
         render_insight_card("Missing summary", "Could not load `summary_by_config.csv`.", "warning")
         return
 
-    df = family_filter_row(df, key_prefix="comparator")
+    df, selected_routers, selected_configs = family_filter_row(df, key_prefix="comparator")
     if df.empty:
         render_insight_card(
             "No rows selected", "No configurations match the current filters.", "warning"
@@ -1614,10 +2593,8 @@ def page_configuration_comparator() -> None:
             "Parse failures remain operational failures even when text looks plausible.",
         )
 
-    render_insight_card(
-        "Interpretation",
-        "Cost savings are meaningful only when interpreted with usable rate and parse reliability.",
-        "warning",
+    render_interpretation_cards(
+        generate_configuration_interpretation(df, selected_configs, selected_routers)
     )
 
     with st.expander("Formatted comparison table", expanded=False):
@@ -1641,6 +2618,100 @@ def page_quality_evaluation() -> None:
     )
     manual_frontier = standardize_config_labels(
         safe_read_csv(MANUAL_DIR / "manual_quality_vs_cost_latency.csv")
+    )
+    comparator = load_config_comparator()
+
+    quality_summary = comparator[
+        [
+            column
+            for column in [
+                "analysis_config",
+                "config_label",
+                "config_label_full",
+                "router_family_label",
+                "_config_rank",
+                "avg_total_cost_usd",
+                "mean_latency_ms",
+                "analysis_usable_rate",
+                "parse_error_rate",
+                "validation_error_rate",
+            ]
+            if column in comparator.columns
+        ]
+    ].copy()
+    if quality_summary.empty and not gold.empty:
+        quality_summary = gold[
+            [
+                column
+                for column in [
+                    "analysis_config",
+                    "config_label",
+                    "config_label_full",
+                    "router_family_label",
+                    "_config_rank",
+                ]
+                if column in gold.columns
+            ]
+        ].copy()
+    for source, columns in [
+        (
+            manual,
+            [
+                "analysis_config",
+                "mean_overall_manual_quality",
+                "manual_quality_pass_rate_7",
+            ],
+        ),
+        (
+            gold,
+            [
+                "analysis_config",
+                "mean_overall_gold_quality_score",
+                "generated_category_accuracy",
+                "pass_rate_070",
+                "pass_rate_080",
+            ],
+        ),
+    ]:
+        if not source.empty and not quality_summary.empty:
+            keep = [column for column in columns if column in source.columns]
+            quality_summary = quality_summary.merge(source[keep], on="analysis_config", how="left")
+
+    with st.container(border=True):
+        st.markdown("**Quality interpretation controls**")
+        col1, col2 = st.columns([1.6, 1])
+        config_options = (
+            quality_summary.sort_values("_config_rank")["config_label"].drop_duplicates().tolist()
+            if not quality_summary.empty
+            else []
+        )
+        with col1:
+            selected_configs = st.multiselect(
+                "Configurations",
+                config_options,
+                default=config_options,
+                key="quality_configs",
+            )
+        with col2:
+            quality_focus = st.selectbox(
+                "Quality focus",
+                ["Combined", "Manual quality", "Gold quality"],
+                key="quality_focus",
+            )
+
+    def _filter_quality(source: pd.DataFrame) -> pd.DataFrame:
+        if source.empty or not selected_configs:
+            return source
+        return source[source["config_label"].isin(selected_configs)].reset_index(drop=True)
+
+    gold = _filter_quality(gold)
+    manual = _filter_quality(manual)
+    components = _filter_quality(components)
+    manual_frontier = _filter_quality(manual_frontier)
+    quality_summary = _filter_quality(quality_summary)
+
+    render_interpretation_cards(
+        generate_gold_manual_interpretation(quality_summary, selected_configs, quality_focus)
     )
 
     gold_tab, manual_tab, component_tab, frontier_tab = st.tabs(
@@ -1889,25 +2960,14 @@ def page_frontier() -> None:
         "Mean gold quality" if selected_quality == "Gold quality" else "Mean manual quality"
     )
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        render_insight_card(
-            "Quality quadrant",
-            "On cost plots, the upper-left region is preferable: higher quality at lower spend.",
-            "success",
+    render_interpretation_cards(
+        generate_frontier_interpretation(
+            frontier,
+            selected_configs,
+            selected_routers,
+            selected_quality,
         )
-    with col2:
-        render_insight_card(
-            "Latency quadrant",
-            "On latency plots, the upper-left region is preferable: higher quality with faster answers.",
-            "info",
-        )
-    with col3:
-        render_insight_card(
-            "Reliability gate",
-            "Parse and validation failures can invalidate an otherwise cheap or fast system.",
-            "warning",
-        )
+    )
 
     col1, col2 = st.columns(2)
     with col1:
@@ -2121,6 +3181,16 @@ def page_ticket_explorer() -> None:
             return local_blind_map.get(row["analysis_config"], "System")
         return str(row["config_label_full"])
 
+    interpretation_rows = ticket_rows.copy()
+    interpretation_rows["config_label"] = interpretation_rows.apply(display_name, axis=1)
+    render_interpretation_cards(
+        generate_ticket_interpretation(
+            interpretation_rows,
+            selected_ticket_id,
+            selected_config_ids,
+        )
+    )
+
     ticket_tab, gold_tab, generated_tab, compare_tab, scores_tab = st.tabs(
         [
             "Ticket",
@@ -2241,6 +3311,11 @@ def page_ticket_explorer() -> None:
             with col2:
                 right_name = st.selectbox("System B", options, index=1)
             lookup = {display_name(row): row for _, row in ticket_rows.iterrows()}
+            left_compare = lookup[left_name].copy()
+            right_compare = lookup[right_name].copy()
+            left_compare["config_label"] = left_name
+            right_compare["config_label"] = right_name
+            render_interpretation_cards([generate_system_comparison(left_compare, right_compare)])
             for column, name in zip(st.columns(2), [left_name, right_name]):
                 row = lookup[name]
                 with column:
@@ -2325,7 +3400,7 @@ def render_html_grid(class_name: str, cards: Sequence[tuple[str, str, str]]) -> 
     st.markdown(f'<div class="{class_name}">{items}</div>', unsafe_allow_html=True)
 
 
-def page_methodology() -> None:
+def page_methodology_static_archive() -> None:
     render_section_header(
         "Methodology and reproducibility",
         "The benchmark story as an auditable static research product.",
@@ -2445,6 +3520,258 @@ def page_methodology() -> None:
     st.code("streamlit run streamlit_app.py", language="powershell")
 
 
+def render_flow_track(stages: Sequence[str], selected_stage: str) -> None:
+    items = "\n".join(
+        f"""
+<article class="rg-flow-stage {"rg-flow-stage-active" if stage == selected_stage else ""}">
+    <span>Stage {index}</span>
+    <strong>{escape(stage)}</strong>
+</article>
+        """
+        for index, stage in enumerate(stages, start=1)
+    )
+    st.markdown(f'<div class="rg-flow-track">{items}</div>', unsafe_allow_html=True)
+
+
+def page_methodology() -> None:
+    render_section_header(
+        "Methodology and reproducibility",
+        "The benchmark story as an auditable static research product.",
+        "Select a pipeline stage to inspect what happens, why it matters, what artefacts are produced, and which caveats keep the static demo defensible.",
+    )
+
+    stage_details = {
+        "Ticket input": {
+            "what": "A normalized support ticket enters the benchmark with ticket text and a reference topic label.",
+            "why": "It anchors every generated output to a concrete support request and keeps comparisons matched across configurations.",
+            "artefacts": "ticket_id, ticket_text, gold_label, topic_group",
+            "section": "Dataset construction and benchmark design",
+            "metric": "RouterGym/data/tickets/tickets.csv and streamlit_ticket_sample.csv",
+            "caution": "The app uses a compact committed sample for inspection, not the raw full analysis table.",
+        },
+        "Classifier": {
+            "what": "The classifier predicts ticket category and confidence metadata before answer generation.",
+            "why": "It separates the routing/classification layer from generated answer quality.",
+            "artefacts": "predicted_category, classifier metadata, confidence fields where available",
+            "section": "Routing and classification layer",
+            "metric": "classification_metrics_by_config.csv",
+            "caution": "Classifier accuracy is not final answer correctness.",
+        },
+        "Router": {
+            "what": "The router selects LLM-only, SLM-only, or SLM-dominant execution with optional escalation.",
+            "why": "This is the conversion test from LLM-first operation toward SLM-dominant systems.",
+            "artefacts": "analysis_config, router_family, escalation_flags, escalated",
+            "section": "Router policy and conversion strategy",
+            "metric": "routing_escalation_summary.csv",
+            "caution": "Routing benefits must be read with reliability and quality signals.",
+        },
+        "BM25-RAG memory": {
+            "what": "A lexical BM25 retrieval layer supplies policy/support context to each final configuration.",
+            "why": "Fixing the memory layer controls the retrieval condition in the final model/router comparison.",
+            "artefacts": "memory_mode, retrieved policy context metadata where available",
+            "section": "Memory layer and retrieval control",
+            "metric": "summary_by_config.csv",
+            "caution": "The final claim is not a full memory-mode ablation.",
+        },
+        "Model generation": {
+            "what": "The selected open-weight model generates a structured support resolution, or escalates where the route requires it.",
+            "why": "Final answer quality, cost, and latency are measured at this layer.",
+            "artefacts": "final_answer, resolution_steps, reasoning, cost_usd, latency_ms",
+            "section": "Generation and inference execution",
+            "metric": "generation_quality_by_config.csv and latency_summary_by_config.csv",
+            "caution": "The Streamlit app does not run live inference or download models.",
+        },
+        "JSON validation": {
+            "what": "Generated outputs are parsed and checked against the expected output contract.",
+            "why": "Structurally invalid output can fail automation even if the natural-language text looks useful.",
+            "artefacts": "parse_error, validation_error, generation_valid, usable_output",
+            "section": "Output contract and reliability",
+            "metric": "reliability_by_config.csv and summary_by_config.csv",
+            "caution": "Parse reliability can disqualify otherwise cheap or fast systems.",
+        },
+        "Result recovery": {
+            "what": "Chunked outputs are recovered, merged, audited for available rows, and balanced for comparison.",
+            "why": "This protects the integrity of the 60k final analysis dataset.",
+            "artefacts": "chunked outputs, manifests/status files, recovered results, final bundles",
+            "section": "Production execution and recovery",
+            "metric": "dataset_integrity_report.json and dataset_integrity_by_config.csv",
+            "caution": "Raw large outputs remain excluded from GitHub and are not loaded by the app.",
+        },
+        "Gold scoring": {
+            "what": "Generated answers on overlapping gold tickets are scored against deterministic reference resolutions.",
+            "why": "This supplies a reproducible quality proxy for the 456-output gold overlap.",
+            "artefacts": "overall_gold_quality_score, component gold scores, generated_category_accuracy",
+            "section": "Deterministic quality scoring",
+            "metric": "gold_resolution_quality_by_config.csv",
+            "caution": "Gold scoring is useful but is not full human judgement.",
+        },
+        "Manual audit": {
+            "what": "A blinded human review scores answer quality, actionability, completeness, escalation, and policy grounding.",
+            "why": "It validates whether deterministic and operational metrics align with human judgement.",
+            "artefacts": "overall_manual_quality, component manual scores, reviewer notes",
+            "section": "Human validation layer",
+            "metric": "manual_quality_by_config.csv and manual_quality_component_summary_by_config.csv",
+            "caution": "Manual audit is the human validation layer, not a live production approval system.",
+        },
+        "Final analysis": {
+            "what": "Committed summary CSVs and plots power the static Streamlit explorer.",
+            "why": "The demo remains deployable, auditable, and safe without credentials or heavy runtime dependencies.",
+            "artefacts": "summary_by_config.csv, plots, manual/gold summaries, streamlit_ticket_sample.csv",
+            "section": "Results synthesis and reproducibility",
+            "metric": "RouterGym/results/analysis_outputs/",
+            "caution": "No external APIs, live inference, model downloads, or raw 1.27GB data are used.",
+        },
+    }
+
+    stages = list(stage_details)
+    selected_stage = st.radio(
+        "Pipeline stage",
+        stages,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="methodology_stage",
+    )
+    render_flow_track(stages, selected_stage)
+    details = stage_details[selected_stage]
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        render_insight_card("What happens", details["what"], "info")
+    with col2:
+        render_insight_card("Why it matters", details["why"], "success")
+    with col3:
+        render_insight_card("Caution", details["caution"], "warning")
+
+    render_metric_grid(
+        [
+            ("Artefacts", details["artefacts"], "Produced or consumed at this stage.", "ART"),
+            (
+                "Dissertation section",
+                details["section"],
+                "Where the stage fits in the story.",
+                "SEC",
+            ),
+            ("Metric or file", details["metric"], "Static artefact used by the app.", "FILE"),
+        ],
+        columns=3,
+    )
+
+    render_section_header("Experimental matrix", "Final six-configuration BM25-RAG comparison")
+    matrix = pd.DataFrame(
+        [
+            ("LLM-only", "LLM1", "none", "BM25-RAG"),
+            ("LLM-only", "LLM2", "none", "BM25-RAG"),
+            ("SLM-only", "SLM1", "none", "BM25-RAG"),
+            ("SLM-only", "SLM2", "none", "BM25-RAG"),
+            ("SLM-dominant", "SLM1", "LLM2", "BM25-RAG"),
+            ("SLM-dominant", "SLM2", "LLM2", "BM25-RAG"),
+        ],
+        columns=["Router family", "Base model", "Escalation model", "Memory"],
+    )
+    st.dataframe(matrix, hide_index=True, **stretch_width())
+    render_insight_card(
+        "Why BM25-RAG was fixed",
+        "The final production-scale comparison isolates router/model strategy under a consistent operational memory layer. Full memory ablation is future work for this claim.",
+        "info",
+    )
+
+    render_section_header("Experiment calculator", "Projected static-run economics")
+    with st.container(border=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            tickets = st.number_input("Tickets", min_value=1, value=47_837, step=100)
+            configs = st.number_input("Configurations", min_value=1, value=6, step=1)
+        with col2:
+            gpu_count = st.number_input("GPU count", min_value=1, value=4, step=1)
+            gpu_rate = st.number_input("GPU hourly rate", min_value=0.0, value=2.99, step=0.10)
+        with col3:
+            observed_outputs = st.number_input(
+                "Observed outputs", min_value=1, value=60_000, step=1_000
+            )
+            observed_runtime = st.number_input(
+                "Observed 60k runtime (hours)", min_value=0.1, value=24.0, step=0.5
+            )
+    projected_outputs = int(tickets * configs)
+    projected_runtime = projected_outputs * (observed_runtime / observed_outputs)
+    projected_cost = projected_runtime * gpu_count * gpu_rate
+    render_metric_grid(
+        [
+            ("Projected outputs", f"{projected_outputs:,.0f}", "tickets x configurations.", "OUT"),
+            (
+                "Projected runtime",
+                f"{projected_runtime:,.1f} h",
+                "Scaled from observed runtime/output ratio.",
+                "TIME",
+            ),
+            (
+                "Projected GPU rental",
+                f"${projected_cost:,.0f}",
+                "runtime x GPU count x hourly rate.",
+                "$",
+            ),
+        ],
+        columns=3,
+    )
+
+    render_section_header("Persistent storage", "Run artefacts kept outside the static app")
+    storage_cards = [
+        ("Storage", "model cache", "Model and tokenizer cache on the RunPod volume."),
+        ("Code", "RouterGym project", "Repository snapshot and benchmark scripts."),
+        ("Serving", "vLLM logs", "Local serving logs and runtime traces."),
+        ("Outputs", "chunked outputs", "Chunked result files written during production execution."),
+        ("Control", "manifests/status", "Status files used to track progress and recovery."),
+        ("Recovery", "recovered results", "Recovered and merged intermediate outputs."),
+        ("Bundles", "final bundles", "Final summaries used by this static demo."),
+    ]
+    render_html_grid("rg-storage-grid", storage_cards)
+
+    render_section_header("Reproducibility checklist", "Static demo safeguards")
+    checklist = [
+        (
+            "Static",
+            "committed summaries",
+            "The app reads committed summary CSVs and compact samples.",
+        ),
+        (
+            "Offline",
+            "no live inference",
+            "No GPUs, servers, or model calls are started by the app.",
+        ),
+        ("Secrets", "no API keys", "The UI does not require provider credentials."),
+        ("Models", "no downloads", "The app does not download or load model weights."),
+        ("Git", "raw data excluded", "Large raw analysis inputs stay out of GitHub."),
+        (
+            "Backup",
+            "raw archive backup",
+            "Raw archive is backed up separately outside the repository.",
+        ),
+        (
+            "Audit",
+            "manual audit included",
+            "Human audit summaries are committed as static outputs.",
+        ),
+        (
+            "Evidence",
+            "gold scoring included",
+            "Deterministic gold-resolution summaries are committed.",
+        ),
+    ]
+    check_items = "\n".join(
+        f"""
+<article class="rg-check-item">
+    <span>{escape(kicker)}</span>
+    <strong>{escape(title)}</strong>
+    <p style="margin:0.45rem 0 0;color:var(--muted);line-height:1.45;font-size:0.84rem;">{escape(body)}</p>
+</article>
+        """
+        for kicker, title, body in checklist
+    )
+    st.markdown(f'<div class="rg-check-grid">{check_items}</div>', unsafe_allow_html=True)
+
+    render_section_header("Run locally", "Streamlit Cloud-compatible launch command")
+    st.code("streamlit run streamlit_app.py", language="powershell")
+
+
 PAGE_RENDERERS = {
     "Executive Snapshot": page_executive_snapshot,
     "Configuration Comparator": page_configuration_comparator,
@@ -2456,7 +3783,8 @@ PAGE_RENDERERS = {
 
 
 def main() -> None:
-    inject_global_css()
+    st.session_state.setdefault("dark_mode", False)
+    inject_global_css(st.session_state["dark_mode"])
     page = render_top_nav("Executive Snapshot")
     PAGE_RENDERERS[page]()
 
